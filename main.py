@@ -25,6 +25,7 @@ from pathlib import Path
 
 from toss import TossClient, TossAPIError, analyze
 from toss import symbols as sym
+from toss import insights
 from toss.report import build_html, build_report
 
 
@@ -59,31 +60,52 @@ def fetch_section(client: TossClient, title: str, currency: str,
     items = []
     for code in codes:
         p = prices.get(code) or {"code": code}
+        p.setdefault("currency", currency)
         try:
             candles = client.get_candles(code, interval=interval, count=count)
         except TossAPIError as e:
             print(f"  · {code} 캔들 경고: {e}", file=sys.stderr)
             candles = []
         a = analyze(candles)
-        # 현재가가 비면 마지막 종가로 보완
         if p.get("last") is None and a.get("last") is not None:
             p["last"] = a["last"]
+        # 호가·기업정보(선택) — 실패해도 나머지는 진행
+        ob = _try(lambda: client.orderbook_summary(code)) or {}
+        info = _try(lambda: client.get_stock_info(code)) or {}
+        if not p.get("shares") and info.get("shares"):
+            p["shares"] = info["shares"]
         items.append({
             "code": code,
-            "name": p.get("name") or names.get(code, code),
+            "name": p.get("name") or info.get("name") or names.get(code, code),
+            "currency": currency,
             "price": {k: p.get(k) for k in
-                      ("last", "change", "change_rate", "open", "high", "low", "volume", "currency", "market")},
+                      ("last", "change", "change_rate", "open", "high", "low", "volume",
+                       "currency", "market", "upper_limit", "lower_limit", "shares")},
+            "info": info,
+            "orderbook": ob,
             "analysis": a,
             "candles": _thin(candles),
         })
         print(f"  · {code:<14} {names.get(code,''):<12} 캔들 {len(candles):>3}개 "
-              f"신호 {a.get('signal',{}).get('label','-')}")
+              f"신호 {a.get('signal',{}).get('label','-')} "
+              f"호가 {'○' if ob.get('imbalance') is not None else '·'}")
     return {"key": title, "title": title, "currency": currency, "items": items}
+
+
+def _try(fn):
+    """API 부가 조회 실패를 조용히 삼킴(필드 누락 시 패널만 비어보임)."""
+    try:
+        return fn()
+    except TossAPIError:
+        return None
 
 
 # --------------------------------------------------------------------------
 # DEMO: 네트워크 없이 UI 미리보기 (씨드 고정, 합성 데이터)
 # --------------------------------------------------------------------------
+DEMO_USDKRW = 1385.0
+
+
 def demo_section(title, currency, pairs, base_price, seed):
     rnd = random.Random(seed)
     items = []
@@ -95,18 +117,35 @@ def demo_section(title, currency, pairs, base_price, seed):
         for _ in range(130):
             price *= math.exp(drift + rnd.gauss(0, vol))
             closes.append(round(price, 2 if currency == "USD" else 0))
+        rd = 2 if currency == "USD" else 0
+        # 당일 시/고/저를 종가 주변으로 합성
+        last = closes[-1]
+        op = round(closes[-2] * (1 + rnd.uniform(-0.01, 0.01)), rd)
+        high = round(max(last, op) * (1 + rnd.uniform(0, 0.015)), rd)
+        low = round(min(last, op) * (1 - rnd.uniform(0, 0.015)), rd)
+        prev = closes[-2]
+        chg = last - prev
+        volume = rnd.randint(1_000_000, 40_000_000) if currency == "KRW" else rnd.randint(2_000_000, 80_000_000)
+        shares = rnd.randint(200_000_000, 6_000_000_000)
         candles = [{"dt": i, "open": c, "high": c, "low": c, "close": c, "volume": 0}
                    for i, c in enumerate(closes)]
         a = analyze(candles)
-        prev = closes[-2]
-        last = closes[-1]
-        chg = last - prev
+        price = {"last": last, "change": round(chg, rd), "change_rate": round(chg / prev * 100, 2),
+                 "open": op, "high": high, "low": low, "volume": volume,
+                 "currency": currency, "market": "KRX" if currency == "KRW" else "NASDAQ",
+                 "shares": shares}
+        if currency == "KRW":  # 국내 상/하한가 ±30%
+            price["upper_limit"] = round(prev * 1.30)
+            price["lower_limit"] = round(prev * 0.70)
+        bid = rnd.randint(50_000, 900_000)
+        ask = rnd.randint(50_000, 900_000)
+        total = bid + ask
         items.append({
-            "code": code, "name": name,
-            "price": {"last": last, "change": round(chg, 2), "change_rate": round(chg / prev * 100, 2),
-                      "open": closes[-2], "high": max(closes[-2:]), "low": min(closes[-2:]),
-                      "volume": rnd.randint(1_000_000, 40_000_000),
-                      "currency": currency, "market": "KRX" if currency == "KRW" else "NASDAQ"},
+            "code": code, "name": name, "currency": currency,
+            "price": price,
+            "info": {"name": name, "shares": shares, "market": price["market"], "currency": currency},
+            "orderbook": {"bid_qty": bid, "ask_qty": ask, "imbalance": (bid - ask) / total,
+                          "spread_pct": round(rnd.uniform(0.02, 0.25), 3)},
             "analysis": a,
             "candles": [{"dt": c["dt"], "close": c["close"]} for c in candles[-90:]],
         })
@@ -114,10 +153,13 @@ def demo_section(title, currency, pairs, base_price, seed):
 
 
 def build_demo():
-    return build_report([
+    secs = [
         demo_section("국내 (KRX)", "KRW", sym.DOMESTIC, 70000, seed=42),
         demo_section("국외 (US)", "USD", sym.OVERSEAS, 180, seed=7),
-    ], mode="demo")
+    ]
+    for s in secs:
+        insights.enrich_section(s, DEMO_USDKRW)
+    return build_report(secs, mode="demo", usdkrw=DEMO_USDKRW)
 
 
 def main():
@@ -161,11 +203,15 @@ def main():
 
         dom = [(c, "") for c in args.domestic.split(",")] if args.domestic else sym.DOMESTIC
         ovs = [(c, "") for c in args.overseas.split(",")] if args.overseas else sym.OVERSEAS
+        usdkrw = _try(lambda: client.get_exchange_rate("USD", "KRW"))
+        print(f"환율 USD/KRW: {usdkrw if usdkrw else '조회 불가(국외 원화환산 생략)'}")
         print("국내(KRX) 조회…")
         s_dom = fetch_section(client, "국내 (KRX)", "KRW", dom, args.interval, args.count)
         print("국외(US) 조회…")
         s_ovs = fetch_section(client, "국외 (US)", "USD", ovs, args.interval, args.count)
-        report = build_report([s_dom, s_ovs], mode="live")
+        insights.enrich_section(s_dom, usdkrw)
+        insights.enrich_section(s_ovs, usdkrw)
+        report = build_report([s_dom, s_ovs], mode="live", usdkrw=usdkrw)
 
     out.write_text(build_html(report), encoding="utf-8")
     print(f"\n완료 → {out.resolve()}")

@@ -35,6 +35,7 @@ ENDPOINTS = {
     "candles": "/api/v1/candles",
     "orderbook": "/api/v1/orderbook",
     "stock_info": "/api/v1/stock-info",
+    "exchange_rates": "/api/v1/exchange-rates",
 }
 
 # 여러 응답 스키마에 대응하기 위한 후보 필드명들(관용적 파싱).
@@ -50,6 +51,16 @@ _PRICE_FIELDS = {
     "name": ["name", "stockName", "companyName", "hname"],
     "currency": ["currency", "curr", "currencyCode"],
     "market": ["market", "exchange", "marketCode"],
+    "upper_limit": ["upperLimit", "upper", "maxPrice", "highLimit"],
+    "lower_limit": ["lowerLimit", "lower", "minPrice", "lowLimit"],
+    "shares": ["shares", "listedShares", "sharesOutstanding", "issuedShares", "listShrs"],
+}
+_INFO_FIELDS = {
+    "name": ["name", "stockName", "companyName", "hname"],
+    "market": ["market", "exchange", "marketCode"],
+    "currency": ["currency", "curr", "currencyCode"],
+    "shares": ["shares", "listedShares", "sharesOutstanding", "issuedShares", "listShrs"],
+    "listed": ["listingStatus", "listed", "status"],
 }
 _CANDLE_FIELDS = {
     "dt": ["dt", "date", "time", "timestamp", "baseDt"],
@@ -203,6 +214,57 @@ class TossClient:
     def get_orderbook(self, code: str) -> dict:
         return self._unwrap(self._get(ENDPOINTS["orderbook"], {"code": code}))
 
+    def orderbook_summary(self, code: str) -> dict:
+        """호가에서 매수/매도 총잔량·불균형·스프레드를 계산.
+
+        불균형 = (매수잔량 − 매도잔량) / (매수잔량 + 매도잔량)  (−1~+1, +면 매수 우위)
+        """
+        raw = self.get_orderbook(code)
+        bids = _collect_qty(raw, ["bids", "bid", "buy", "buyOrders"], ["bidQty", "buyQty", "qty", "quantity", "restQty"])
+        asks = _collect_qty(raw, ["asks", "ask", "sell", "sellOrders"], ["askQty", "sellQty", "qty", "quantity", "restQty"])
+        best_bid = _pick(raw, ["bestBid", "bidPrice", "bidPrice1"])
+        best_ask = _pick(raw, ["bestAsk", "askPrice", "askPrice1"])
+        spread_pct = None
+        bb, ba = _to_float(best_bid), _to_float(best_ask)
+        if bb and ba and ba > 0:
+            spread_pct = (ba - bb) / ba * 100
+        total = bids + asks
+        return {
+            "bid_qty": bids or None,
+            "ask_qty": asks or None,
+            "imbalance": ((bids - asks) / total) if total else None,
+            "spread_pct": spread_pct,
+        }
+
+    def get_stock_info(self, code: str) -> dict:
+        raw = self._unwrap(self._get(ENDPOINTS["stock_info"], {"code": code}))
+        r = raw[0] if isinstance(raw, list) and raw else raw
+        if not isinstance(r, dict):
+            return {}
+        return {
+            "name": _pick(r, _INFO_FIELDS["name"]),
+            "market": _pick(r, _INFO_FIELDS["market"]),
+            "currency": _pick(r, _INFO_FIELDS["currency"]),
+            "shares": _to_float(_pick(r, _INFO_FIELDS["shares"])),
+            "listed": _pick(r, _INFO_FIELDS["listed"]),
+        }
+
+    def get_exchange_rate(self, base: str = "USD", quote: str = "KRW") -> float | None:
+        """환율 조회(선택). 엔드포인트가 없으면 None 을 반환합니다."""
+        try:
+            raw = self._unwrap(self._get(ENDPOINTS.get("exchange_rates", "/api/v1/exchange-rates"),
+                                         {"base": base, "quote": quote}))
+        except TossAPIError:
+            return None
+        if isinstance(raw, list):
+            for r in raw:
+                if isinstance(r, dict) and quote in str(r.values()):
+                    return _to_float(_pick(r, ["rate", "value", "price", "close"]))
+            raw = raw[0] if raw else {}
+        if isinstance(raw, dict):
+            return _to_float(_pick(raw, ["rate", "value", "price", "close", f"{base}{quote}"]))
+        return None
+
 
 def _normalize_price(r: dict, fallback_code: str | None = None) -> dict:
     last = _to_float(_pick(r, _PRICE_FIELDS["last"]))
@@ -226,6 +288,9 @@ def _normalize_price(r: dict, fallback_code: str | None = None) -> dict:
         "volume": _to_float(_pick(r, _PRICE_FIELDS["volume"])),
         "currency": _pick(r, _PRICE_FIELDS["currency"]),
         "market": _pick(r, _PRICE_FIELDS["market"]),
+        "upper_limit": _to_float(_pick(r, _PRICE_FIELDS["upper_limit"])),
+        "lower_limit": _to_float(_pick(r, _PRICE_FIELDS["lower_limit"])),
+        "shares": _to_float(_pick(r, _PRICE_FIELDS["shares"])),
         "_raw": r,
     }
 
@@ -239,6 +304,21 @@ def _normalize_candle(r: dict) -> dict:
         "close": _to_float(_pick(r, _CANDLE_FIELDS["close"])),
         "volume": _to_float(_pick(r, _CANDLE_FIELDS["volume"])),
     }
+
+
+def _collect_qty(raw: dict, list_keys: list[str], qty_keys: list[str]) -> float:
+    """호가 응답에서 매수(또는 매도) 잔량 합계를 관용적으로 추출."""
+    if not isinstance(raw, dict):
+        return 0.0
+    total = 0.0
+    for lk in list_keys:
+        levels = raw.get(lk)
+        if isinstance(levels, list):
+            for lv in levels:
+                q = _to_float(_pick(lv, qty_keys)) if isinstance(lv, dict) else _to_float(lv)
+                if q:
+                    total += q
+    return total
 
 
 def _safe_read(e: urllib.error.HTTPError) -> str | None:
