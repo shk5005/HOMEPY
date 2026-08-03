@@ -61,6 +61,7 @@ _INFO_FIELDS = {
     "currency": ["currency", "curr", "currencyCode"],
     "shares": ["shares", "listedShares", "sharesOutstanding", "issuedShares", "listShrs"],
     "listed": ["listingStatus", "listed", "status"],
+    "industry": ["industry", "sector", "industryName", "sectorName", "bizType"],
 }
 _CANDLE_FIELDS = {
     "dt": ["dt", "date", "time", "timestamp", "baseDt"],
@@ -247,6 +248,7 @@ class TossClient:
             "currency": _pick(r, _INFO_FIELDS["currency"]),
             "shares": _to_float(_pick(r, _INFO_FIELDS["shares"])),
             "listed": _pick(r, _INFO_FIELDS["listed"]),
+            "industry": _pick(r, _INFO_FIELDS["industry"]),
         }
 
     def get_exchange_rate(self, base: str = "USD", quote: str = "KRW") -> float | None:

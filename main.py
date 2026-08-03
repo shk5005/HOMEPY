@@ -74,10 +74,12 @@ def fetch_section(client: TossClient, title: str, currency: str,
         info = _try(lambda: client.get_stock_info(code)) or {}
         if not p.get("shares") and info.get("shares"):
             p["shares"] = info["shares"]
+        sector = info.get("industry") or info.get("sector") or sym.sector_of(code)
         items.append({
             "code": code,
             "name": p.get("name") or info.get("name") or names.get(code, code),
             "currency": currency,
+            "sector": sector,
             "price": {k: p.get(k) for k in
                       ("last", "change", "change_rate", "open", "high", "low", "volume",
                        "currency", "market", "upper_limit", "lower_limit", "shares")},
@@ -142,6 +144,7 @@ def demo_section(title, currency, pairs, base_price, seed):
         total = bid + ask
         items.append({
             "code": code, "name": name, "currency": currency,
+            "sector": sym.sector_of(code),
             "price": price,
             "info": {"name": name, "shares": shares, "market": price["market"], "currency": currency},
             "orderbook": {"bid_qty": bid, "ask_qty": ask, "imbalance": (bid - ask) / total,
