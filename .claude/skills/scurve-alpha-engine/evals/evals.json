@@ -1,0 +1,29 @@
+{
+  "skill_name": "scurve-alpha-engine",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-diagnosis",
+      "prompt": "엔비디아(NVDA) 지금 사도 될까? S-curve 프레임으로 점수 매겨줘",
+      "expected_output": "6-레이어 점수(L1~L6)+원점수/100, 곱셈 게이트 S×M×E, Red Team 5, 4라벨 데이터 무결성, Δ 관점, 밸류에이션 트랩 경고를 포함한 구조화 진단",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "scurve-position",
+      "prompt": "AI 코딩 에이전트가 지금 S-curve 어디쯤이야? 다음 병목은 어디로 이동해?",
+      "expected_output": "AI 스택 층/Wave 위치 지목, 병목 이동 순서(GPU→HBM→...→Power/Grid), Level뿐 아니라 Δ(변화율) 언급, Recursive/코딩 킬러앱 논리",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "saas-disruption",
+      "prompt": "세일즈포스(CRM) AI가 죽일 거 같은데 지금 매수해도 돼?",
+      "expected_output": "Devil's Advocate(유도성 낙관/비관에 휩쓸리지 않음), SaaS 재편(System of Record 강화 vs DB 전락 양면), 밸류에이션 트랩/Red Team 경고, 4라벨 데이터 무결성",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
