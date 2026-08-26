@@ -8,6 +8,7 @@ import * as S from './store.js';
 import { esc, qs, qsa, bindChips, bindPromptBox, toast } from './ui.js';
 import * as VC from './views-core.js';
 import * as VA from './views-analysis.js';
+import * as Q from './quotes.js';
 
 const NAV = [
   { group: '파이프라인', items: [
@@ -68,6 +69,7 @@ export function go(route, { push = true } = {}) {
 
   // 라우트 진입 후 지연 렌더 (교차검증 결과 등 재계산이 필요한 영역)
   if (route === 'cross') updateCrossCounts();
+  if (qs('#proxy-badge')) refreshProxyBadge();
 }
 
 function rerender() { go(current, { push: false }); }
@@ -243,6 +245,13 @@ function bindGlobal() {
     const add = e.target.closest('[data-add-pick]');
     if (add) return addPick(add.dataset.addPick);
 
+    const found = e.target.closest('[data-pick-found]');
+    if (found) {
+      addPick(found.dataset.pickName, found.dataset.pickFound);
+      const box = qs('#quote-search'); if (box) box.innerHTML = '';
+      return;
+    }
+
     const del = e.target.closest('[data-del-pick]');
     if (del) {
       const picks = [...S.get().picks];
@@ -256,7 +265,7 @@ function bindGlobal() {
   bindPromptBox(root);
 }
 
-function addPick(name) {
+function addPick(name, code = '') {
   const clean = String(name || '').trim();
   if (!clean) return toast('종목명을 입력하세요');
   const picks = [...S.get().picks];
@@ -264,7 +273,8 @@ function addPick(name) {
     return toast(`${clean} 은(는) 이미 담겨 있습니다`);
   }
   if (picks.length >= 10) return toast('최대 10종목까지 담을 수 있습니다');
-  picks.push({ name: clean, price: '', change: '', per: '', pbr: '', cap: '', band: '' });
+  picks.push({ name: clean, code: String(code || '').replace(/^A/, ''),
+               price: '', change: '', per: '', pbr: '', cap: '', band: '' });
   S.replace('picks', picks);
   toast(`${clean} 추가됨 (총 ${picks.length}종목)`);
   // 교차검증 화면에서는 전체 재렌더 시 결과 패널이 사라지므로 해당 패널만 갱신한다
@@ -327,6 +337,18 @@ function handleAction(action, btn) {
       break;
     }
 
+    case 'check-proxy':
+      refreshProxyBadge({ verbose: true });
+      break;
+
+    case 'search-quote':
+      searchQuote(qs('#pick-name')?.value);
+      break;
+
+    case 'refresh-quotes':
+      refreshQuotes(btn);
+      break;
+
     case 'reset':
       if (confirm('저장된 모든 입력(종목·시세·점수·AI 답변)을 삭제하고 초기화할까요?')) {
         S.reset();
@@ -334,6 +356,122 @@ function handleAction(action, btn) {
         go('dashboard');
       }
       break;
+  }
+}
+
+/* ---------- 시세 자동 조회 ---------- */
+
+function setMsg(text, cls = 'muted') {
+  const el = qs('#quote-msg');
+  if (el) { el.className = cls; el.textContent = text; }
+}
+
+async function refreshProxyBadge({ verbose = false } = {}) {
+  const badge = qs('#proxy-badge');
+  if (!badge) return;
+  badge.className = 'quote-badge';
+  badge.textContent = '⚪ 확인 중…';
+  const h = await Q.health();
+  if (h.ok) {
+    badge.className = 'quote-badge ok';
+    badge.textContent = `🟢 ${h.label}`;
+    if (verbose) setMsg('시세 프록시가 연결되어 있습니다.');
+  } else if (h.offline) {
+    badge.className = 'quote-badge off';
+    badge.textContent = '🟡 프록시 미실행';
+    if (verbose) setMsg('node server/quote-proxy.mjs 를 실행한 뒤 다시 확인하세요. (수동 입력은 그대로 가능합니다)');
+  } else {
+    badge.className = 'quote-badge err';
+    badge.textContent = '🔴 연결 실패';
+    if (verbose) setMsg(h.hint || h.error || '프록시 응답 오류');
+  }
+}
+
+async function searchQuote(query) {
+  const q = String(query || '').trim();
+  const out = qs('#quote-search');
+  if (!out) return;
+  if (!q) { out.innerHTML = ''; return toast('검색어를 입력하세요'); }
+
+  out.innerHTML = '<p class="muted">검색 중…</p>';
+  try {
+    const rows = await Q.search(q);
+    if (!rows.length) {
+      out.innerHTML = '<p class="muted">검색 결과가 없습니다. 종목명을 직접 입력해 추가하세요.</p>';
+      return;
+    }
+    out.innerHTML = `<div class="qs-list">${rows.map(r => `
+      <button class="qs-item" data-pick-found="${esc(r.code)}" data-pick-name="${esc(r.name)}">
+        ${esc(r.name)}<span class="code">${esc(r.code)}</span>
+      </button>`).join('')}</div>`;
+  } catch (e) {
+    out.innerHTML = `<div class="alert alert-warn"><span>⚠️</span>
+      <div><strong>${esc(e.message)}</strong>${e.hint ? '<br>' + esc(e.hint) : ''}
+      <br>종목명을 직접 입력해 추가하고 시세는 수동으로 넣어도 됩니다.</div></div>`;
+  }
+}
+
+async function refreshQuotes(btn) {
+  const picks = S.get().picks || [];
+  if (!picks.length) return toast('먼저 종목을 추가하세요');
+
+  // 종목코드가 있는 것만 조회 가능 — 코드가 없으면 이름으로 먼저 찾아본다
+  const targets = picks.map((p, i) => ({ i, code: (p.code || '').trim(), name: p.name }));
+  const missing = targets.filter(t => !t.code);
+
+  if (btn) { btn.disabled = true; btn.textContent = '조회 중…'; }
+  setMsg('시세 조회 중…');
+
+  try {
+    // 코드가 없는 종목은 이름으로 검색해 코드를 채운다
+    for (const m of missing) {
+      try {
+        const rows = await Q.search(m.name);
+        const hit = rows.find(r => r.name.replace(/\s/g, '') === m.name.replace(/\s/g, '')) || rows[0];
+        // 저장은 항상 접두사 없는 6자리로 통일한다 (조회 시 프로바이더가 다시 붙인다)
+        if (hit) m.code = String(hit.code || '').replace(/^A/, '');
+      } catch { /* 개별 실패는 건너뛴다 */ }
+    }
+
+    const codes = targets.map(t => t.code).filter(Boolean);
+    if (!codes.length) throw new Error('조회할 종목코드를 찾지 못했습니다');
+
+    const { rows, asOf } = await Q.quote(codes);
+    const byCode = new Map(rows.map(r => [String(r.code || '').replace(/^A/, ''), r]));
+
+    const next = [...picks];
+    let hit = 0;
+    for (const t of targets) {
+      const r = byCode.get(String(t.code).replace(/^A/, ''));
+      if (!r || r.price == null) continue;
+      next[t.i] = {
+        ...next[t.i],
+        code: t.code,
+        price: String(r.price),
+        change: r.change != null ? String(Math.round(r.change)) : next[t.i].change,
+        per: r.per != null ? String(r.per) : next[t.i].per,
+        pbr: r.pbr != null ? String(r.pbr) : next[t.i].pbr,
+        cap: Q.formatCap(r.cap) ?? next[t.i].cap,
+        band: r.band ?? next[t.i].band,
+        source: 'toss'
+      };
+      hit++;
+    }
+
+    S.replace('picks', next);
+    S.set({ asOf: Q.stampKST(asOf) }, { silent: true });
+
+    if (hit === 0) {
+      setMsg('응답은 받았지만 시세를 읽지 못했습니다. --probe 로 응답 형태를 확인하세요.', 'neg');
+    } else {
+      toast(`${hit}개 종목 시세를 갱신했습니다`);
+    }
+    rerender();
+  } catch (e) {
+    setMsg(`${e.message}${e.hint ? ' — ' + e.hint : ''}`, 'neg');
+    toast('시세 조회 실패 — 수동 입력을 사용하세요');
+  } finally {
+    if (btn && document.contains(btn)) { btn.disabled = false; btn.textContent = '🔄 시세 자동 조회'; }
   }
 }
 

@@ -18,7 +18,7 @@ const DEFAULT = {
     exclusions: ['최근 2년 연속 적자 기업', '감사의견 비적정 기업', '시가총액 1,000억 미만']
   },
   cross: { gpt: '', claude: '', plx: '' },
-  picks: [],                 // [{ name, price, per, pbr, cap, band, change }]
+  picks: [],                 // [{ name, code, price, change, per, pbr, cap, band, source }]
   asOf: '',
   analysis: { horizon: '6개월', risk: '중위험' },
   valuation: {

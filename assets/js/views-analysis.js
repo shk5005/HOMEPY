@@ -7,6 +7,7 @@ import * as C from './calc.js';
 import * as P from './prompts.js';
 import * as S from './store.js';
 import { esc, chipGroup, promptBox, table, stat } from './ui.js';
+import * as Q from './quotes.js';
 
 /* ---------- 공통: 분석 대상 종목 편집기 ---------- */
 export function pickEditor() {
@@ -18,22 +19,33 @@ export function pickEditor() {
     <p class="card-sub">실시간 시세를 입력하면 프롬프트에 <strong>시세 앵커</strong>로 박혀
       AI의 과거 학습값 사용을 차단합니다 — 함정 ④ 대응</p>
 
-    <div class="btn-row" style="margin-bottom:12px">
-      <input class="input" id="pick-name" placeholder="종목명 (예: SK하이닉스)" style="flex:1;min-width:180px">
+    <div class="btn-row" style="margin-bottom:6px">
+      <input class="input" id="pick-name" placeholder="종목명 또는 코드 (예: SK하이닉스 / 000660)" style="flex:1;min-width:200px">
       <button class="btn btn-navy btn-sm" data-action="add-pick">+ 추가</button>
+      <button class="btn btn-ghost btn-sm" data-action="search-quote">🔍 토스 검색</button>
+    </div>
+    <div id="quote-search" class="mb0"></div>
+
+    <div class="quote-bar">
+      <span class="quote-badge" id="proxy-badge" data-action="check-proxy" role="button"
+            title="클릭하면 시세 프록시 연결을 확인합니다">⚪ 프록시 확인 중…</span>
+      <button class="btn btn-gold btn-sm" data-action="refresh-quotes">🔄 시세 자동 조회</button>
+      <span class="muted" id="quote-msg"></span>
     </div>
 
     ${picks.length ? `
     <div class="tbl-wrap">
       <table class="tbl">
         <thead><tr>
-          <th>종목</th><th>현재가(원)</th><th>등락(원)</th><th>PER</th><th>PBR</th>
+          <th>종목</th><th>종목코드</th><th>현재가(원)</th><th>등락(원)</th><th>PER</th><th>PBR</th>
           <th>시총</th><th>52주 밴드</th><th></th>
         </tr></thead>
         <tbody>
           ${picks.map((p, i) => `
           <tr>
-            <td class="name">${esc(p.name)}</td>
+            <td class="name">${esc(p.name)}${p.source === 'toss' ? ' <span class="badge-pill bp-green" title="토스 자동 조회">자동</span>' : ''}</td>
+            <td><input class="input mono" style="width:88px;padding:6px 9px" data-pick="${i}.code"
+                 value="${esc(p.code ?? '')}" placeholder="005930"></td>
             <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${i}.price"
                  value="${esc(p.price ?? '')}" placeholder="382000"></td>
             <td><input class="input" style="width:92px;padding:6px 9px" data-pick="${i}.change"
@@ -52,7 +64,7 @@ export function pickEditor() {
       </table>
     </div>
     <div class="field mt mb0">
-      <div class="field-label">시세 조회 시점 <span class="field-hint">프롬프트에 명기됩니다</span></div>
+      <div class="field-label">시세 조회 시점 <span class="field-hint">자동 조회 시 자동으로 채워집니다</span></div>
       <input class="input" data-bind="asOf" value="${esc(st.asOf)}"
         placeholder="예: 2026.08.26 15:30 (KST)" style="max-width:320px">
     </div>

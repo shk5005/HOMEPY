@@ -106,7 +106,26 @@ AI 답변에서 4가지 패턴을 훑습니다.
 `compose()` 가 블록을 결합하고 `guardBlock()` 을 **항상** 마지막에 붙입니다 —
 어떤 경로로 프롬프트를 생성하든 신뢰성 룰이 빠질 수 없는 구조입니다.
 
-## 5. UI 규칙
+## 5. 시세 연동 (선택)
+
+```
+브라우저 (quotes.js)
+   │  GET /api/search?q= · /api/quote?codes=
+   ▼
+127.0.0.1:8787  server/quote-proxy.mjs        ← CORS 헤더 부착, 5초 캐시
+   │                                             127.0.0.1 바인딩, 고정 호스트만 허용
+   ▼
+server/providers/toss.mjs                     ← 비공식 WTS 엔드포인트
+   │  FIELD_MAP 다중 후보 키 → 깊이 탐색 폴백
+   ▼
+{ code, name, price, change, changeRate, per, pbr, cap, band }
+```
+
+- 실패 시 `quotes.js` 가 `offline` / `hint` 를 구분해 UI가 수동 입력으로 안내
+- 조회 성공 시 `picks[].source = 'toss'` 로 표시되고 `asOf` 가 KST로 자동 기입
+- 종목코드는 접두사 없는 6자리로 저장하고, 조회 시 어댑터가 `A` 를 붙임
+
+## 6. UI 규칙
 
 - **이벤트 위임**: `document.body` 한 곳에서 `data-route` · `data-action` · `data-bind` ·
   `data-pick` · `data-val` · `data-target` · `data-score` · `data-prob` 속성을 처리
