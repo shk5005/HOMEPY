@@ -45,19 +45,19 @@ export function pickEditor() {
           <tr>
             <td class="name">${esc(p.name)}${p.source === 'toss' ? ' <span class="badge-pill bp-green" title="토스 자동 조회">자동</span>' : ''}</td>
             <td><input class="input mono" style="width:88px;padding:6px 9px" data-pick="${i}.code"
-                 value="${esc(p.code ?? '')}" placeholder="005930"></td>
+                 value="${esc(p.code ?? '')}" placeholder="6자리"></td>
             <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${i}.price"
-                 value="${esc(p.price ?? '')}" placeholder="382000"></td>
+                 value="${esc(p.price ?? '')}" placeholder="숫자만"></td>
             <td><input class="input" style="width:92px;padding:6px 9px" data-pick="${i}.change"
-                 value="${esc(p.change ?? '')}" placeholder="9500"></td>
+                 value="${esc(p.change ?? '')}" placeholder="±숫자"></td>
             <td><input class="input" style="width:72px;padding:6px 9px" data-pick="${i}.per"
-                 value="${esc(p.per ?? '')}" placeholder="19.8"></td>
+                 value="${esc(p.per ?? '')}" placeholder="배수"></td>
             <td><input class="input" style="width:72px;padding:6px 9px" data-pick="${i}.pbr"
-                 value="${esc(p.pbr ?? '')}" placeholder="3.05"></td>
+                 value="${esc(p.pbr ?? '')}" placeholder="배수"></td>
             <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${i}.cap"
-                 value="${esc(p.cap ?? '')}" placeholder="47,000억원"></td>
+                 value="${esc(p.cap ?? '')}" placeholder="예: 47,000억원"></td>
             <td><input class="input" style="width:150px;padding:6px 9px" data-pick="${i}.band"
-                 value="${esc(p.band ?? '')}" placeholder="138,000~450,000원"></td>
+                 value="${esc(p.band ?? '')}" placeholder="예: 최저~최고"></td>
             <td><button class="btn btn-ghost btn-sm" data-del-pick="${i}">삭제</button></td>
           </tr>`).join('')}
         </tbody>

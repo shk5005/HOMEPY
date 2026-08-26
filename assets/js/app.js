@@ -373,9 +373,12 @@ async function refreshProxyBadge({ verbose = false } = {}) {
   badge.textContent = '⚪ 확인 중…';
   const h = await Q.health();
   if (h.ok) {
+    // health는 프록시 프로세스 생존만 확인한다. 상대 서버(토스) 도달 여부는
+    // 실제 조회를 해봐야 알 수 있으므로 배지가 그것까지 보증하지 않도록 표기한다.
     badge.className = 'quote-badge ok';
-    badge.textContent = `🟢 ${h.label}`;
-    if (verbose) setMsg('시세 프록시가 연결되어 있습니다.');
+    badge.textContent = '🟢 프록시 연결됨';
+    badge.title = `${h.label} · 상대 서버 도달 여부는 조회 시 확인됩니다`;
+    if (verbose) setMsg(`프록시 연결됨 (${h.label}). 실제 도달 여부는 시세 조회 시 확인됩니다.`);
   } else if (h.offline) {
     badge.className = 'quote-badge off';
     badge.textContent = '🟡 프록시 미실행';
@@ -424,17 +427,25 @@ async function refreshQuotes(btn) {
 
   try {
     // 코드가 없는 종목은 이름으로 검색해 코드를 채운다
+    let searchError = null;
     for (const m of missing) {
       try {
         const rows = await Q.search(m.name);
         const hit = rows.find(r => r.name.replace(/\s/g, '') === m.name.replace(/\s/g, '')) || rows[0];
         // 저장은 항상 접두사 없는 6자리로 통일한다 (조회 시 프로바이더가 다시 붙인다)
         if (hit) m.code = String(hit.code || '').replace(/^A/, '');
-      } catch { /* 개별 실패는 건너뛴다 */ }
+      } catch (e) {
+        // 검색이 상대 서버 문제로 실패했는데 '코드를 못 찾음'이라고만 알리면
+        // 원인을 오해하게 된다. 첫 실패 사유를 보관해 그대로 보고한다.
+        searchError = searchError || e;
+      }
     }
 
     const codes = targets.map(t => t.code).filter(Boolean);
-    if (!codes.length) throw new Error('조회할 종목코드를 찾지 못했습니다');
+    if (!codes.length) {
+      if (searchError) throw searchError;
+      throw new Error('조회할 종목코드를 찾지 못했습니다 — 종목코드를 직접 입력해 보세요');
+    }
 
     const { rows, asOf } = await Q.quote(codes);
     const byCode = new Map(rows.map(r => [String(r.code || '').replace(/^A/, ''), r]));
