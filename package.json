@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "name": "genie-stock-advisor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "지니 — 주식투자비서. AI 강제 차단 시스템(행동경제학 헷지).",
+  "scripts": {
+    "build": "node build.mjs",
+    "quotes": "node server/quote-proxy.mjs",
+    "serve": "python3 -m http.server 8000"
+  }
+}

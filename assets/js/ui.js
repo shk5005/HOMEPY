@@ -6,6 +6,13 @@
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+/* 단일 파일 빌드에서는 페이지가 시작한 다운로드가 뷰어에서 차단된다.
+   빌드 시 GENIE_STANDALONE 이 true 로 치환되면 아래 상수가 false 로 접히고,
+   번들러가 다운로드 구현 자체를 산출물에서 제거한다.
+   번들되지 않은 원본에서는 typeof 검사로 안전하게 true 가 된다. */
+export const CAN_DOWNLOAD =
+  typeof GENIE_STANDALONE === 'undefined' || !GENIE_STANDALONE;
+
 export const h = (strings, ...vals) =>
   strings.reduce((out, s, i) => out + s + (i < vals.length ? (vals[i] ?? '') : ''), '');
 
@@ -51,7 +58,7 @@ export function promptBox(title, body, id) {
       <span class="t">📋 ${esc(title)}</span>
       <span style="display:flex;gap:7px">
         <button class="btn btn-gold btn-sm" data-copy="${esc(id)}">복사</button>
-        <button class="btn btn-ghost btn-sm" data-dl="${esc(id)}">.txt</button>
+        ${CAN_DOWNLOAD ? `<button class="btn btn-ghost btn-sm" data-dl="${esc(id)}">.txt</button>` : ''}
       </span>
     </div>
     <div class="prompt-body" data-prompt-text>${esc(body)}</div>
@@ -65,7 +72,7 @@ export function promptBox(title, body, id) {
 export function bindPromptBox(root) {
   root.addEventListener('click', async e => {
     const copyBtn = e.target.closest('[data-copy]');
-    const dlBtn = e.target.closest('[data-dl]');
+    const dlBtn = CAN_DOWNLOAD ? e.target.closest('[data-dl]') : null;
     const box = copyBtn || dlBtn;
     if (!box) return;
     const id = box.dataset.copy || box.dataset.dl;
@@ -83,7 +90,7 @@ export function bindPromptBox(root) {
         sel.removeAllRanges(); sel.addRange(range);
         toast('Ctrl+C 로 복사하세요 (자동 복사 차단됨)');
       }
-    } else {
+    } else if (CAN_DOWNLOAD) {
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);

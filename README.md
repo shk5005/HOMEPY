@@ -15,6 +15,20 @@ node server/quote-proxy.mjs        # 시세 자동 조회 (선택)
 시세 프록시는 **선택 사항**입니다. 실행하지 않으면 시세를 수동 입력하면 되고,
 나머지 기능은 그대로 동작합니다.
 
+### 단일 HTML로 묶기
+
+```bash
+npm install          # esbuild (빌드에만 필요)
+node build.mjs
+```
+
+- `dist/genie.html` — 완결된 HTML 문서. **파일을 그냥 더블클릭해도 실행**됩니다.
+- `dist/genie.artifact.html` — body 내용만. 호스팅/Artifact 발행용.
+
+ES 모듈 8개와 CSS가 파일 하나로 합쳐지고 외부 요청이 0건이 됩니다.
+단일 빌드에서는 로컬 프록시를 쓸 수 없으므로 **시세 자동 조회가 꺼지고
+수동 입력 안내로 대체**되며, 프롬프트 `.txt` 저장 버튼도 빠집니다(복사는 그대로).
+
 ---
 
 ## 핵심 컨셉 — 함정 5가지를 구조적으로 차단
@@ -106,6 +120,8 @@ assets/
 server/
 ├── quote-proxy.mjs         로컬 시세 프록시 (의존성 0, Node 18+)
 └── providers/toss.mjs      토스증권 WTS 어댑터 (비공식)
+build.mjs                   단일 HTML 번들러 (esbuild)
+dist/                       번들 산출물
 docs/ARCHITECTURE.md        화면 흐름 · 데이터 모델 · 계산식 상세
 docs/QUOTES.md              시세 연동 설정 · 문제 해결
 ```

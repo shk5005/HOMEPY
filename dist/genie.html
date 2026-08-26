@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지니 주식투자비서</title>
+<meta name="description" content="일반 투자자가 빠지는 함정 5가지를 AI가 강제 차단하도록 설계한 주식 분석 파이프라인.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9DE;</text></svg>">
+</head>
+<body>
+<style>
+:root{
+  --navy-900:#0b1626;
+  --navy-800:#101f35;
+  --navy-700:#16293f;
+  --navy-600:#1e3550;
+  --navy-500:#2a4463;
+  --line:#24384f;
+
+  --cream:#faf7f1;
+  --cream-2:#f3ece0;
+  --paper:#ffffff;
+
+  --gold:#e8a92c;
+  --gold-2:#f4c65e;
+  --gold-dim:#9a7220;
+
+  --bull:#2fa36b;
+  --base:#3d82d4;
+  --bear:#d9534f;
+  --warn:#e0a02c;
+
+  --ink:#14202f;
+  --ink-2:#41546b;
+  --ink-3:#7b8ca1;
+  --on-dark:#e8eef6;
+  --on-dark-2:#9db0c7;
+
+  --r-s:8px; --r-m:12px; --r-l:18px; --r-xl:26px;
+  --shadow:0 8px 28px rgba(8,18,32,.14);
+  --shadow-lg:0 18px 50px rgba(8,18,32,.22);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo",
+         "Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--sans);
+  background:var(--cream);
+  color:var(--ink);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:inherit}
+table{border-collapse:collapse;width:100%}
+
+.app{display:flex;min-height:100vh}
+
+.sidebar{
+  width:250px;flex:0 0 250px;
+  background:var(--navy-900);color:var(--on-dark);
+  padding:22px 14px 40px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 20px}
+.brand-mark{
+  width:40px;height:40px;border-radius:12px;flex:0 0 40px;
+  background:linear-gradient(145deg,var(--gold-2),var(--gold-dim));
+  display:grid;place-items:center;font-size:21px;
+  box-shadow:0 4px 14px rgba(232,169,44,.35);
+}
+.brand-name{font-size:19px;font-weight:800;letter-spacing:-.4px;line-height:1.15}
+.brand-sub{font-size:10.5px;color:var(--on-dark-2);letter-spacing:.2px}
+
+.nav-group-label{
+  font-size:10px;font-weight:700;letter-spacing:1.4px;
+  color:#5f748e;padding:16px 10px 7px;text-transform:uppercase;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:9px 11px;border-radius:var(--r-s);
+  color:var(--on-dark-2);font-size:13.5px;font-weight:600;
+  text-align:left;transition:background .13s,color .13s;
+}
+.nav-item:hover{background:var(--navy-700);color:var(--on-dark)}
+.nav-item.active{background:var(--gold);color:#20160a;font-weight:800}
+.nav-item .ico{width:18px;text-align:center;font-size:14px}
+.nav-step{
+  margin-left:auto;font-size:10px;font-family:var(--mono);
+  opacity:.65;font-weight:700;
+}
+.nav-item.done .nav-step::after{content:" \002713";color:var(--bull)}
+.nav-item.active.done .nav-step::after{color:#1c5c3c}
+
+.main{flex:1;min-width:0;padding:30px 38px 90px;max-width:1180px}
+
+.page-eyebrow{
+  font-size:11px;font-weight:800;letter-spacing:1.6px;
+  color:var(--gold-dim);text-transform:uppercase;margin-bottom:7px;
+}
+.page-title{font-size:29px;font-weight:800;letter-spacing:-.8px;margin:0 0 7px}
+.page-desc{color:var(--ink-2);font-size:14px;margin:0 0 26px;max-width:70ch}
+
+.card{
+  background:var(--paper);border:1px solid #e6ddcd;border-radius:var(--r-l);
+  padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow);
+}
+.card-dark{
+  background:var(--navy-800);border:1px solid var(--line);color:var(--on-dark);
+  border-radius:var(--r-l);padding:22px 24px;margin-bottom:18px;
+}
+.card-dark .card-title{color:#fff}
+.card-title{
+  font-size:16px;font-weight:800;margin:0 0 4px;
+  display:flex;align-items:center;gap:8px;letter-spacing:-.3px;
+}
+.card-sub{font-size:12.5px;color:var(--ink-3);margin:0 0 16px}
+.card-dark .card-sub{color:var(--on-dark-2)}
+
+.rail{display:grid;grid-template-columns:78px 1fr;gap:2px 16px;margin:14px 0 4px}
+.rail dt{
+  font-size:10px;font-weight:800;letter-spacing:1.3px;color:var(--gold-dim);
+  padding-top:3px;
+}
+.rail dd{margin:0 0 13px;font-size:13px;color:var(--ink-2)}
+
+.chip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.chip{
+  padding:9px 12px;border-radius:10px;border:1.5px solid #dfd6c6;
+  background:var(--paper);font-size:13px;font-weight:600;color:var(--ink-2);
+  text-align:center;transition:all .13s;
+}
+.chip:hover{border-color:var(--navy-500);color:var(--ink)}
+.chip[aria-pressed="true"]{
+  background:var(--navy-800);border-color:var(--navy-800);color:#fff;font-weight:700;
+}
+.field{margin-bottom:20px}
+.field-label{
+  font-size:12px;font-weight:800;color:var(--ink);margin-bottom:8px;
+  display:flex;align-items:center;gap:7px;
+}
+.field-hint{font-weight:500;color:var(--ink-3);font-size:11px}
+
+.input,.textarea,.select{
+  width:100%;padding:10px 13px;border:1.5px solid #ddd3c2;border-radius:10px;
+  background:var(--paper);font-size:13.5px;transition:border-color .13s;
+}
+.input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--gold)}
+.textarea{min-height:120px;resize:vertical;line-height:1.55}
+.textarea.code{font-family:var(--mono);font-size:12px}
+
+.btn{
+  padding:11px 20px;border-radius:11px;font-weight:800;font-size:13.5px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .1s,filter .13s,box-shadow .13s;
+}
+.btn:active{transform:translateY(1px)}
+.btn-gold{background:var(--gold);color:#20160a;box-shadow:0 3px 12px rgba(232,169,44,.32)}
+.btn-gold:hover{filter:brightness(1.06)}
+.btn-navy{background:var(--navy-800);color:#fff}
+.btn-navy:hover{background:var(--navy-700)}
+.btn-ghost{background:transparent;border:1.5px solid #ddd3c2;color:var(--ink-2)}
+.btn-ghost:hover{border-color:var(--navy-500);color:var(--ink)}
+.btn-block{width:100%}
+.btn-lg{padding:15px 26px;font-size:15px;border-radius:13px}
+.btn-sm{padding:7px 13px;font-size:12px;border-radius:9px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+.trap-hero{
+  background:linear-gradient(140deg,#1a0f14,#3a1a1c 55%,#1d1013);
+  border-radius:var(--r-xl);padding:28px 30px;margin-bottom:20px;color:#fff;
+  box-shadow:var(--shadow-lg);
+}
+.trap-hero h2{
+  margin:0 0 3px;font-size:24px;font-weight:900;letter-spacing:-.7px;
+  color:var(--gold-2);
+}
+.trap-hero p{margin:0 0 20px;font-size:13px;color:#d7c4b6}
+.trap-row{
+  display:grid;grid-template-columns:26px 1fr 26px 1fr;gap:9px;
+  align-items:center;margin-bottom:8px;
+}
+.trap-n{
+  width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.09);
+  display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--gold-2);
+}
+.trap-bad{
+  background:rgba(255,255,255,.07);padding:8px 13px;border-radius:9px;
+  font-size:13px;font-weight:600;
+}
+.trap-arrow{text-align:center;color:var(--gold);font-size:13px}
+.trap-fix{
+  background:rgba(232,169,44,.13);border:1px solid rgba(232,169,44,.3);
+  padding:8px 13px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--gold-2);
+}
+
+.step-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:13px}
+.step-card{
+  background:var(--paper);border:1px solid #e6ddcd;border-radius:var(--r-m);
+  padding:19px 17px;text-align:center;position:relative;transition:all .15s;
+}
+.step-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:var(--shadow)}
+.step-card .emo{font-size:25px;display:block;margin-bottom:7px}
+.step-card .t{font-size:14.5px;font-weight:800;letter-spacing:-.3px}
+.step-card .d{font-size:11.5px;color:var(--ink-3);margin-top:4px;line-height:1.45}
+.step-card .badge{
+  position:absolute;top:9px;right:9px;background:var(--navy-800);color:#fff;
+  font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:20px;letter-spacing:.3px;
+}
+.step-card.done .badge{background:var(--bull)}
+
+.tbl-wrap{overflow-x:auto;border-radius:var(--r-m);border:1px solid var(--line)}
+.tbl{font-size:12.5px;min-width:520px}
+.tbl thead th{
+  background:var(--navy-800);color:#fff;font-weight:700;text-align:left;
+  padding:10px 13px;white-space:nowrap;font-size:11.5px;letter-spacing:.2px;
+}
+.tbl tbody td{padding:10px 13px;border-top:1px solid #e9e2d5;background:var(--paper)}
+.tbl tbody tr:hover td{background:#fdfbf7}
+.tbl .num{font-family:var(--mono);text-align:right;white-space:nowrap;font-size:12px}
+.tbl .name{font-weight:700;white-space:nowrap}
+
+.sc-bull{color:var(--bull);font-weight:700}
+.sc-base{color:var(--base);font-weight:700}
+.sc-bear{color:var(--bear);font-weight:700}
+.pos{color:var(--bull);font-weight:700}
+.neg{color:var(--bear);font-weight:700}
+
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:11px;margin:16px 0}
+.stat{
+  background:var(--navy-800);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:14px 16px;color:var(--on-dark);
+}
+.stat .k{font-size:10.5px;color:var(--on-dark-2);font-weight:700;letter-spacing:.4px}
+.stat .v{font-size:22px;font-weight:800;font-family:var(--mono);margin-top:3px;letter-spacing:-.8px}
+.stat .n{font-size:10.5px;color:#6f849c;margin-top:2px}
+
+.prompt-box{
+  background:#fffdf8;border:1.5px solid var(--gold);border-radius:var(--r-m);
+  padding:0;overflow:hidden;margin-top:14px;
+}
+.prompt-head{
+  background:rgba(232,169,44,.14);padding:10px 15px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-bottom:1px solid rgba(232,169,44,.35);
+}
+.prompt-head .t{font-size:12.5px;font-weight:800;color:#7a5a12}
+.prompt-body{
+  padding:16px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.75;
+  white-space:pre-wrap;word-break:break-word;max-height:460px;overflow-y:auto;color:#2b3648;
+}
+.prompt-foot{
+  background:#fdf6e6;padding:9px 15px;font-size:11px;color:#8a6a1e;
+  border-top:1px solid rgba(232,169,44,.28);
+}
+
+.alert{
+  padding:12px 15px;border-radius:var(--r-s);font-size:12.5px;
+  display:flex;gap:9px;align-items:flex-start;margin:12px 0;line-height:1.55;
+}
+.alert-warn{background:#fdf3e0;border:1px solid #e8c98a;color:#7d5b12}
+.alert-info{background:#eaf1fb;border:1px solid #b7cdec;color:#2a4c7d}
+.alert-ok{background:#e8f6ee;border:1px solid #a5d9bd;color:#1d6640}
+.alert-bad{background:#fbeceb;border:1px solid #eab5b2;color:#8d2b27}
+
+.tickers{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0}
+.tk{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 11px;
+  border-radius:20px;border:1.5px solid #d6ccb9;background:var(--paper);
+  font-size:12.5px;font-weight:700;
+}
+.tk .x{color:var(--ink-3);font-weight:800;font-size:14px;line-height:1}
+.tk .x:hover{color:var(--bear)}
+.tk.hit3{border-color:var(--bull);background:#eef9f3;color:#1d6640}
+.tk.hit2{border-color:var(--warn);background:#fdf6e6;color:#7d5b12}
+
+.moat-cell{font-size:12px;font-weight:700}
+.m-strong{color:var(--bull)}
+.m-mid{color:var(--warn)}
+.m-weak{color:var(--bear)}
+
+.bar{height:7px;background:#e8e0d0;border-radius:20px;overflow:hidden}
+.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-2));border-radius:20px}
+
+.wbar{height:22px;border-radius:6px;display:flex;overflow:hidden;margin:8px 0 14px;border:1px solid var(--line)}
+.wbar > span{display:grid;place-items:center;font-size:10.5px;font-weight:800;color:#fff;white-space:nowrap}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.split-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.muted{color:var(--ink-3);font-size:12px}
+.hidden{display:none !important}
+.mono{font-family:var(--mono)}
+.right{text-align:right}
+.mt{margin-top:16px}
+.mb0{margin-bottom:0}
+hr.sep{border:none;border-top:1px solid #e9e2d5;margin:20px 0}
+
+.ai-col{border-radius:var(--r-m);border:2px solid;padding:14px;background:var(--paper)}
+.ai-col h4{margin:0 0 3px;font-size:13.5px;font-weight:800;display:flex;gap:7px;align-items:center}
+.ai-col .cnt{font-size:11px;color:var(--ink-3);margin-bottom:9px}
+.ai-gpt{border-color:#10a37f}   .ai-gpt h4{color:#0c8163}
+.ai-claude{border-color:#d97757} .ai-claude h4{color:#b85c3f}
+.ai-plx{border-color:#20808d}   .ai-plx h4{color:#186670}
+
+.badge-pill{
+  display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;
+  font-weight:800;letter-spacing:.2px;
+}
+.bp-gold{background:rgba(232,169,44,.18);color:#7a5a12}
+.bp-green{background:#e8f6ee;color:#1d6640}
+.bp-red{background:#fbeceb;color:#8d2b27}
+.bp-navy{background:var(--navy-800);color:#fff}
+
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--navy-900);color:#fff;padding:12px 22px;border-radius:12px;
+  font-size:13px;font-weight:700;box-shadow:var(--shadow-lg);
+  opacity:0;transition:all .25s;z-index:99;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:900px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;flex:none;height:auto;position:relative;padding:16px 12px 20px}
+  .main{padding:22px 16px 70px}
+  .split,.split-3{grid-template-columns:1fr}
+  .trap-row{grid-template-columns:24px 1fr;gap:7px}
+  .trap-arrow{display:none}
+  .trap-fix{grid-column:2}
+}
+
+.quote-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 12px;margin:10px 0 14px;
+  background:#f7f2e8;border:1px solid #e6ddcd;border-radius:var(--r-m);
+}
+.quote-badge{
+  font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:20px;
+  background:#fff;border:1.5px solid #ddd3c2;color:var(--ink-2);cursor:pointer;
+  white-space:nowrap;
+}
+.quote-badge.ok{border-color:var(--bull);background:#eef9f3;color:#1d6640}
+.quote-badge.off{border-color:#e0c08a;background:#fdf6e6;color:#8a6a1e}
+.quote-badge.err{border-color:var(--bear);background:#fbeceb;color:#8d2b27}
+#quote-msg{flex:1;min-width:160px}
+
+.qs-list{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 12px}
+.qs-item{
+  padding:7px 12px;border-radius:20px;border:1.5px solid #d6ccb9;background:#fff;
+  font-size:12.5px;font-weight:700;transition:all .13s;
+}
+.qs-item:hover{border-color:var(--gold);background:#fffdf8}
+.qs-item .code{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-left:6px}
+</style>
+
+<div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">&#xD83E;&#xDDDE;</div>
+        <div>
+          <div class="brand-name">&#xC9C0;&#xB2C8;</div>
+          <div class="brand-sub">&#xC8FC;&#xC2DD;&#xD22C;&#xC790;&#xBE44;&#xC11C; &#xB7; &#xD589;&#xB3D9;&#xACBD;&#xC81C;&#xD559; &#xD5F7;&#xC9C0;</div>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div style="padding:22px 10px 0">
+        <button class="btn btn-ghost btn-sm btn-block"
+                style="border-color:#2a4463;color:#9db0c7" data-action="reset">
+          &#xC804;&#xCCB4; &#xCD08;&#xAE30;&#xD654;
+        </button>
+        <p style="font-size:10px;color:#5f748e;line-height:1.6;margin-top:14px">
+          &#xC785;&#xB825;&#xAC12;&#xC740; &#xC774; &#xBE0C;&#xB77C;&#xC6B0;&#xC800;&#xC5D0;&#xB9CC; &#xC800;&#xC7A5;&#xB418;&#xBA70; &#xC678;&#xBD80;&#xB85C; &#xC804;&#xC1A1;&#xB418;&#xC9C0; &#xC54A;&#xC2B5;&#xB2C8;&#xB2E4;.
+        </p>
+      </div>
+    </aside>
+    <main class="main" id="main"></main>
+  </div>
+
+<script>window.GENIE_STANDALONE=true;</script>
+<script>
+(()=>{var pt=["AI","\uBC18\uB3C4\uCCB4","2\uCC28\uC804\uC9C0","\uBC14\uC774\uC624","\uBC29\uC0B0","\uC870\uC120","\uC6D0\uC804","\uB85C\uBD07","IT/\uC18C\uD504\uD2B8\uC6E8\uC5B4","\uC790\uB3D9\uCC28","\uAE08\uC735","\uC5D0\uB108\uC9C0","\uC5D4\uD130/\uBBF8\uB514\uC5B4","\uD5EC\uC2A4\uCF00\uC5B4","\uAC74\uC124","\uC720\uD1B5/\uC18C\uBE44\uC7AC","\uD1B5\uC2E0","\uC6B0\uC8FC\uD56D\uACF5","\uD654\uD559","\uCCA0\uAC15"],A=[{id:"growth",label:"\uC131\uC7A5\uC8FC",filter:"\uB9E4\uCD9C CAGR 20%+ 3\uB144 \uC5F0\uC18D, \uC601\uC5C5\uC774\uC775\uB960 \uAC1C\uC120, ROE 15%+"},{id:"value",label:"\uAC00\uCE58\uC8FC",filter:"PBR 1.0 \uC774\uD558, PER \uC5C5\uC885\uD3C9\uADE0 \uC774\uD558, \uBC30\uB2F9\uC218\uC775\uB960 3%+"},{id:"dividend",label:"\uBC30\uB2F9\uC8FC",filter:"\uBC30\uB2F9\uC218\uC775\uB960 4%+, 5\uB144 \uC5F0\uC18D \uBC30\uB2F9, \uBC30\uB2F9\uC131\uD5A5 60% \uC774\uD558"},{id:"turn",label:"\uD134\uC5B4\uB77C\uC6B4\uB4DC",filter:"\uC801\uC790\u2192\uD751\uC790 \uC804\uD658, \uC601\uC5C5\uC774\uC775\uB960 \uAC1C\uC120\uD3ED 3%p+, \uBD80\uCC44\uBE44\uC728 \uCD95\uC18C"},{id:"quality",label:"\uD004\uB9AC\uD2F0",filter:"ROIC 15%+, FCF \uB9C8\uC9C4 10%+, \uBD80\uCC44\uBE44\uC728 100% \uC774\uD558"},{id:"momentum",label:"\uBAA8\uBA58\uD140",filter:"52\uC8FC \uC2E0\uACE0\uAC00 \uADFC\uC811, \uAE30\uAD00\xB7\uC678\uAD6D\uC778 \uC21C\uB9E4\uC218 20\uC77C \uC5F0\uC18D"}],W=["3\uAC1C\uC6D4","6\uAC1C\uC6D4","1\uB144","2\uB144+"],ut=[15,20,30,50],bt=[3,5,7,10],mt=[10,20,30,40],_=[{id:"brand",icon:"\u{1F3C6}",label:"\uBE0C\uB79C\uB4DC \uD30C\uC6CC",q:"\uD504\uB9AC\uBBF8\uC5C4 \uAC00\uACA9\uC744 \uBC1B\uC744 \uC218 \uC788\uB294\uAC00?"},{id:"switch",icon:"\u{1F517}",label:"\uC804\uD658\uBE44\uC6A9",q:"\uACE0\uAC1D\uC774 \uB5A0\uB098\uAE30 \uC5B4\uB824\uC6B4\uAC00?"},{id:"network",icon:"\u{1F310}",label:"\uB124\uD2B8\uC6CC\uD06C \uD6A8\uACFC",q:"\uC4F0\uB294 \uC0AC\uB78C\uC774 \uB298\uC218\uB85D \uAC00\uCE58\uAC00 \uCEE4\uC9C0\uB294\uAC00?"},{id:"cost",icon:"\u{1F4C9}",label:"\uC6D0\uAC00 \uC6B0\uC704",q:"\uADDC\uBAA8/\uACF5\uC815\uC73C\uB85C \uB354 \uC2F8\uAC8C \uB9CC\uB4DC\uB294\uAC00?"},{id:"intan",icon:"\u{1F4DC}",label:"\uBB34\uD615\uC790\uC0B0(\uD2B9\uD5C8)",q:"\uD2B9\uD5C8\xB7\uB77C\uC774\uC120\uC2A4\xB7\uADDC\uC81C \uC7A5\uBCBD\uC774 \uC788\uB294\uAC00?"}];var ht=[{k:"PEG",d:"\uC131\uC7A5 \uB300\uBE44 \uC8FC\uAC00\uAC00 \uC2FC\uAC00?",s:"\uD53C\uD130 \uB9B0\uCE58 \uAE30\uC900"},{k:"\uACBD\uC81C\uC801 \uD574\uC790",d:"\uACBD\uC7C1\uC0AC\uAC00 \uBABB \uB530\uB77C\uC624\uB098?",s:"\uC6CC\uB7F0 \uBC84\uD54F \uAC15\uC870"},{k:"DCF",d:"\uBBF8\uB798 \uD604\uAE08\uD750\uB984\uC758 \uD604\uC7AC \uAC00\uCE58",s:"\uADF8\uB808\uC774\uC5C4 \uC6D0\uC804"},{k:"\uB4C0\uD401 \uBD84\uD574",d:"ROE = \uB9C8\uC9C4 \xD7 \uD68C\uC804\uC728 \xD7 \uB808\uBC84\uB9AC\uC9C0",s:"1920s \uB4C0\uD401\uC0AC"},{k:"\uC2DC\uB098\uB9AC\uC624",d:"Bull / Base / Bear \xB7 \uD655\uB960 \uAC00\uC911 \uAE30\uB300\uC218\uC775",s:""},{k:"\uC548\uC804\uB9C8\uC9C4",d:"\uC801\uC815\uAC00\uC758 2/3 \uC774\uD558 \uB9E4\uC218",s:"\uADF8\uB808\uC774\uC5C4 \uC6D0\uC804"}],vt=[{bad:"\uAE30\uC900 \uC5C6\uC774 '\uCD94\uCC9C\uD574\uC918'",fix:"\uAC70\uC7A5 \uAE30\uC900 \uAC15\uC81C \uC124\uC815"},{bad:"\uD558\uB098\uC758 AI\uB9CC \uBBFF\uAE30",fix:"3\uAC1C\uC758 AI\uB85C \uAD50\uCC28 \uAC80\uC99D"},{bad:"\uD558\uB098\uC758 \uC9C0\uD45C\uB9CC \uBCF4\uAE30",fix:"PER\xB7PBR\xB7DCF \uAC00\uC911 + \uC548\uC804\uB9C8\uC9C4 20%"},{bad:"\uD658\uAC01\xB7\uCD9C\uCC98 \uC5C6\uB294 \uC218\uCE58",fix:"\uC2E0\uB8B0\uC131 \uB8F0 5\uAC00\uC9C0 \uD0D1\uC7AC"},{bad:"\uC190\uC808\uAC00 \uC5C6\uC774 \uB9E4\uC218",fix:"Bull/Base/Bear + \uC190\uC808\uAC00 \uBA3C\uC800"}],M=["\uCD9C\uCC98 \uC5C6\uB294 \uC218\uCE58\uB294 \uBC18\uB4DC\uC2DC '\uD655\uC778 \uBD88\uAC00'\uB85C \uD45C\uAE30\uD560 \uAC83.","'\uC57D', '\uB300\uB7B5', '\uB300\uB7C9' \uB4F1\uC758 \uBAA8\uD638\uD55C \uCD94\uC815 \uD45C\uD604\uC740 \uC808\uB300 \uC0AC\uC6A9\uD558\uC9C0 \uB9D0 \uAC83.","\uBAA8\uB4E0 \uC218\uCE58\uC640 \uD575\uC2EC \uC9C0\uD45C\uC5D0\uB294 \uCD9C\uCC98 URL\uC744 \uC758\uBB34\uC801\uC73C\uB85C \uCCA8\uBD80\uD560 \uAC83.","\uD559\uC2B5\uB41C \uACFC\uAC70 \uB370\uC774\uD130\uC5D0\uB9CC \uC758\uC874\uD558\uC9C0 \uB9D0\uACE0, \uBC18\uB4DC\uC2DC \uC2E4\uC2DC\uAC04 \uC6F9 \uAC80\uC0C9 \uACB0\uACFC\uB97C \uD65C\uC6A9\uD560 \uAC83.","\uD654\uD3D0 \uB2E8\uC704\uB294 \uC6D0\uD654(KRW)\uB85C \uBA85\uC2DC\uD558\uACE0, \uD658\uC728 \uC801\uC6A9 \uC2DC\uC810\uC744 \uBA85\uAE30\uD560 \uAC83.","\uD45C\uC758 \uBE48\uCE78\uC744 \uCC44\uC6B0\uAE30 \uC704\uD574 \uAC00\uC0C1\uC758 \uAC12\uC744 \uC784\uC758\uB85C \uB9CC\uB4E4\uC5B4\uB0B4\uC9C0 \uB9D0 \uAC83.","\uCD9C\uCC98\uB294 \uAC70\uB798\uC18C\xB7\uACF5\uC2DC(DART)\xB7\uD55C\uAD6D\uC740\uD589 \uB4F1 \uC6D0\uBCF8(1\uAE09) \uC790\uB8CC\uB97C \uCD5C\uC6B0\uC120\uC73C\uB85C \uD65C\uC6A9\uD558\uACE0, SNS\uB098 \uCEE4\uBBA4\uB2C8\uD2F0 \uAE00\uC740 \uCD9C\uCC98\uB85C \uCDE8\uAE09\uD558\uC9C0 \uB9D0 \uAC83."],z=[{id:"swot",n:"STEP 1",icon:"\u{1F50D}",title:"\uC885\uD569 SWOT",q:"WHAT",desc:"\uBB50 \uD558\uB294 \uD68C\uC0AC\uC57C?"},{id:"perf",n:"STEP 2",icon:"\u{1F4C8}",title:"\uC2E4\uC801 \uBD84\uC11D",q:"WHY",desc:"\uBE44\uC988\uB2C8\uC2A4\uAC00 \uC9C4\uC9DC\uC778\uAC00?"},{id:"fin",n:"STEP 3",icon:"\u{1F4CA}",title:"\uC7AC\uBB34 \uBD84\uC11D",q:"HOW",desc:"\uC22B\uC790\uAC00 \uACAC\uACE0\uD55C\uAC00?"},{id:"val",n:"STEP 4",icon:"\u{1F4B0}",title:"\uBC38\uB958\uC5D0\uC774\uC158",q:"HOW MUCH",desc:"\uC9C0\uAE08 \uC5BC\uB9C8\uC9DC\uB9AC\uC778\uAC00?"},{id:"tech",n:"STEP 5",icon:"\u{1F4C9}",title:"\uAE30\uC220\uC801 \uBD84\uC11D",q:"WHEN",desc:"\uC9C0\uAE08\uC774 \uD0C0\uC774\uBC0D\uC778\uAC00?"},{id:"qual",n:"\uCD94\uAC00",icon:"\u{1F48E}",title:"\uC9C8\uC801 \uBD84\uC11D",q:"MOAT",desc:"\uC7AC\uBB34\uC5D0 \uC548 \uB098\uC624\uB294 \uAC00\uCE58"},{id:"dart",n:"\uCD94\uAC00",icon:"\u{1F4CB}",title:"\uACF5\uC2DC(DART)",q:"NEWS",desc:"\uCD5C\uADFC \uC790\uBCF8 \uC774\uBCA4\uD2B8"},{id:"earn",n:"\uCD94\uAC00",icon:"\u{1F4DE}",title:"\uC5B4\uB2DD\uCF5C \uBD84\uC11D",q:"TONE",desc:"\uACBD\uC601\uC9C4 \uD1A4 \uBCC0\uD654"},{id:"etf",n:"\uB300\uC548",icon:"\u{1F9FA}",title:"ETF \uBD84\uC11D",q:"ALT",desc:"\uAC1C\uBCC4\uC8FC \uBD80\uB2F4 \uC2DC \uB300\uC548"}],O=[{id:"per",label:"PER (\uC8FC\uAC00\uC218\uC775\uBE44\uC728)",formula:"\uC801\uC815 PER \xD7 \uC608\uC0C1 EPS",use:"\uD751\uC790 \uC548\uC815 \uAE30\uC5C5",w:30},{id:"pbr",label:"PBR (\uC8FC\uAC00\uC21C\uC790\uC0B0\uBE44\uC728)",formula:"\uC801\uC815 PBR \xD7 BPS (PBR=ROE\xF7\uC694\uAD6C\uC218\uC775\uB960)",use:"\uC790\uC0B0\uC8FC\xB7\uAE08\uC735",w:20},{id:"ev",label:"EV/EBITDA",formula:"\uC601\uC5C5\uAC00\uCE58 \xF7 \uC601\uC5C5\uD604\uAE08\uD750\uB984",use:"\uC790\uBCF8\uAD6C\uC870 \uBB34\uAD00 \uBE44\uAD50",w:20},{id:"psr",label:"PSR (\uC8FC\uAC00\uB9E4\uCD9C\uBE44\uC728)",formula:"\uC801\uC815 PSR \xD7 \uC8FC\uB2F9\uB9E4\uCD9C",use:"\uC801\uC790\xB7\uACE0\uC131\uC7A5 \uAE30\uC5C5",w:10},{id:"rule40",label:"EV/Sales + Rule of 40",formula:"\uC131\uC7A5\uB960 + \uC601\uC5C5\uC774\uC775\uB960 \u2265 40",use:"SaaS\xB7\uC801\uC790 \uC131\uC7A5\uC8FC",w:10},{id:"peg",label:"PEG (PER \xF7 \uC131\uC7A5\uB960)",formula:"PER \xF7 EPS \uC131\uC7A5\uB960(%)",use:"\uC131\uC7A5\uC8FC (PEG<1 \uB9E4\uC218)",w:10}],Y=[{id:"bull",label:"Bull (\uB099\uAD00)",prob:30,cls:"sc-bull",note:"\uBAA8\uB4E0 \uAC83\uC774 \uC798 \uD480\uB9B4 \uB54C"},{id:"base",label:"Base (\uAE30\uBCF8)",prob:50,cls:"sc-base",note:"\uAC00\uC7A5 \uD604\uC2E4\uC801\uC778 \uACBD\uC6B0"},{id:"bear",label:"Bear (\uBE44\uAD00)",prob:20,cls:"sc-bear",note:"\uCD5C\uC545\uC758 \uC0C1\uD669"}],ft=[{k:"\uAE30\uC5C5 \uACE0\uC720 \uB9AC\uC2A4\uD06C",d:"\uC2E4\uC801, \uACBD\uC7C1, \uADDC\uC81C, \uC7AC\uBB34, \uD0A4\uB9E8"},{k:"\uC139\uD130/\uC0B0\uC5C5 \uB9AC\uC2A4\uD06C",d:"\uC5C5\uD669 \uC0AC\uC774\uD074, \uC0AC\uC774\uD074, \uAE30\uC220 \uBCC0\uD654"},{k:"\uB9E4\uD06C\uB85C \uB9AC\uC2A4\uD06C",d:"\uAE08\uB9AC, \uD658\uC728, \uACBD\uAE30, \uC9C0\uC815\uD559"}],R=[{id:"growth",label:"\uC131\uC7A5",max:30},{id:"moat",label:"\uD574\uC790",max:30},{id:"val",label:"\uBC38\uB958\uC5D0\uC774\uC158",max:20},{id:"mom",label:"\uBAA8\uBA58\uD140",max:20}],gt=[{id:"core",label:"\uD575\uC2EC Core",icon:"\u{1F3DB}",min:35,max:40,minScore:75},{id:"sub",label:"\uC8FC\uB825 Sub",icon:"\u{1F3AF}",min:20,max:25,minScore:55},{id:"watch",label:"\uAD00\uB9DD Watch",icon:"\u{1F440}",min:10,max:15,minScore:0}],$t=[{n:1,title:"\uADFC\uAC70 \uC911\uC2EC\uC758 \uAD6D\uBA74 \uD310\uC815 + \uD655\uC2E0\uB3C4 \uC694\uAD6C",goal:"1\uD68C\uC131 \uC758\uACAC\uC774 \uC544\uB2C8\uB77C, \uD45C \uD615\uC2DD \uB370\uC774\uD130\uC640 \uD655\uC2E0\uB3C4(0~100)\uB97C \uD22C\uBA85\uD558\uAC8C \uBC1D\uD788\uB3C4\uB85D \uAC15\uC81C\uD55C\uB2E4."},{n:2,title:"\uBC18\uB300 \uADFC\uAC70 \uAC15\uC81C \uC694\uAD6C (\uB099\uAD00 \uD3B8\uD5A5 \uBC29\uC9C0)",goal:"AI \uD2B9\uC720\uC758 \uB099\uAD00 \uC131\uD5A5\uC744 \uAE68\uACE0, \uD22C\uC790\uC790\uAC00 \uBABB \uBCF4\uB294 \uBC18\uB300\uD3B8 \uB9AC\uC2A4\uD06C\uB97C \uAC15\uC81C \uD0D0\uC0C9\uC2DC\uD0A8\uB2E4."},{n:3,title:"\uAC10\uC2DC \uC9C0\uD45C & \uD0AC \uC2A4\uC704\uCE58(Kill Switch) \uC124\uC815",goal:"\uAC10\uC774 \uC544\uB2C8\uB77C \uAE30\uACC4\uC801\uC73C\uB85C \uB300\uC751\uD560 \uC218 \uC788\uB294 \uB098\uB9CC\uC758 \uD589\uB3D9 \uC9C0\uCE68\uC11C\uB97C \uD655\uBCF4\uD55C\uB2E4."}],D=[{id:"gpt",label:"ChatGPT",cls:"ai-gpt",dot:"\u{1F7E2}"},{id:"claude",label:"Claude",cls:"ai-claude",dot:"\u{1F7E0}"},{id:"plx",label:"Perplexity",cls:"ai-plx",dot:"\u{1F535}"}];var u=t=>{let s=parseFloat(String(t??"").replace(/[^0-9.\-]/g,""));return Number.isFinite(s)?s:null},f=t=>t==null?"\uD655\uC778 \uBD88\uAC00":"\u20A9"+Math.round(t).toLocaleString("ko-KR"),j=(t,s=1)=>t==null?"\uD655\uC778 \uBD88\uAC00":(t>=0?"+":"")+t.toFixed(s)+"%";var Q=(t,s,e)=>Math.min(e,Math.max(s,t));function St(t){let s=t.filter(n=>n.value!=null&&n.weight>0);if(!s.length)return{fair:null,totalWeight:0,rows:t};let e=s.reduce((n,i)=>n+i.weight,0);return{fair:s.reduce((n,i)=>n+i.value*i.weight,0)/e,totalWeight:e,rows:s}}function xt(t,s){return t==null?null:t*(1-s/100)}function wt(t,s){return t==null||!s?null:(t/s-1)*100}function kt(t,s){return!t||!s?null:t/s}function yt(t){return t==null?{label:"\uD655\uC778 \uBD88\uAC00",cls:"muted"}:t<1?{label:"\uC800\uD3C9\uAC00 (\uD53C\uD130 \uB9B0\uCE58 \uB9E4\uC218\uAD6C\uAC04)",cls:"pos"}:t<=2?{label:"\uC801\uC815",cls:""}:{label:"\uACE0\uD3C9\uAC00",cls:"neg"}}function Et({netMargin:t,assetTurnover:s,leverage:e}){return[t,s,e].some(a=>a==null)?null:t*s*e}function Z(t,s){if(!s)return null;let e=t.filter(i=>i.target!=null&&i.prob!=null);if(!e.length)return null;let a=e.reduce((i,l)=>i+l.prob,0);return a<=0?null:e.reduce((i,l)=>i+l.prob/a*(l.target/s-1),0)*100}function Ct(t,{stop:s=20,tp1:e=15,tp2:a=30}={}){if(!t)return null;let n=t*(1-s/100),i=t*(1+e/100),l=t*(1+a/100),c=t-n,o=l-t;return{stopPrice:n,tp1Price:i,tp2Price:l,riskReward:c>0?o/c:null,stop:s,tp1:e,tp2:a}}function Tt(t){return t==null?{label:"\uD655\uC778 \uBD88\uAC00",cls:"muted"}:t>=3?{label:"\uC6B0\uC218 (1:3+)",cls:"pos"}:t>=2?{label:"\uC591\uD638 (1:2+)",cls:"pos"}:t>=1?{label:"\uC8FC\uC758 (1:1\uB300)",cls:""}:{label:"\uBD80\uC801\uD569 (\uC190\uC2E4 \uC704\uD5D8 > \uAE30\uB300\uC218\uC775)",cls:"neg"}}function At(t){let s=Math.abs(t);return s>=100?null:(1/(1-s/100)-1)*100}function cs(t,s=0){return t==null?null:s-2.326*t}function Rt(t,s){let e=0,a=0;for(let n of s){let i=u(t?.[n.id]);i!=null&&(e+=Q(i,0,n.max)),a+=n.max}return{sum:e,max:a,pct:a?e/a*100:0}}function Pt(t){return t>=80?{label:"A \xB7 \uD575\uC2EC \uD3B8\uC785",cls:"bp-green"}:t>=65?{label:"B \xB7 \uC8FC\uB825 \uD3B8\uC785",cls:"bp-gold"}:t>=50?{label:"C \xB7 \uC18C\uC561 \uAD00\uB9DD",cls:"bp-gold"}:{label:"D \xB7 \uD3B8\uC785 \uBCF4\uB958",cls:"bp-red"}}function Ot(t,s,e){if(!t.length)return{rows:[],cash:e,totalWeight:0};let a=t.map(o=>{let d=s.find(V=>o.scorePct>=V.minScore)||s[s.length-1],g=d.max-d.min,p=d.minScore,b=Math.max(1,100-p),P=Q((o.scorePct-p)/b,0,1);return{...o,band:d,raw:d.min+g*P}}),n=a.reduce((o,d)=>o+d.raw,0),i=a.map(o=>({...o,weight:o.raw/n*100}));i=i.map(o=>({...o,weight:Q(o.weight,o.band.min,o.band.max)}));let l=i.reduce((o,d)=>o+d.weight,0),c=Math.max(0,100-l);return l>100&&(i=i.map(o=>({...o,weight:o.weight/l*100})),l=100),i=i.map(o=>({...o,amount:e*(o.weight/100),shares:o.price?Math.floor(e*(o.weight/100)/o.price):null})),i.sort((o,d)=>d.weight-o.weight),{rows:i,cash:e*(c/100),cashWeight:c,totalWeight:l}}function It(t,s=0){let e=t.reduce((o,d)=>o+d.weight,0);if(!e)return null;let a=o=>{let d=t.filter(p=>u(p[o])!=null);if(!d.length)return null;let g=d.reduce((p,b)=>p+b.weight,0);return d.reduce((p,b)=>p+u(b[o])*b.weight,0)/g},n=a("expected"),i=a("beta"),l=a("vol"),c=o=>o==null?null:o*(e/(e+s));return{expected:c(n),beta:c(i),vol:c(l),var99:cs(c(l),c(n)),names:t.length}}function H(t){if(!t||!t.trim())return[];let s=new Map,e=a=>{let n=String(a).trim().replace(/^[\d]+[.)\]]\s*/,"").replace(/[*_`#|]/g,"").replace(/\((\d{6})\)/,"").replace(/\s*\d{6}\s*$/,"").replace(/[:\uFF1A].*$/,"").trim();if(!/^[\uAC00-\uD7A3A-Za-z0-9&.\-\s]{2,20}$/.test(n)||!/[\uAC00-\uD7A3A-Za-z]/.test(n)||/^(\uC885\uBAA9|\uC21C\uC704|\uD604\uC7AC\uAC00|\uB9E4\uC218\uAC00|\uBAA9\uD45C\uAC00|\uC190\uC808\uAC00|\uCD94\uCC9C|\uADFC\uAC70|\uCD9C\uCC98|\uACB0\uB860|\uC694\uC57D|\uD45C|\uAE30\uC900|\uB9AC\uC2A4\uD06C|\uC139\uD130|\uD22C\uC790|\uBD84\uC11D|\uC774\uC720|\uC8FC\uAC00|\uC2DC\uC7A5|\uC804\uB9DD|\uC758\uACAC|\uCC38\uACE0|\uC8FC\uC758|\uD569\uACC4|\uD3C9\uADE0|\uCD1D\uACC4|\uBE44\uACE0|\uC5C6\uC74C|\uD655\uC778)/.test(n))return;let i=n.replace(/\s/g,"");i.length<2||s.set(i,s.get(i)||n)};for(let a of t.split(/\r?\n/)){let n=a.trim();if(!n)continue;if(n.startsWith("|")){let o=n.split("|").map(d=>d.trim()).filter(Boolean);o.length>=2&&!/^[-:\s]+$/.test(o[0])&&e(/^\d+$/.test(o[0])?o[1]:o[0]);continue}let i=n.match(/^\s*\d+[.)\]]\s*\*{0,2}([^*(\-\u2013\u2014:\uFF1A]{2,20})/);if(i){e(i[1]);continue}let l=n.match(/\*\*([^*]{2,20})\*\*/);if(l){e(l[1]);continue}let c=n.match(/^\s*[-\u2022\u00B7]\s*([^(\-\u2013\u2014:\uFF1A]{2,20})/);c&&e(c[1])}return[...s.values()]}function Lt(t){let s=n=>n.replace(/\s/g,"").toLowerCase(),e=new Map;for(let n of t){let i=new Set;for(let l of n.tickers){let c=s(l);if(i.has(c))continue;i.add(c);let o=e.get(c)||{name:l,sources:[]};o.sources.push(n.id),e.set(c,o)}}let a=[...e.values()].sort((n,i)=>i.sources.length-n.sources.length);return{consensus3:a.filter(n=>n.sources.length>=3),consensus2:a.filter(n=>n.sources.length===2),single:a.filter(n=>n.sources.length===1),all:a}}var Dt="genie.state.v1",X={discovery:{sectors:["AI","\uBC18\uB3C4\uCCB4"],style:"growth",horizon:"6\uAC1C\uC6D4",target:30,count:5,market:"\uD55C\uAD6D \uCF54\uC2A4\uD53C 200",risk:"\uC911\uC704\uD5D8",filter:"",focus:"",exclusions:["\uCD5C\uADFC 2\uB144 \uC5F0\uC18D \uC801\uC790 \uAE30\uC5C5","\uAC10\uC0AC\uC758\uACAC \uBE44\uC801\uC815 \uAE30\uC5C5","\uC2DC\uAC00\uCD1D\uC561 1,000\uC5B5 \uBBF8\uB9CC"]},cross:{gpt:"",claude:"",plx:""},picks:[],asOf:"",analysis:{horizon:"6\uAC1C\uC6D4",risk:"\uC911\uC704\uD5D8"},valuation:{marginPct:20,method:"relative",rows:{}},risk:{stop:20,tp1:15,tp2:30,probs:{bull:30,base:50,bear:20},targets:{}},scores:{},portfolio:{capital:1e7},chain:{subject:"",prevVerdict:""},done:{}};function tt(t,s){if(s===null||typeof s!="object"||Array.isArray(s))return s;let e=Array.isArray(t)?[...t]:{...t};for(let a of Object.keys(s))e[a]=a in e&&e[a]&&typeof e[a]=="object"&&!Array.isArray(e[a])?tt(e[a],s[a]):s[a];return e}var st=t=>JSON.parse(JSON.stringify(t)),v=st(X),et=new Set;function jt(){try{let t=localStorage.getItem(Dt);t&&(v=tt(st(X),JSON.parse(t)))}catch{}return v}function at(){try{localStorage.setItem(Dt,JSON.stringify(v))}catch{}}var m=()=>v;function $(t,{silent:s=!1}={}){return v=tt(v,t),at(),s||et.forEach(e=>e(v)),v}function k(t,s){let e=t.split("."),a=v;for(let n=0;n<e.length-1;n++)(!a[e[n]]||typeof a[e[n]]!="object")&&(a[e[n]]={}),a=a[e[n]];return a[e[e.length-1]]=s,at(),et.forEach(n=>n(v)),v}function Nt(){v=st(X),at(),et.forEach(t=>t(v))}function q(t,s=!0){$({done:{[t]:s}})}var y=()=>(v.picks||[]).map(t=>t.name);function Bt(){let t=[!!v.discovery.sectors?.length,Object.values(v.cross).some(s=>s&&s.trim().length>40),(v.picks||[]).length>0,Object.keys(v.done).some(s=>["swot","perf","fin","val","tech","qual"].includes(s)&&v.done[s]),Object.keys(v.risk.targets||{}).length>0,Object.keys(v.scores||{}).length>0];return Math.round(t.filter(Boolean).length/t.length*100)}var r=t=>String(t??"").replace(/[&<>"']/g,s=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[s]);var h=(t,s=document)=>s.querySelector(t);function S({name:t,options:s,value:e,multi:a=!1}){let n=a?new Set(e||[]):new Set([e]);return`<div class="chip-grid" data-chips="${r(t)}" data-multi="${a}">`+s.map(i=>{let l=typeof i=="object"?i.id??i.value:i,c=typeof i=="object"?i.label:i;return`<button type="button" class="chip" data-val="${r(l)}"
+        aria-pressed="${n.has(l)||n.has(String(l))}">${r(c)}</button>`}).join("")+"</div>"}function _t(t,s){t.addEventListener("click",e=>{let a=e.target.closest(".chip");if(!a)return;let n=a.closest("[data-chips]");if(!n)return;let i=n.dataset.multi==="true";i?a.setAttribute("aria-pressed",a.getAttribute("aria-pressed")!=="true"):(n.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed","false")),a.setAttribute("aria-pressed","true"));let l=[...n.querySelectorAll('.chip[aria-pressed="true"]')].map(c=>c.dataset.val);s(n.dataset.chips,i?l:l[0],n)})}function E(t,s,e){return`
+  <div class="prompt-box" id="${r(e)}">
+    <div class="prompt-head">
+      <span class="t">\u{1F4CB} ${r(t)}</span>
+      <span style="display:flex;gap:7px">
+        <button class="btn btn-gold btn-sm" data-copy="${r(e)}">\uBCF5\uC0AC</button>
+        
+      </span>
+    </div>
+    <div class="prompt-body" data-prompt-text>${r(s)}</div>
+    <div class="prompt-foot">
+      \u26A1 \uBCF5\uC0AC \uD6C4 ChatGPT / Claude / Gemini / Perplexity\uC5D0 \uBD99\uC5EC\uB123\uC73C\uC138\uC694.
+      \uC6F9 \uAC80\uC0C9 \uAE30\uB2A5\uC744 \uCF1C\uBA74 \uC2E4\uC2DC\uAC04 \uB370\uC774\uD130 \uBD84\uC11D\uC774 \uAC00\uB2A5\uD569\uB2C8\uB2E4.
+    </div>
+  </div>`}function Mt(t){t.addEventListener("click",async s=>{let e=s.target.closest("[data-copy]"),n=e||null;if(!n)return;let i=n.dataset.copy||n.dataset.dl,l=document.getElementById(i),c=l?.querySelector("[data-prompt-text]")?.textContent||"";if(e)try{await navigator.clipboard.writeText(c),x("\uD504\uB86C\uD504\uD2B8\uB97C \uBCF5\uC0AC\uD588\uC2B5\uB2C8\uB2E4")}catch{let o=document.createRange();o.selectNodeContents(l.querySelector("[data-prompt-text]"));let d=window.getSelection();d.removeAllRanges(),d.addRange(o),x("Ctrl+C \uB85C \uBCF5\uC0AC\uD558\uC138\uC694 (\uC790\uB3D9 \uBCF5\uC0AC \uCC28\uB2E8\uB428)")}})}var Wt;function x(t){let s=document.querySelector(".toast");s||(s=document.createElement("div"),s.className="toast",document.body.appendChild(s)),s.textContent=t,requestAnimationFrame(()=>s.classList.add("show")),clearTimeout(Wt),Wt=setTimeout(()=>s.classList.remove("show"),2200)}function N(t,s){return`<div class="tbl-wrap"><table class="tbl">
+    <thead><tr>${t.map(e=>`<th>${e}</th>`).join("")}</tr></thead>
+    <tbody>${s.map(e=>`<tr>${e.map(a=>`<td>${a}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table></div>`}function w(t,s,e){return`<div class="stat"><div class="k">${r(t)}</div><div class="v">${s}</div>${e?`<div class="n">${r(e)}</div>`:""}</div>`}var C=`[R - Role \xB7 \uC5ED\uD560]
+\uB2F9\uC2E0\uC740 20\uB144 \uACBD\uB825\uC758 CFA \uC560\uB110\uB9AC\uC2A4\uD2B8\uC785\uB2C8\uB2E4.
+\uBAA8\uB2DD\uC2A4\uD0C0, \uBA54\uB9AC\uCE20, NH \uCD9C\uC2E0 \uC2DC\uB2C8\uC5B4\uAE09\uC73C\uB85C \uAE00\uB85C\uBC8C \uC2DC\uC7A5 \uBD84\uC11D\uC744 1,000\uAC74 \uC774\uC0C1 \uC218\uD589\uD588\uC2B5\uB2C8\uB2E4.
+\uB2F9\uC2E0\uC740 \uB099\uAD00 \uD3B8\uD5A5 \uC5C6\uC774, \uB370\uC774\uD130\uC640 \uCD9C\uCC98\uB85C\uB9CC \uB9D0\uD569\uB2C8\uB2E4.`;function ds(){return`[\uD544\uC218 \uADDC\uCE59 \xB7 \uD560\uB8E8\uC2DC\uB124\uC774\uC158 \uCC28\uB2E8]
+`+M.map((t,s)=>`${s+1}. ${t}`).join(`
+`)}function F(t,s){if(!t?.length)return`[\uC2DC\uC138 \uC575\uCEE4]
+\u26A0\uFE0F \uBC18\uB4DC\uC2DC \uC624\uB298 \uAE30\uC900 \uCD5C\uC2E0 \uB370\uC774\uD130\uB97C \uC6F9 \uAC80\uC0C9\uC73C\uB85C \uC870\uD68C\uD558\uC138\uC694.
+\uD559\uC2B5\uB41C \uACFC\uAC70 \uB370\uC774\uD130 \uC0AC\uC6A9 \uAE08\uC9C0. \uC2E4\uC2DC\uAC04 \uC8FC\uAC00\xB7\uB274\uC2A4\xB7\uACF5\uC2DC \uC815\uBCF4\uB97C \uAC80\uC0C9\uD574\uC11C \uC4F0\uC138\uC694.`;let e=t.map(a=>{let n=[`\uD604\uC7AC\uAC00: ${f(a.price)}`];return a.change!=null&&n.push(`(${a.change>=0?"+":""}${a.change.toLocaleString("ko-KR")}\uC6D0)`),a.per!=null&&n.push(`PER ${a.per}`),a.pbr!=null&&n.push(`PBR ${a.pbr}`),a.cap!=null&&n.push(`\uC2DC\uCD1D ${a.cap}`),a.band&&n.push(`52\uC8FC ${a.band}`),`\u2022 ${a.name}: ${n.join(" \xB7 ")}`}).join(`
+`);return`[\uC2DC\uC138 \uC575\uCEE4 \u2014 ${s} \uAE30\uC900 \uC2E4\uC2DC\uAC04 \uC870\uD68C\uAC12]
+${e}
+
+\u26A0\uFE0F \uC704 \uAC00\uACA9\uC744 \uBD84\uC11D\uC758 \uAE30\uC900\uC810\uC73C\uB85C \uC0AC\uC6A9\uD558\uC138\uC694. AI \uCD94\uCE21\xB7\uACFC\uAC70 \uD559\uC2B5\uAC12\uC73C\uB85C \uB300\uCCB4 \uAE08\uC9C0.
+\u26A0\uFE0F \uC704\uC5D0 \uC5C6\uB294 \uC218\uCE58\uB294 \uBC18\uB4DC\uC2DC \uC624\uB298 \uAE30\uC900 \uC6F9 \uAC80\uC0C9\uC73C\uB85C \uD655\uC778 \uD6C4 \uCD9C\uCC98 URL\uC744 \uCCA8\uBD80\uD558\uC138\uC694.`}var T=(...t)=>t.filter(Boolean).join(`
+
+`)+`
+
+`+ds();function Ht(t){let s=A.find(n=>n.id===t.style)||A[0],e=t.sectors?.length?t.sectors.join(", "):"\uC804 \uC139\uD130",a=(t.exclusions||[]).filter(Boolean);return T(C,`[I - Instruction \xB7 \uC9C0\uC2DC\uC0AC\uD56D]
+\uB2E4\uC74C \uC870\uAC74\uC5D0 \uB9DE\uB294 \uC885\uBAA9 ${t.count}\uAC1C\uB97C \uBC1C\uAD74\uD574 \uC8FC\uC138\uC694.
+
+\uC2A4\uD06C\uB9AC\uB2DD \uC870\uAC74:
+- \uC139\uD130: ${e}
+- \uD22C\uC790 \uC2A4\uD0C0\uC77C: ${s.label}
+- \uC2A4\uD06C\uB9AC\uB2DD \uD544\uD130: ${t.filter||s.filter}
+- \uC911\uC810 \uBD84\uC11D: ${t.focus||"\uC2DC\uC7A5\uC810\uC720\uC728 \uD655\uB300, \uC2E0\uC0AC\uC5C5 \uC9C4\uCD9C"}
+- \uD22C\uC790 \uAE30\uAC04: ${t.horizon}
+- \uBAA9\uD45C \uC218\uC775\uB960: ${t.target}% \uC774\uC0C1
+
+\uC81C\uC678 \uC870\uAC74:
+${a.length?a.map(n=>`- ${n}`).join(`
+`):`- \uCD5C\uADFC 2\uB144 \uC5F0\uC18D \uC801\uC790 \uAE30\uC5C5
+- \uAC10\uC0AC\uC758\uACAC \uBE44\uC801\uC815 \uAE30\uC5C5
+- \uC2DC\uAC00\uCD1D\uC561 1,000\uC5B5 \uBBF8\uB9CC`}`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uB300\uC0C1 \uC2DC\uC7A5: ${t.market||"\uD55C\uAD6D \uCF54\uC2A4\uD53C 200"}
+- \uBCF4\uC720 \uAE30\uAC04: ${t.horizon}
+- \uD22C\uC790\uC790 \uC704\uD5D8 \uC131\uD5A5: ${t.risk||"\uC911\uC704\uD5D8"}
+- \uD604\uC7AC \uC2DC\uC7A5 \uC0C1\uD669\uACFC \uD574\uB2F9 \uC0B0\uC5C5 \uC5C5\uD669\uC744 \uACE0\uB824\uD558\uC5EC \uBD84\uC11D\uD560 \uAC83
+- \uAE00\uB85C\uBC8C \uACBD\uC7C1\uC0AC \uB300\uBE44 \uAD6D\uB0B4 \uAE30\uC5C5\uC758 \uACBD\uC7C1\uB825\uC744 \uD3C9\uAC00\uD560 \uAC83
+- \uB2E8\uAE30 \uBAA8\uBA58\uD140\uBCF4\uB2E4 6\uAC1C\uC6D4 \uC774\uC0C1 \uAD00\uC810\uC758 \uAD6C\uC870\uC801 \uC131\uC7A5\uC744 \uC911\uC2DC\uD560 \uAC83`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+\uACB0\uACFC\uB294 \uBC18\uB4DC\uC2DC \uC544\uB798 \uD45C \uD615\uC2DD\uC73C\uB85C \uC791\uC131\uD574 \uC8FC\uC138\uC694.
+
+| \uC21C\uC704 | \uC885\uBAA9 | \uD604\uC7AC\uAC00 | \uB9E4\uC218\uAC00 | \uBAA9\uD45C\uAC00 | \uC190\uC808\uAC00 | \uCD94\uCC9C \uADFC\uAC70 | \uCD9C\uCC98 URL |
+|------|------|--------|--------|--------|--------|-----------|----------|
+| 1 | ... | ... | ... | ... | ... | ... | ... |
+
+\uD45C \uC544\uB798\uC5D0 \uAC01 \uC885\uBAA9\uBCC4\uB85C '\uD0C8\uB77D\uC2DC\uD0A8 \uACBD\uC7C1 \uC885\uBAA9 1\uAC1C\uC640 \uADF8 \uC774\uC720'\uB97C \uD55C \uC904\uC529 \uB367\uBD99\uC5EC \uC8FC\uC138\uC694.`,F(null))}function qt(t,s){let e=t.filter(n=>n.text?.trim()).map(n=>`\u2500\u2500\u2500\u2500\u2500 ${n.label} \uB2F5\uBCC0 \u2500\u2500\u2500\u2500\u2500
+${n.text.trim()}`).join(`
+
+`),a=s.map(n=>n.name).join(", ")||"(\uD569\uC758 \uC885\uBAA9 \uC5C6\uC74C)";return T(C,`[I - Instruction \xB7 \uC9C0\uC2DC\uC0AC\uD56D]
+\uC544\uB798\uB294 \uC11C\uB85C \uB2E4\uB978 3\uAC1C AI\uAC00 \uB3D9\uC77C\uD55C \uC2A4\uD06C\uB9AC\uB2DD \uC870\uAC74\uC5D0 \uB300\uD574 \uB0B4\uB193\uC740 \uC885\uBAA9 \uCD94\uCC9C \uACB0\uACFC\uC785\uB2C8\uB2E4.
+\uB2F9\uC2E0\uC758 \uC5ED\uD560\uC740 \uC0C8 \uC885\uBAA9\uC744 \uCD94\uAC00\uD558\uB294 \uAC83\uC774 \uC544\uB2C8\uB77C, \uC774 3\uAC1C \uB2F5\uBCC0\uC744 **\uAD50\uCC28 \uAC80\uC99D**\uD558\uB294 \uAC83\uC785\uB2C8\uB2E4.
+
+1. 3\uAC1C AI\uAC00 \uACF5\uD1B5\uC73C\uB85C \uCD94\uCC9C\uD55C \uC885\uBAA9\uACFC, 1\uACF3\uC5D0\uC11C\uB9CC \uB098\uC628 \uC885\uBAA9\uC744 \uBD84\uB9AC\uD558\uC138\uC694.
+2. \uACF5\uD1B5 \uCD94\uCC9C \uC885\uBAA9\uC774 \uC65C \uACF5\uD1B5\uC73C\uB85C \uBF51\uD614\uB294\uC9C0, \uADFC\uAC70\uAC00 \uC11C\uB85C \uC77C\uCE58\uD558\uB294\uC9C0 \uAC80\uC99D\uD558\uC138\uC694.
+3. **\uADFC\uAC70\uAC00 \uC11C\uB85C \uCDA9\uB3CC\uD558\uB294 \uC9C0\uC810**\uC744 \uBC18\uB4DC\uC2DC \uCC3E\uC544\uB0B4 \uBA85\uC2DC\uD558\uC138\uC694. (\uC608: A\uB294 \uC218\uC8FC \uD655\uB300, B\uB294 \uC218\uC8FC \uB454\uD654)
+4. 1\uACF3\uC5D0\uC11C\uB9CC \uB098\uC628 \uC885\uBAA9 \uC911 '\uB098\uBA38\uC9C0 2\uACF3\uC774 \uC65C \uBE60\uB728\uB838\uB294\uC9C0' \uCD94\uC815 \uC774\uC720\uB97C \uC4F0\uC138\uC694.
+5. \uC138 \uB2F5\uBCC0 \uBAA8\uB450\uC5D0\uC11C \uCD9C\uCC98 URL\uC774 \uC5C6\uB294 \uC218\uCE58\uB294 '\uD655\uC778 \uBD88\uAC00'\uB85C \uD45C\uAE30\uD558\uACE0, \uADF8 \uC218\uCE58\uC5D0 \uC758\uC874\uD55C \uCD94\uCC9C\uC740 \uC2E0\uB8B0\uB3C4\uB97C \uB0AE\uCD94\uC138\uC694.`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uC9C0\uB2C8 \uC571\uC774 \uC790\uB3D9 \uCD94\uCD9C\uD55C \uD569\uC758 \uC885\uBAA9(2\uACF3 \uC774\uC0C1 \uC5B8\uAE09): ${a}
+- \uD558\uB098\uC758 AI\uB9CC \uBBFF\uB294 \uAC83\uC740 \uD22C\uC790\uC790\uAC00 \uBE60\uC9C0\uB294 \uB300\uD45C\uC801 \uD568\uC815\uC785\uB2C8\uB2E4. \uB2E4\uC218\uACB0\uC774 \uC544\uB2C8\uB77C **\uADFC\uAC70\uC758 \uC9C8**\uB85C \uD310\uB2E8\uD558\uC138\uC694.
+- 3\uAC1C AI\uAC00 \uBAA8\uB450 \uAC19\uC740 \uC2E4\uC218\uB97C \uD588\uC744 \uAC00\uB2A5\uC131(\uACF5\uD1B5 \uD559\uC2B5 \uB370\uC774\uD130 \uD3B8\uD5A5)\uB3C4 \uD568\uAED8 \uC810\uAC80\uD558\uC138\uC694.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+
+\u25A0 1) \uD569\uC758 \uC885\uBAA9 \uB9E4\uD2B8\uB9AD\uC2A4
+| \uC885\uBAA9 | ChatGPT | Claude | Perplexity | \uD569\uC758 \uC218\uC900 | \uADFC\uAC70 \uC77C\uCE58 \uC5EC\uBD80 |
+
+\u25A0 2) \uADFC\uAC70 \uCDA9\uB3CC \uC9C0\uC810
+| \uC885\uBAA9 | \uC7C1\uC810 | A \uC8FC\uC7A5 | B \uC8FC\uC7A5 | \uC5B4\uB290 \uCABD\uC774 \uAC80\uC99D \uAC00\uB2A5\uD55C\uAC00 | \uCD9C\uCC98 |
+
+\u25A0 3) \uB2E8\uB3C5 \uCD94\uCC9C \uC885\uBAA9 \uAC80\uD1A0
+| \uC885\uBAA9 | \uCD94\uCC9C AI | \uB2E8\uB3C5 \uCD94\uCC9C \uC774\uC720 | \uB098\uBA38\uC9C0\uAC00 \uBE60\uB728\uB9B0 \uCD94\uC815 \uC774\uC720 | \uCC44\uD0DD/\uAE30\uAC01 |
+
+\u25A0 4) \uCD5C\uC885 \uACF5\uD1B5 3\uC885\uBAA9 + \uCC44\uD0DD \uC0AC\uC720 (\uCD9C\uCC98 URL \uD544\uC218)
+
+${e?`
+[\uAC80\uC99D \uB300\uC0C1 \uC6D0\uBB38]
+${e}`:""}`)}var ps={swot:{title:"STEP 1 \xB7 \uC885\uD569 SWOT \uBD84\uC11D (WHAT \u2014 \uBB50 \uD558\uB294 \uD68C\uC0AC\uC778\uAC00)",why:'\uC885\uBAA9\uC744 \uC0AC\uAE30 \uC804\uC5D0 "\uC774 \uD68C\uC0AC\uAC00 \uBB34\uC5C7\uC73C\uB85C \uB3C8\uC744 \uBC84\uB294\uAC00"\uB97C \uD55C \uBB38\uC7A5\uC73C\uB85C \uB2F5\uD560 \uC218 \uC5C6\uB2E4\uBA74 \uD22C\uC790\uAC00 \uC544\uB2C8\uB77C \uB3C4\uBC15\uC785\uB2C8\uB2E4.',how:"\uB9E4\uCD9C \uAD6C\uC131(\uC81C\uD488\uBCC4\xB7\uC9C0\uC5ED\uBCC4\xB7\uACE0\uAC1D\uBCC4) \uBD84\uD574 \u2192 \uD575\uC2EC \uCE90\uC2DC\uCE74\uC6B0\uC640 \uC2E0\uC131\uC7A5 \uB3D9\uB825 \uAD6C\uBD84 \u2192 SWOT 4\uBD84\uBA74 \uBC30\uCE58",out:'SWOT 4\uBD84\uBA74 \uD45C + \uB9E4\uCD9C \uAD6C\uC131 \uBE44\uC911 \uD45C + "\uC774 \uD68C\uC0AC\uB97C \uD55C \uBB38\uC7A5\uC73C\uB85C" \uC694\uC57D',fmt:`\u25A0 1) \uC0AC\uC5C5 \uAD6C\uC870
+| \uC0AC\uC5C5\uBD80 | \uB9E4\uCD9C \uBE44\uC911 | \uC601\uC5C5\uC774\uC775 \uBE44\uC911 | \uC8FC\uC694 \uACE0\uAC1D | \uC131\uC7A5\uB960 | \uCD9C\uCC98 |
+
+\u25A0 2) SWOT \uB9E4\uD2B8\uB9AD\uC2A4
+| \uAD6C\uBD84 | \uB0B4\uC6A9 | \uADFC\uAC70 \uB370\uC774\uD130 | \uCD9C\uCC98 URL |
+| Strength | | | |
+| Weakness | | | |
+| Opportunity | | | |
+| Threat | | | |
+
+\u25A0 3) \uD55C \uBB38\uC7A5 \uC694\uC57D: "\uC774 \uD68C\uC0AC\uB294 ___\uB85C ___\uC5D0\uAC8C \uB3C8\uC744 \uBC88\uB2E4."`},perf:{title:"STEP 2 \xB7 \uC2E4\uC801 \uBD84\uC11D (WHY \u2014 \uBE44\uC988\uB2C8\uC2A4\uAC00 \uC9C4\uC9DC\uC778\uAC00)",why:"\uC8FC\uAC00\uB294 \uACB0\uAD6D \uC774\uC775\uC744 \uB530\uB77C\uAC11\uB2C8\uB2E4. \uC131\uC7A5\uC774 \uB9E4\uCD9C\uC5D0\uC11C \uC624\uB294\uC9C0, \uC77C\uD68C\uC131 \uC774\uC775\uC5D0\uC11C \uC624\uB294\uC9C0 \uAD6C\uBD84\uD574\uC57C \uD569\uB2C8\uB2E4.",how:"\uCD5C\uADFC 8\uAC1C \uBD84\uAE30 \uB9E4\uCD9C\xB7\uC601\uC5C5\uC774\uC775\xB7\uC21C\uC774\uC775 \uCD94\uC774 \u2192 YoY/QoQ \uBD84\uD574 \u2192 \uC77C\uD68C\uC131 \uC190\uC775 \uC81C\uAC70 \u2192 \uCEE8\uC13C\uC11C\uC2A4 \uB300\uBE44 \uC11C\uD504\uB77C\uC774\uC988",out:"\uBD84\uAE30 \uC2E4\uC801 \uCD94\uC774 \uD45C + \uC131\uC7A5\uC758 \uC9C8(\u8CEA) \uD310\uC815 + \uB2E4\uC74C \uBD84\uAE30 \uAC00\uC774\uB358\uC2A4",fmt:`\u25A0 1) \uCD5C\uADFC 8\uAC1C \uBD84\uAE30 \uC2E4\uC801 \uCD94\uC774
+| \uBD84\uAE30 | \uB9E4\uCD9C | YoY | \uC601\uC5C5\uC774\uC775 | \uC601\uC5C5\uC774\uC775\uB960 | \uC21C\uC774\uC775 | \uCEE8\uC13C\uC11C\uC2A4 \uB300\uBE44 | \uCD9C\uCC98 |
+
+\u25A0 2) \uC131\uC7A5\uC758 \uC9C8 \uD310\uC815
+| \uD56D\uBAA9 | \uAC12 | \uD310\uC815 | \uADFC\uAC70 |
+| \uB9E4\uCD9C \uC131\uC7A5\uC758 \uCD9C\uCC98 (\uB2E8\uAC00\u2191 vs \uBB3C\uB7C9\u2191) | | | |
+| \uC77C\uD68C\uC131 \uC190\uC775 \uC81C\uC678 \uD6C4 \uC601\uC5C5\uC774\uC775 | | | |
+| \uC601\uC5C5\uC774\uC775\uB960 \uCD94\uC138 (\uAC1C\uC120/\uD6A1\uBCF4/\uC545\uD654) | | | |
+
+\u25A0 3) \uB2E4\uC74C \uBD84\uAE30 \uAC00\uC774\uB358\uC2A4\uC640 \uADF8 \uC2E0\uB8B0\uB3C4(0~100)`},fin:{title:"STEP 3 \xB7 \uC7AC\uBB34 \uBD84\uC11D (HOW \u2014 \uC22B\uC790\uAC00 \uACAC\uACE0\uD55C\uAC00)",why:"\uD751\uC790 \uAE30\uC5C5\uB3C4 \uD604\uAE08\uC774 \uB9C8\uB974\uBA74 \uC8FD\uC2B5\uB2C8\uB2E4. \uC190\uC775\uACC4\uC0B0\uC11C\uAC00 \uC544\uB2C8\uB77C \uD604\uAE08\uD750\uB984\uD45C\uC640 \uC7AC\uBB34\uC0C1\uD0DC\uD45C\uB97C \uBD10\uC57C \uD569\uB2C8\uB2E4.",how:"\uB4C0\uD401 3\uBD84\uD574(ROE = \uC21C\uC774\uC775\uB960 \xD7 \uC790\uC0B0\uD68C\uC804\uC728 \xD7 \uC7AC\uBB34\uB808\uBC84\uB9AC\uC9C0) \u2192 \uBD80\uCC44\uBE44\uC728\xB7\uC774\uC790\uBCF4\uC0C1\uBC30\uC728 \u2192 FCF\uC640 \uC6B4\uC804\uC790\uBCF8 \uD68C\uC804",out:"\uB4C0\uD401 \uBD84\uD574 \uD45C + \uC548\uC815\uC131 \uC9C0\uD45C \uD45C + \uD604\uAE08\uD750\uB984 3\uB144 \uCD94\uC774 + \uC801\uC2E0\uD638 \uD56D\uBAA9",fmt:`\u25A0 1) \uB4C0\uD401 3\uBD84\uD574 (3\uB144 \uCD94\uC774)
+| \uC5F0\uB3C4 | ROE | \uC21C\uC774\uC775\uB960 | \uC790\uC0B0\uD68C\uC804\uC728 | \uC7AC\uBB34\uB808\uBC84\uB9AC\uC9C0 | ROE \uBCC0\uD654 \uC694\uC778 | \uCD9C\uCC98 |
+
+\u25A0 2) \uC548\uC815\uC131 \uC9C0\uD45C
+| \uC9C0\uD45C | \uB2F9\uC0AC | \uC5C5\uC885 \uD3C9\uADE0 | \uD310\uC815 | \uCD9C\uCC98 |
+| \uBD80\uCC44\uBE44\uC728 / \uC720\uB3D9\uBE44\uC728 / \uC774\uC790\uBCF4\uC0C1\uBC30\uC728 / \uCC28\uC785\uAE08\uC758\uC874\uB3C4 | | | | |
+
+\u25A0 3) \uD604\uAE08\uD750\uB984 (3\uB144)
+| \uC5F0\uB3C4 | \uC601\uC5C5CF | \uD22C\uC790CF | \uC7AC\uBB34CF | FCF | \uC21C\uC774\uC775 \uB300\uBE44 \uC601\uC5C5CF \uBE44\uC728 | \uCD9C\uCC98 |
+
+\u25A0 4) \u{1F6A8} \uC801\uC2E0\uD638 \uD56D\uBAA9 \u2014 \uB9E4\uCD9C\uCC44\uAD8C \uD68C\uC804\uC728 \uC545\uD654, \uC7AC\uACE0 \uAE09\uC99D, \uC601\uC5C5CF < \uC21C\uC774\uC775 \uB4F1\uC744 \uCCB4\uD06C\uD558\uACE0 \uD574\uB2F9 \uC2DC \uBA85\uC2DC`},val:{title:"STEP 4 \xB7 \uBC38\uB958\uC5D0\uC774\uC158 (HOW MUCH \u2014 \uC9C0\uAE08 \uC5BC\uB9C8\uC9DC\uB9AC\uC778\uAC00)",why:"\uC88B\uC740 \uD68C\uC0AC\uC640 \uC88B\uC740 \uC8FC\uC2DD\uC740 \uB2E4\uB985\uB2C8\uB2E4. \uC544\uBB34\uB9AC \uC88B\uC740 \uD68C\uC0AC\uB3C4 \uBE44\uC2F8\uAC8C \uC0AC\uBA74 \uC190\uC2E4\uC785\uB2C8\uB2E4.",how:`${O.map(t=>t.label.split(" ")[0]).join(" \xB7 ")} \uB2E4\uAC01 \uBA40\uD2F0\uD50C + \uC548\uC804\uB9C8\uC9C4`,out:"\uBA40\uD2F0\uD50C\uBCC4 \uC801\uC815\uC8FC\uAC00 \uD45C + \uAC00\uC911 \uC885\uD569 \uC801\uC815\uAC00 + \uC548\uC804\uB9C8\uC9C4 \uC801\uC6A9 \uB9E4\uC218\uAC00 + \uB3D9\uC885 \uAE00\uB85C\uBC8C \uBE44\uAD50",fmt:`\u25A0 1) \uB2E4\uAC01 \uBA40\uD2F0\uD50C \uBE44\uAD50 (\uB2F9\uC0AC vs \uC5C5\uC885\uD3C9\uADE0 vs \uAE00\uB85C\uBC8C \uD53C\uC5B4)
+| \uC9C0\uD45C | \uB2F9\uC0AC | \uC5C5\uC885 \uD3C9\uADE0 | \uAE00\uB85C\uBC8C \uD53C\uC5B4 | \uD560\uC778/\uD560\uC99D | \uCD9C\uCC98 |
+| PER / PBR / PSR / EV/EBITDA / PEG | | | | | |
+
+\u25A0 2) \uBA40\uD2F0\uD50C\uBCC4 \uC801\uC815\uC8FC\uAC00 \uC0B0\uCD9C
+| \uBC29\uBC95 | \uC801\uC6A9 \uBC30\uC218 | \uADFC\uAC70 | \uC0B0\uCD9C \uC801\uC815\uC8FC\uAC00 | \uAC00\uC911\uCE58 |
+${O.map(t=>`| ${t.label} | | ${t.formula} | | ${t.w}% |`).join(`
+`)}
+
+\u25A0 3) \uC885\uD569 \uC801\uC815\uC8FC\uAC00 = \u03A3(\uC801\uC815\uC8FC\uAC00 \xD7 \uAC00\uC911\uCE58)
+\u25A0 4) \uC548\uC804\uB9C8\uC9C4 \uC801\uC6A9 \uB9E4\uC218\uAC00 = \uC885\uD569 \uC801\uC815\uAC00 \xD7 (1 - \uC548\uC804\uB9C8\uC9C4)
+\u25A0 5) \uD604\uC7AC\uAC00 \uB300\uBE44 \uC0C1\uC2B9\uC5EC\uB825 / \uD558\uB77D\uC5EC\uB825`},tech:{title:"STEP 5 \xB7 \uAE30\uC220\uC801 \uBD84\uC11D (WHEN \u2014 \uC9C0\uAE08\uC774 \uD0C0\uC774\uBC0D\uC778\uAC00)",why:"\uC88B\uC740 \uC885\uBAA9\uC744 \uCD5C\uC545\uC758 \uD0C0\uC774\uBC0D\uC5D0 \uC0AC\uBA74 \uBA87 \uB144\uC744 \uBB3C\uB9BD\uB2C8\uB2E4. \uC9C4\uC785 \uC2DC\uC810\uC740 \uBCC4\uB3C4 \uD310\uB2E8\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.",how:"\uC774\uB3D9\uD3C9\uADE0 \uBC30\uC5F4 \u2192 \uAC70\uB798\uB7C9 \uB3D9\uBC18 \uC5EC\uBD80 \u2192 \uC218\uAE09(\uAE30\uAD00\xB7\uC678\uAD6D\uC778 \uC21C\uB9E4\uC218) \u2192 52\uC8FC \uC704\uCE58 \u2192 \uC9C0\uC9C0\xB7\uC800\uD56D \uB808\uBCA8",out:"\uAE30\uC220\uC801 \uC9C0\uD45C \uD45C + \uC9C0\uC9C0/\uC800\uD56D \uAC00\uACA9\uB300 + \uBD84\uD560\uB9E4\uC218 \uAD6C\uAC04 \uC81C\uC548",fmt:`\u25A0 1) \uAE30\uC220\uC801 \uC9C0\uD45C \uD604\uD669
+| \uC9C0\uD45C | \uAC12 | \uD574\uC11D | \uCD9C\uCC98 |
+| \uD604\uC7AC\uAC00 vs 20/60/120\uC77C\uC120 | | | |
+| RSI(14) / MACD | | | |
+| 52\uC8FC \uCD5C\uACE0\xB7\uCD5C\uC800 \uB300\uBE44 \uC704\uCE58 | | | |
+| \uCD5C\uADFC 20\uC77C \uAE30\uAD00\xB7\uC678\uAD6D\uC778 \uC21C\uB9E4\uC218 | | | |
+
+\u25A0 2) \uC9C0\uC9C0\xB7\uC800\uD56D
+| \uAD6C\uBD84 | \uAC00\uACA9\uB300 | \uADFC\uAC70(\uC804\uC800\uC810/\uC774\uD3C9\uC120/\uAC70\uB798\uB7C9\uB300) |
+
+\u25A0 3) \uBD84\uD560\uB9E4\uC218 \uC81C\uC548
+| \uD68C\uCC28 | \uC9C4\uC785 \uAC00\uACA9\uB300 | \uBE44\uC911 | \uC870\uAC74 |
+
+\u26A0\uFE0F \uAE30\uC220\uC801 \uBD84\uC11D\uC740 \uC9C4\uC785 \uD0C0\uC774\uBC0D \uBCF4\uC870 \uC9C0\uD45C\uC77C \uBFD0\uC774\uBA70, STEP 1~4\uC758 \uD380\uB354\uBA58\uD138 \uD310\uB2E8\uC744 \uB4A4\uC9D1\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.`},qual:{title:"\uCD94\uAC00 \xB7 \uC9C8\uC801 \uBD84\uC11D (MOAT \u2014 \uC7AC\uBB34\uC5D0 \uC548 \uB098\uC624\uB294 \uAC00\uCE58)",why:"\uC7AC\uBB34\uC81C\uD45C\uB294 \uACFC\uAC70\uC785\uB2C8\uB2E4. \uD574\uC790\uB294 \uBBF8\uB798\uC774\uBA70, 5\uB144 \uD6C4 \uD68C\uC0AC\uAC00 \uC0B4\uC544\uB0A8\uC744\uC9C0\uB97C \uACB0\uC815\uD569\uB2C8\uB2E4.",how:"\uBAA8\uB2DD\uC2A4\uD0C0 \uACBD\uC81C\uC801 \uD574\uC790 5\uBD84\uB958 \uB9E4\uD2B8\uB9AD\uC2A4 + \uACBD\uC601\uC9C4\xB7\uC9C0\uBC30\uAD6C\uC870(ESG)",out:"\uD574\uC790 5\uBD84\uB958 \uB4F1\uAE09 \uB9E4\uD2B8\uB9AD\uC2A4 + \uADFC\uAC70 \uD55C \uC904\uC529 + \uC885\uD569 \uD574\uC790 \uB4F1\uAE09",fmt:`\u25A0 1) \uACBD\uC81C\uC801 \uD574\uC790 5\uAE30 \uB9E4\uD2B8\uB9AD\uC2A4 (\uBAA8\uB2DD\uC2A4\uD0C0 5\uBD84\uB958)
+| \uD574\uC790 | \uB4F1\uAE09(\uAC15/\uC911/\uC57D/\uC5C6\uC74C) | \uADFC\uAC70 (\uC218\uCE58 + \uCD9C\uCC98 URL) |
+${_.map(t=>`| ${t.icon} ${t.label} \u2014 ${t.q} | | |`).join(`
+`)}
+
+\u25A0 2) \uACBD\uC601\uC9C4\xB7\uC9C0\uBC30\uAD6C\uC870
+| \uD56D\uBAA9 | \uD3C9\uAC00 | \uADFC\uAC70 | \uCD9C\uCC98 |
+| \uCD5C\uB300\uC8FC\uC8FC \uC9C0\uBD84\uC728 / \uC784\uC6D0 \uC9C0\uBD84 \uBCC0\uB3D9 / \uBC30\uB2F9\uC815\uCC45 \uC77C\uAD00\uC131 / ESG \uB4F1\uAE09 | | | |
+
+\u25A0 3) \uC885\uD569 \uD574\uC790 \uB4F1\uAE09 (Wide / Narrow / None) + \uD574\uC790 \uC9C0\uC18D \uC608\uC0C1 \uC5F0\uC218 + \uD310\uC815 \uD655\uC2E0\uB3C4(0~100)`},dart:{title:"\uCD94\uAC00 \xB7 \uACF5\uC2DC(DART) \uBD84\uC11D (NEWS \u2014 \uCD5C\uADFC \uC790\uBCF8 \uC774\uBCA4\uD2B8)",why:"\uC720\uC0C1\uC99D\uC790\xB7\uC804\uD658\uC0AC\uCC44\xB7\uB300\uC8FC\uC8FC \uB9E4\uB3C4\uB294 \uC8FC\uAC00\uC5D0 \uC9C1\uACA9\uD0C4\uC778\uB370, \uB274\uC2A4\uBCF4\uB2E4 \uACF5\uC2DC\uC5D0 \uBA3C\uC800 \uB098\uC635\uB2C8\uB2E4.",how:"DART \uC804\uC790\uACF5\uC2DC \uCD5C\uADFC 12\uAC1C\uC6D4 \uC2A4\uCE94 \u2192 \uC790\uBCF8 \uC774\uBCA4\uD2B8\xB7\uC9C0\uBD84 \uBCC0\uB3D9\xB7\uC18C\uC1A1\xB7\uAC10\uC0AC\uC758\uACAC \uCD94\uCD9C",out:"\uC8FC\uC694 \uACF5\uC2DC \uD0C0\uC784\uB77C\uC778 \uD45C + \uC8FC\uAC00 \uC601\uD5A5\uB3C4 \uD310\uC815",fmt:`\u25A0 1) \uCD5C\uADFC 12\uAC1C\uC6D4 \uC8FC\uC694 \uACF5\uC2DC
+| \uACF5\uC2DC\uC77C | \uACF5\uC2DC \uC720\uD615 | \uB0B4\uC6A9 \uC694\uC57D | \uC8FC\uAC00 \uC601\uD5A5 (\uD638\uC7AC/\uC545\uC7AC/\uC911\uB9BD) | DART \uC6D0\uBB38 URL |
+
+\u25A0 2) \u{1F6A8} \uC704\uD5D8 \uACF5\uC2DC \uCCB4\uD06C\uB9AC\uC2A4\uD2B8 (\uD574\uB2F9 \uC2DC\uC5D0\uB9CC \uAE30\uC7AC)
+| \uD56D\uBAA9 | \uD574\uB2F9 \uC5EC\uBD80 | \uC0C1\uC138 | \uCD9C\uCC98 |
+| \uC720\uC0C1\uC99D\uC790 / \uC804\uD658\uC0AC\uCC44\xB7\uC2E0\uC8FC\uC778\uC218\uAD8C\uBD80\uC0AC\uCC44 \uBC1C\uD589 | | | |
+| \uCD5C\uB300\uC8FC\uC8FC\xB7\uC784\uC6D0 \uC9C0\uBD84 \uB9E4\uB3C4 | | | |
+| \uAC10\uC0AC\uC758\uACAC \uBCC0\uACBD / \uC18C\uC1A1\xB7\uC81C\uC7AC | | | |
+| \uC790\uAE30\uC8FC\uC2DD \uCDE8\uB4DD\xB7\uCC98\uBD84 | | | |
+
+\u26A0\uFE0F \uBC18\uB4DC\uC2DC dart.fss.or.kr \uC6D0\uBB38 \uB9C1\uD06C\uB97C \uCCA8\uBD80\uD558\uC138\uC694. \uB274\uC2A4 \uAE30\uC0AC \uB9C1\uD06C\uB294 2\uCC28 \uCD9C\uCC98\uB85C\uB9CC \uC778\uC815\uD569\uB2C8\uB2E4.`},earn:{title:"\uCD94\uAC00 \xB7 \uC5B4\uB2DD\uCF5C \uBD84\uC11D (TONE \u2014 \uACBD\uC601\uC9C4 \uD1A4 \uBCC0\uD654)",why:"\uACBD\uC601\uC9C4\uC774 \uC9C0\uB09C \uBD84\uAE30\uC5D0 \uD55C \uC57D\uC18D\uC744 \uC774\uBC88 \uBD84\uAE30\uC5D0 \uC9C0\uC6E0\uB2E4\uBA74, \uC22B\uC790\uBCF4\uB2E4 \uBA3C\uC800 \uB098\uC624\uB294 \uACBD\uACE0 \uC2E0\uD638\uC785\uB2C8\uB2E4.",how:"\uCD5C\uADFC 4\uAC1C \uBD84\uAE30 \uC5B4\uB2DD\uCF5C/IR \uC790\uB8CC \uBE44\uAD50 \u2192 \uC0AC\uB77C\uC9C4 \uBB38\uC7A5\xB7\uC0C8\uB85C \uB4F1\uC7A5\uD55C \uBB38\uC7A5 \u2192 \uAC00\uC774\uB358\uC2A4 \uC57D\uC18D \uB300\uBE44 \uC2E4\uC81C \uB2EC\uC131",out:"\uBD84\uAE30\uBCC4 \uD1A4 \uBCC0\uD654 \uD45C + \uAC00\uC774\uB358\uC2A4 \uB2EC\uC131 \uC5EC\uBD80 + \uC0AC\uB77C\uC9C4 \uC57D\uC18D \uBAA9\uB85D",fmt:`\u25A0 1) \uBD84\uAE30\uBCC4 \uACBD\uC601\uC9C4 \uD1A4 \uBCC0\uD654
+| \uBD84\uAE30 | \uD575\uC2EC \uBA54\uC2DC\uC9C0 | \uD1A4 (\uC790\uC2E0\uAC10/\uC911\uB9BD/\uBC29\uC5B4\uC801) | \uC0C8\uB85C \uB4F1\uC7A5\uD55C \uD45C\uD604 | \uC0AC\uB77C\uC9C4 \uD45C\uD604 | \uCD9C\uCC98 |
+
+\u25A0 2) \uAC00\uC774\uB358\uC2A4 \uC57D\uC18D vs \uC2E4\uC81C
+| \uC57D\uC18D \uC2DC\uC810 | \uC57D\uC18D \uB0B4\uC6A9 | \uBAA9\uD45C \uC2DC\uC810 | \uC2E4\uC81C \uACB0\uACFC | \uB2EC\uC131 \uC5EC\uBD80 | \uCD9C\uCC98 |
+
+\u25A0 3) \u{1F6A9} \uC0AC\uB77C\uC9C4 \uC57D\uC18D \u2014 \uC774\uC804 \uBD84\uAE30\uC5D0 \uC5B8\uAE09\uD588\uB2E4\uAC00 \uC774\uBC88\uC5D0 \uBE60\uC9C4 \uD56D\uBAA9\uACFC, \uADF8 \uCE68\uBB35\uC758 \uC758\uBBF8`},etf:{title:"\uB300\uC548 \xB7 ETF \uBD84\uC11D (ALT \u2014 \uAC1C\uBCC4\uC8FC \uBD80\uB2F4 \uC2DC)",why:"\uD655\uC2E0\uB3C4\uAC00 \uB0AE\uC740\uB370 \uAC1C\uBCC4\uC8FC\uB97C \uC0AC\uB294 \uAC83\uC740 \uB3C4\uBC15\uC785\uB2C8\uB2E4. \uD655\uC2E0\uC774 \uBD80\uC871\uD558\uBA74 \uC139\uD130 ETF\uAC00 \uD569\uB9AC\uC801 \uB300\uC548\uC785\uB2C8\uB2E4.",how:"\uB3D9\uC77C \uD14C\uB9C8 \uAD6D\uB0B4\xB7\uD574\uC678 ETF \uBE44\uAD50 \u2192 \uBCF4\uC218\xB7\uAD34\uB9AC\uC728\xB7\uC720\uB3D9\uC131\xB7\uAD6C\uC131\uC885\uBAA9 \uC911\uBCF5\uB3C4",out:"ETF \uBE44\uAD50 \uD45C + \uAC1C\uBCC4\uC8FC \uB300\uBE44 \uC7A5\uB2E8\uC810 + \uCD94\uCC9C \uB300\uC548",fmt:`\u25A0 1) \uB3D9\uC77C \uD14C\uB9C8 ETF \uBE44\uAD50
+| ETF\uBA85 | \uD2F0\uCEE4 | \uC0C1\uC7A5\uC2DC\uC7A5 | \uCD1D\uBCF4\uC218 | \uC21C\uC790\uC0B0 | \uCD5C\uADFC \uAD34\uB9AC\uC728 | 1\uB144 \uC218\uC775\uB960 | \uCD9C\uCC98 |
+
+\u25A0 2) \uAD6C\uC131\uC885\uBAA9 \uC911\uBCF5\uB3C4
+| ETF | \uBD84\uC11D \uB300\uC0C1 \uC885\uBAA9 \uD3B8\uC785 \uBE44\uC911 | \uC0C1\uC704 5\uAC1C \uAD6C\uC131\uC885\uBAA9 | \uC9D1\uC911\uB3C4(\uC0C1\uC70410 \uBE44\uC911) |
+
+\u25A0 3) \uAC1C\uBCC4\uC8FC vs ETF \uD310\uB2E8
+| \uAE30\uC900 | \uAC1C\uBCC4\uC8FC | ETF | \uC774 \uD22C\uC790\uC790\uC5D0\uAC8C \uC720\uB9AC\uD55C \uCABD |
+| \uAE30\uB300\uC218\uC775 / \uD558\uBC29 \uB9AC\uC2A4\uD06C / \uD544\uC694 \uD655\uC2E0\uB3C4 / \uAD00\uB9AC \uBD80\uB2F4 | | | |`}};function it(t,s){let e=ps[t];if(!e)return"";let a=s.names?.length?s.names.join(", "):"[\uC885\uBAA9\uBA85]";return T(C,`[I - Instruction \xB7 \uC9C0\uC2DC\uC0AC\uD56D]
+${e.title}
+
+\uBD84\uC11D \uB300\uC0C1: ${a}
+
+WHY   \u2014 \uC65C \uC774\uAC78 \uD574\uC57C \uD558\uB098?
+${e.why}
+
+HOW   \u2014 \uC5B4\uB5A4 \uBD84\uC11D\uC774 \uC9C4\uD589\uB418\uB098?
+${e.how}
+
+OUTPUT \u2014 \uBB34\uC5C7\uC744 \uBC1B\uAC8C \uB418\uB098?
+${e.out}`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uD22C\uC790 \uAE30\uAC04: ${s.horizon||"6\uAC1C\uC6D4"}
+- \uC704\uD5D8 \uC131\uD5A5: ${s.risk||"\uC911\uC704\uD5D8"}
+- \uC5EC\uB7EC \uC885\uBAA9\uC744 \uD568\uAED8 \uBD84\uC11D\uD560 \uACBD\uC6B0, \uC885\uBAA9\uBCC4\uB85C \uAC19\uC740 \uD45C\uB97C \uBC18\uBCF5\uD558\uC9C0 \uB9D0\uACE0 **\uD55C \uD45C \uC548\uC5D0\uC11C \uB098\uB780\uD788 \uBE44\uAD50**\uD558\uC138\uC694.
+- \uAC01 \uD56D\uBAA9 \uB05D\uC5D0 \uD310\uC815 \uD655\uC2E0\uB3C4(0~100)\uB97C \uD568\uAED8 \uC81C\uC2DC\uD558\uC138\uC694.
+- \uD655\uC2E0\uB3C4\uAC00 60 \uBBF8\uB9CC\uC778 \uD56D\uBAA9\uC740 \uADF8 \uC774\uC720(\uB370\uC774\uD130 \uBD80\uC871/\uC0C1\uCDA9/\uBBF8\uACF5\uC2DC)\uB97C \uBA85\uC2DC\uD558\uC138\uC694.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+${e.fmt}`,F(s.quotes,s.asOf))}function Ft(t){let s=t.names?.length?t.names.join(", "):"[\uC885\uBAA9\uBA85]";return T(C,`[I - Instruction \xB7 \uC9C0\uC2DC\uC0AC\uD56D]
+\uB9AC\uC2A4\uD06C \uBD84\uC11D (\uC2DC\uB098\uB9AC\uC624 \xB7 \uC190\uC775\uAD00\uB9AC)
+
+\uBD84\uC11D \uB300\uC0C1: ${s}
+
+WHY \u2014 \uC65C \uC774\uAC78 \uD558\uB098?
+-50%\uBA74 -50%\uAC00 \uC544\uB2D9\uB2C8\uB2E4. \uB2E4\uC2DC 100%\uAC00 \uB098\uC640\uC57C \uC6D0\uAE08 \uD68C\uBCF5\uC785\uB2C8\uB2E4. \uC218\uC775\uBCF4\uB2E4 \uC190\uC2E4 \uD68C\uD53C\uAC00 \uBA3C\uC800\uC785\uB2C8\uB2E4.
+
+HOW \u2014 \uC5B4\uB5A4 \uBD84\uC11D\uC774 \uC9C4\uD589\uB418\uB098?
+1) \uB0B4\uAC00 \uBCF4\uC720(\uAC80\uD1A0)\uD55C \uC885\uBAA9\uC758 **\uC228\uC740 \uB9AC\uC2A4\uD06C 3\uAC1C**\uB97C \uCC3E\uC544\uC8FC\uC138\uC694. \uC774\uBBF8 \uB110\uB9AC \uC54C\uB824\uC9C4 \uB9AC\uC2A4\uD06C\uB294 \uC81C\uC678\uD569\uB2C8\uB2E4.
+2) \uCD5C\uC545\uC758 \uC0C1\uD669\uC744 \uAC00\uC815\uD55C \uC2DC\uB098\uB9AC\uC624\uBCC4 \uBD84\uC11D(Bull / Base / Bear)\uC744 \uD655\uB960\uACFC \uD568\uAED8 \uC81C\uC2DC\uD558\uC138\uC694.
+   - Bull (\uB099\uAD00) ${t.probs?.bull??30}%: \uBAA8\uB4E0 \uAC83\uC774 \uC798 \uD480\uB9B4 \uB54C
+   - Base (\uAE30\uBCF8) ${t.probs?.base??50}%: \uAC00\uC7A5 \uD604\uC2E4\uC801\uC778 \uACBD\uC6B0
+   - Bear (\uBE44\uAD00) ${t.probs?.bear??20}%: \uCD5C\uC545\uC758 \uC0C1\uD669
+3) \uAC10\uC815\uC5D0 \uD718\uB458\uB9AC\uC9C0 \uC54A\uACE0 \uAE30\uACC4\uC801\uC73C\uB85C \uB300\uC751\uD560 \uC218 \uC788\uB3C4\uB85D **\uC190\uC808\uAC00\uC640 1\uCC28\xB72\uCC28 \uC775\uC808\uAC00**\uB97C \uBA85\uD655\uD788 \uACB0\uC815\uD558\uC138\uC694.
+   \uAE30\uC900: \uC190\uC808 -${t.stop??20}% / 1\uCC28 \uC775\uC808 +${t.tp1??15}% / 2\uCC28 \uC775\uC808 +${t.tp2??30}%
+
+\uB9AC\uC2A4\uD06C \uC720\uD615\uC740 \uBC18\uB4DC\uC2DC \uC544\uB798 3\uBD84\uB958\uB85C \uB098\uB204\uC5B4 \uAC01\uAC01 \uCC3E\uC73C\uC138\uC694.
+${ft.map((e,a)=>`${a+1}. ${e.k} \u2014 ${e.d}`).join(`
+`)}`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uCD5C\uC545\uC758 \uC2DC\uB098\uB9AC\uC624\uAE4C\uC9C0 \uACE0\uB824\uD55C **\uBCF4\uC218\uC801 \uBD84\uC11D**\uC744 \uC694\uAD6C\uD569\uB2C8\uB2E4.
+- \uB9AC\uC2A4\uD06C \uB300\uBE44 \uC218\uC775 \uAD00\uC810(Risk/Reward)\uC744 \uBA85\uC2DC\uD558\uC138\uC694. 1:2 \uBBF8\uB9CC\uC774\uBA74 "\uD22C\uC790 \uBD80\uC801\uD569"\uC73C\uB85C \uD310\uC815\uD558\uC138\uC694.
+- \uC2E4\uD589 \uAC00\uB2A5\uD55C \uB9AC\uC2A4\uD06C \uAD00\uB9AC \uC804\uB7B5\uC744 \uC81C\uC2DC\uD558\uC138\uC694 (\uBD84\uD560\uB9E4\uC218, \uD5E4\uC9C0, \uBE44\uC911 \uCD95\uC18C \uC870\uAC74).
+- \uD22C\uC790 \uACB0\uC815\uC758 \uD575\uC2EC\uC740 \uAE30\uB300\uC218\uC775\uC774 \uC544\uB2C8\uB77C **\uAC10\uC218\uD560 \uB9AC\uC2A4\uD06C**\uC785\uB2C8\uB2E4.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+
+\u25A0 1) \uC228\uC740 \uB9AC\uC2A4\uD06C 3\uAC1C (\uB110\uB9AC \uC54C\uB824\uC9C4 \uAC83 \uC81C\uC678)
+| # | \uB9AC\uC2A4\uD06C | \uC720\uD615(\uAE30\uC5C5/\uC139\uD130/\uB9E4\uD06C\uB85C) | \uBC1C\uC0DD \uC2DC \uC8FC\uAC00 \uC601\uD5A5 | \uC120\uD589 \uC2E0\uD638 | \uCD9C\uCC98 URL |
+
+\u25A0 2) \uC2DC\uB098\uB9AC\uC624 \uBD84\uC11D
+| \uC2DC\uB098\uB9AC\uC624 | \uD655\uB960 | \uBAA9\uD45C\uAC00 | \uC218\uC775\uB960 | \uC804\uC81C \uC870\uAC74 | \uCD9C\uCC98 |
+| \u{1F402} Bull (\uB099\uAD00) | ${t.probs?.bull??30}% | | | | |
+| \u2796 Base (\uAE30\uBCF8) | ${t.probs?.base??50}% | | | | |
+| \u{1F43B} Bear (\uBE44\uAD00) | ${t.probs?.bear??20}% | | | | |
+
+\u2192 \uD655\uB960 \uAC00\uC911 \uAE30\uB300\uC218\uC775\uB960 = \u03A3(\uD655\uB960 \xD7 \uC218\uC775\uB960)
+
+\u25A0 3) \uACB0\uC815 \uAC00\uC774\uB4DC \u2014 \uC885\uBAA9\uBCC4 \uB9E4\uC218 \xB7 \uC190\uC808 \xB7 \uC775\uC808
+| \uC885\uBAA9 | \uC801\uC815 \uB9E4\uC218\uAC00 | \uC190\uC808\uAC00 (-${t.stop??20}%) | 1\uCC28 \uC775\uC808 (+${t.tp1??15}%) | 2\uCC28 \uC775\uC808 (+${t.tp2??30}%) | Risk/Reward |
+
+\u25A0 4) \uD55C \uC904 \uACB0\uB860: "\uC774 \uC885\uBAA9\uC740 ___ \uB54C\uBB38\uC5D0 \uC0AC\uACE0, ___ \uC2E0\uD638\uAC00 \uB098\uC624\uBA74 \uD310\uB2E4."`,F(t.quotes,t.asOf))}function Ut(t){let s=t.names?.length?t.names.join(", "):"[\uC885\uBAA9\uBA85]";return T(C,`[I - Instruction \xB7 \uC9C0\uC2DC\uC0AC\uD56D]
+\uD22C\uC790\uAE08 ${f(t.capital)}\uC744 \uAE30\uC900\uC73C\uB85C **\uCC28\uB4F1 \uBC30\uBD84**\uC744 \uC2E4\uD589\uD558\uC138\uC694.
+\uAC01 \uC885\uBAA9\uBCC4 \uD22C\uC790 \uC810\uC218\uB97C \uBA3C\uC800 \uC0B0\uCD9C\uD558\uACE0, \uADF8 \uC810\uC218\uB97C \uADFC\uAC70\uB85C \uAC01\uAC01 \uC5BC\uB9C8\uC529 \uD22C\uC790\uD574\uC57C \uD558\uB294\uC9C0 \uC54C\uB824\uC8FC\uC138\uC694.
+\uAE30\uACC4\uC801\uC778 \uB9AC\uC2A4\uD06C \uAD00\uB9AC\uB97C \uC704\uD574 \uAC01 \uC885\uBAA9\uC758 \uC190\uC808\uAC00\uC640 \uC775\uC808\uAC00\uB3C4 \uD45C\uC5D0 \uD568\uAED8 \uD45C\uC2DC\uD558\uC138\uC694.
+
+\uB300\uC0C1 \uC885\uBAA9: ${s}
+\uC885\uBAA9 \uC218: ${t.names?.length||3}\uAC1C
+\uBC30\uBD84 \uC804\uB7B5: \uCC28\uB4F1\uBC30\uBD84 (Core-Satellite)
+
+\uD22C\uC790 \uC810\uC218 \uBC30\uC810 (\uCD1D 100\uC810):
+${R.map(e=>`- ${e.label}: ${e.max}\uC810`).join(`
+`)}
+
+\uCC28\uB4F1\uBC30\uBD84 \uADDC\uCE59 \u2014 \uD655\uC2E0\uB3C4/\uB9E4\uB825\uB3C4\uC5D0 \uB530\uB77C \uBE44\uC911 \uCC28\uB4F1:
+- \uD575\uC2EC Core: 35~40% (\uD22C\uC790\uC810\uC218 75\uC810 \uC774\uC0C1)
+- \uC8FC\uB825 Sub:  20~25% (\uD22C\uC790\uC810\uC218 55\uC810 \uC774\uC0C1)
+- \uAD00\uB9DD Watch: 10~15% (\uADF8 \uC678)`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uBD84\uC0B0\uD22C\uC790\uB97C \uD1B5\uD55C \uB9AC\uC2A4\uD06C \uAD00\uB9AC
+- \uC139\uD130/\uC2A4\uD0C0\uC77C \uADE0\uD615 \uACE0\uB824 \u2014 \uAC19\uC740 \uC139\uD130 \uD3B8\uC911 \uC2DC \uACBD\uACE0\uD560 \uAC83
+- \uC2DC\uC7A5 \uC0C1\uD669\uC5D0 \uB9DE\uB294 \uD604\uAE08 \uBE44\uC911 \uD655\uBCF4 (\uBC30\uBD84 \uD6C4 \uC794\uC5EC\uBD84\uC740 \uD604\uAE08\uC73C\uB85C \uBA85\uC2DC)
+- \uADE0\uB4F1\uBC30\uBD84\uC774 \uC544\uB2C8\uB77C **\uD655\uC2E0\uB3C4 \uAE30\uBC18 \uCC28\uB4F1\uBC30\uBD84**\uC784\uC744 \uC78A\uC9C0 \uB9C8\uC138\uC694.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+
+\u25A0 1) \uC885\uBAA9\uBCC4 \uD22C\uC790 \uC810\uC218
+| \uC885\uBAA9 | \uC131\uC7A5 /30 | \uD574\uC790 /30 | \uBC38\uB958\uC5D0\uC774\uC158 /20 | \uBAA8\uBA58\uD140 /20 | \uCD1D\uC810 /100 | \uB4F1\uAE09 |
+
+\u25A0 2) \uCC28\uB4F1\uBC30\uBD84 \u2014 Core-Satellite (\uCD1D ${f(t.capital)})
+| \uC885\uBAA9 | \uBE44\uC911 | \uAE08\uC561 | \uB9E4\uC218 \uC8FC\uC2DD\uC218 | \uC5ED\uD560 | \uBE44\uC911 \uADFC\uAC70 |
+
+\u25A0 3) \uACB0\uC815 \uAC00\uC774\uB4DC \u2014 \uC885\uBAA9\uBCC4 \uB9E4\uC218\xB7\uC190\uC775\uAD00\uB9AC \uC804 \uAD6C\uAC04
+| \uC885\uBAA9 | \uB9E4\uC218\uAC00 | \uC190\uC808\uAC00(-${t.stop??20}%) | 1\uCC28 \uC775\uC808(+${t.tp1??15}%) | 2\uCC28 \uC775\uC808(+${t.tp2??30}%) | \uC804\uB7C9 \uC775\uC808 |
+
+\u25A0 4) \uD3EC\uD2B8\uD3F4\uB9AC\uC624 \uC885\uD569 \uC131\uACFC
+| \uC9C0\uD45C | \uAC12 | \uC124\uBA85 |
+| \uAE30\uB300\uC218\uC775\uB960 | | \uD655\uB960\uAC00\uC911 \uD3C9\uADE0 |
+| \uCD5C\uB300\uB099\uD3ED(MDD) | | 3\uAC1C\uC6D4 \uD6C4 \uCD5C\uC545 \uC2DC\uB098\uB9AC\uC624 |
+| \uBCC0\uB3D9\uC131(\uC5F0\uD658\uC0B0) | | \uAC00\uC911 \uD45C\uC900\uD3B8\uCC28 |
+| \uBCA0\uD0C0(\u03B2) | | \uC2DC\uC7A5 \uB300\uBE44 |
+| \uC139\uD130 \uC9D1\uC911\uB3C4 | | \uCD5C\uB300 \uC139\uD130 \uBE44\uC911 |
+
+\u25A0 5) \u{1F6A8} \uB9AC\uBC38\uB7F0\uC2F1 \uD2B8\uB9AC\uAC70 \u2014 \uC5B4\uB5A4 \uC870\uAC74\uC5D0\uC11C \uC774 \uBC30\uBD84\uC744 \uB2E4\uC2DC \uC9DC\uC57C \uD558\uB294\uAC00 (3\uAC1C)`,F(t.quotes,t.asOf))}function Gt(t,s){let e=s.subject?.trim()||"[\uC885\uBAA9\uBA85 \uD639\uC740 \uC2DC\uC7A5]";return t===1?T(C,`[I - Instruction \xB7 1\uB2E8\uACC4: \uADFC\uAC70 \uC911\uC2EC\uC758 \uAD6D\uBA74 \uD310\uC815 + \uD655\uC2E0\uB3C4]
+\uADFC\uAC70\uB97C \uBAA8\uC544\uC11C ${e}\uC758 \uAD6D\uBA74\uC744 \uD310\uC815\uD574 \uC918.
+\uADF8\uB9AC\uACE0 \uADF8 \uD310\uC815\uC5D0 \uB300\uD55C \uB108\uC758 \uD655\uC2E0\uB3C4(0\uC810\uC5D0\uC11C 100\uC810\uAE4C\uC9C0)\uB97C \uAC19\uC774 \uC81C\uC2DC\uD574\uB77C.`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uB2E8\uC21C \uC758\uACAC\uC774 \uC544\uB2C8\uB77C, \uD310\uC815\uC758 \uADFC\uAC70\uAC00 \uB41C \uB370\uC774\uD130\uB97C \uD45C\uB85C \uBA3C\uC800 \uC81C\uC2DC\uD560 \uAC83.
+- \uD655\uC2E0\uB3C4\uAC00 \uC65C \uADF8 \uC810\uC218\uC778\uC9C0, \uC810\uC218\uB97C \uAE4E\uC740 \uC694\uC778\uC774 \uBB34\uC5C7\uC778\uC9C0 \uBA85\uC2DC\uD560 \uAC83.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+\u25A0 1) \uAD6D\uBA74 \uD310\uC815 \uADFC\uAC70 \uB370\uC774\uD130
+| \uC9C0\uD45C | \uD604\uC7AC\uAC12 | \uACFC\uAC70 \uD3C9\uADE0 | \uC2DC\uC0AC\uC810 | \uCD9C\uCC98 URL |
+
+\u25A0 2) \uAD6D\uBA74 \uD310\uC815: (\uD655\uC7A5 / \uB454\uD654 / \uCE68\uCCB4 / \uD68C\uBCF5 \uC911 \uD0DD 1)
+\u25A0 3) \uD655\uC2E0\uB3C4: __ / 100
+\u25A0 4) \uD655\uC2E0\uB3C4\uB97C \uAE4E\uC740 \uC694\uC778 3\uAC00\uC9C0`):t===2?T(C,`[I - Instruction \xB7 2\uB2E8\uACC4: \uBC18\uB300 \uADFC\uAC70 \uAC15\uC81C \uC694\uAD6C (\uB099\uAD00 \uD3B8\uD5A5 \uBC29\uC9C0)]
+\uB108\uC758 \uD310\uC815\uC774 \uD2C0\uB838\uB2E4\uACE0 \uAC00\uC815\uD558\uACE0, \uBC18\uB300 \uD310\uC815\uC774 \uB9DE\uC73C\uB824\uBA74 \uC5B4\uB5A4 \uC99D\uAC70\uAC00 \uB098\uC640\uC57C \uD558\uB294\uC9C0 \uB9D0\uD574 \uC918.
+
+${s.prevVerdict?`[1\uB2E8\uACC4\uC5D0\uC11C \uB124\uAC00 \uB0B4\uB9B0 \uD310\uC815]
+${s.prevVerdict}`:""}`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uB108\uB294 \uC88B\uC740 \uC774\uC57C\uAE30\uB97C \uBA3C\uC800 \uD558\uACE0 \uB9AC\uC2A4\uD06C\uB97C \uCD95\uC18C\uD558\uB294 \uACBD\uD5A5\uC774 \uC788\uB2E4. \uC774\uBC88\uC5D0\uB294 \uADF8 \uBC18\uB300\uB85C\uB9CC \uB2F5\uD558\uB77C.
+- "\uADF8\uB7F4 \uAC00\uB2A5\uC131\uC740 \uB0AE\uC9C0\uB9CC" \uAC19\uC740 \uBC29\uC5B4 \uD45C\uD604\uC744 \uC4F0\uC9C0 \uB9C8\uB77C. \uBC18\uB300 \uC2DC\uB098\uB9AC\uC624\uB97C \uC9C4\uC9C0\uD558\uAC8C \uBCC0\uD638\uD558\uB77C.
+- \uBC18\uB300 \uD310\uC815\uC774 \uB9DE\uC744 \uD655\uB960\uC744 \uC22B\uC790\uB85C \uC81C\uC2DC\uD558\uB77C.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+\u25A0 1) \uBC18\uB300 \uD310\uC815\uC774 \uB9DE\uC73C\uB824\uBA74 \uB098\uC640\uC57C \uD560 \uC99D\uAC70
+| # | \uD544\uC694\uD55C \uC99D\uAC70 | \uC5B4\uB514\uC11C \uD655\uC778\uB418\uB098 | \uB098\uC62C \uAC00\uB2A5\uC131 | \uB098\uC624\uBA74 \uD310\uC815\uC774 \uC5B4\uB5BB\uAC8C \uB4A4\uC9D1\uD788\uB098 |
+
+\u25A0 2) \uB0B4\uAC00 1\uB2E8\uACC4\uC5D0\uC11C \uACFC\uC18C\uD3C9\uAC00\uD588\uC744 \uAC00\uB2A5\uC131\uC774 \uC788\uB294 \uB370\uC774\uD130 3\uAC00\uC9C0
+\u25A0 3) \uBC18\uB300 \uD310\uC815\uC774 \uB9DE\uC744 \uD655\uB960: __%`):T(C,`[I - Instruction \xB7 3\uB2E8\uACC4: \uAC10\uC2DC \uC9C0\uD45C & \uD0AC \uC2A4\uC704\uCE58(Kill Switch)]
+\uC774 \uAD6D\uBA74 \uD310\uC815\uC774 \uD2C0\uB838\uB2E4\uB294 \uAC83\uC744 \uB0B4\uAC00 \uBB34\uC5C7\uC73C\uB85C \uD655\uC778\uD560 \uC218 \uC788\uB294\uC9C0,
+\uB9E4\uB2EC \uC2E4\uC81C\uB85C \uD655\uC778 \uAC00\uB2A5\uD55C \uAD6C\uCCB4\uC801\uC778 \uC9C0\uD45C 3\uAC1C\uB97C \uACE8\uB77C\uB77C.
+\uAC01\uAC01 \uC5B4\uB514\uC11C \uD655\uC778\uD558\uB294\uC9C0(\uD655\uC778 \uC0AC\uC774\uD2B8), \uD655\uC778 \uC8FC\uAE30, \uADF8\uB9AC\uACE0 \uADF8 \uC2E0\uD638\uAC00 \uCF1C\uC84C\uC744 \uB54C
+\uB0B4\uAC00 \uAD6C\uCCB4\uC801\uC73C\uB85C \uBB34\uC5C7\uC744 \uD574\uC57C \uD558\uB294\uC9C0(\uD589\uB3D9 \uC9C0\uCE68)\uAE4C\uC9C0 \uC544\uB798 \uD45C \uD615\uC2DD\uC73C\uB85C \uC791\uC131\uD574 \uC918.`,`[C - Context \xB7 \uB9E5\uB77D]
+- \uAC10\uC73C\uB85C \uD22C\uC790\uD558\uAC70\uB098 \uB9E4\uC77C \uB274\uC2A4\uB97C \uBCF4\uBA70 \uD754\uB4E4\uB9AC\uC9C0 \uC54A\uB3C4\uB85D, \uAE30\uACC4\uC801\uC73C\uB85C \uB300\uC751\uD560 \uD589\uB3D9 \uC9C0\uCE68\uC11C\uAC00 \uBAA9\uC801\uC774\uB2E4.
+- \uC9C0\uD45C\uB294 \uBC18\uB4DC\uC2DC **\uBB34\uB8CC\uB85C, \uAC1C\uC778\uC774, \uB9E4\uB2EC \uC9C1\uC811 \uD655\uC778 \uAC00\uB2A5\uD55C \uAC83**\uC774\uC5B4\uC57C \uD55C\uB2E4.
+- "\uC2DC\uC7A5 \uC2EC\uB9AC" \uAC19\uC740 \uCE21\uC815 \uBD88\uAC00\uB2A5\uD55C \uC9C0\uD45C\uB294 \uAE08\uC9C0\uD55C\uB2E4. \uC22B\uC790\uB85C \uC784\uACC4\uAC12\uC744 \uC81C\uC2DC\uD558\uB77C.
+- \uD589\uB3D9 \uC9C0\uCE68\uC740 "\uC9C0\uCF1C\uBCF8\uB2E4" \uAC19\uC740 \uBAA8\uD638\uD55C \uD45C\uD604 \uB300\uC2E0 "\uBE44\uC911 \uC808\uBC18 \uCD95\uC18C" \uCC98\uB7FC \uC2E4\uD589 \uAC00\uB2A5\uD574\uC57C \uD55C\uB2E4.`,`[E - Example \xB7 \uCD9C\uB825 \uD615\uC2DD]
+| \uAC10\uC2DC \uC9C0\uD45C | \uC5B4\uB514\uC11C(\uC0AC\uC774\uD2B8) | \uD655\uC778 \uC8FC\uAE30 | \uC774 \uC2E0\uD638\uAC00 \uCF1C\uC9C0\uBA74(\uD589\uB3D9 \uC9C0\uCE68) |
+|-----------|----------------|-----------|------------------------------|
+| (\uC784\uACC4\uAC12 \uD3EC\uD568) | (URL) | (\uC6D4/\uC8FC) | (\uAD6C\uCCB4\uC801 \uC2E4\uD589) |
+
+\uD45C \uC544\uB798\uC5D0 "3\uAC1C \uC9C0\uD45C \uC911 \uBA87 \uAC1C\uAC00 \uCF1C\uC9C0\uBA74 \uC804\uB7C9 \uCCAD\uC0B0\uC778\uAC00"\uB97C \uBA85\uC2DC\uD558\uB77C.`)}function zt(){let t=m(),s=Bt(),e=t.picks||[];return`
+  <div class="page-eyebrow">AI \uAC15\uC81C \uCC28\uB2E8 \uC2DC\uC2A4\uD15C \xB7 \uD589\uB3D9\uACBD\uC81C\uD559 \uD5F7\uC9C0</div>
+  <h1 class="page-title">\uC8FC\uC2DD\uD22C\uC790\uBE44\uC11C \uC9C0\uB2C8</h1>
+  <p class="page-desc">
+    \uC9C0\uB2C8\uB294 \uC885\uBAA9\uC744 \uB300\uC2E0 \uACE8\uB77C\uC8FC\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB300\uC2E0 <strong>\uB2F9\uC2E0\uC774 \uC2E4\uC218\uD558\uC9C0 \uBABB\uD558\uAC8C \uB9C9\uC2B5\uB2C8\uB2E4.</strong>
+    \uAE30\uC900 \uC5C6\uB294 \uCD94\uCC9C, \uB2E8\uC77C AI \uB9F9\uC2E0, \uB2E8\uC77C \uC9C0\uD45C, \uCD9C\uCC98 \uC5C6\uB294 \uC218\uCE58, \uC190\uC808\uAC00 \uC5C6\uB294 \uB9E4\uC218 \u2014
+    \uC774 \uB2E4\uC12F \uAC00\uC9C0 \uD568\uC815\uC744 \uAD6C\uC870\uC801\uC73C\uB85C \uCC28\uB2E8\uD558\uB294 \uD30C\uC774\uD504\uB77C\uC778\uC785\uB2C8\uB2E4.
+  </p>
+
+  <div class="trap-hero">
+    <h2>\uC77C\uBC18 \uD22C\uC790\uC790\uAC00 \uBE60\uC9C0\uB294 '\uD568\uC815 5\uAC00\uC9C0'</h2>
+    <p>AI\uAC00 \uAC15\uC81C \uCC28\uB2E8\uD558\uB3C4\uB85D \uC124\uACC4</p>
+    ${vt.map((a,n)=>`
+      <div class="trap-row">
+        <span class="trap-n">${n+1}</span>
+        <span class="trap-bad">${r(a.bad)}</span>
+        <span class="trap-arrow">\u25B6</span>
+        <span class="trap-fix">${r(a.fix)}</span>
+      </div>`).join("")}
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F4CD} \uC9C4\uD589 \uC0C1\uD669</h3>
+    <p class="card-sub">\uC9C0\uB2C8 \uD30C\uC774\uD504\uB77C\uC778 6\uB2E8\uACC4 \xB7 ${s}% \uC644\uB8CC</p>
+    <div class="bar"><i style="width:${s}%"></i></div>
+    <div class="stat-row">
+      ${w("\uC120\uD0DD \uC885\uBAA9",e.length+"\uAC1C",e.map(a=>a.name).join(", ")||"\uC544\uC9C1 \uC5C6\uC74C")}
+      ${w("\uAD50\uCC28\uAC80\uC99D AI",Object.values(t.cross).filter(a=>a?.trim().length>40).length+" / 3","2\uACF3 \uC774\uC0C1 \uD569\uC758 \uD544\uC694")}
+      ${w("\uC548\uC804\uB9C8\uC9C4",t.valuation.marginPct+"%","\uC801\uC815\uAC00 \uB300\uBE44 \uD560\uC778")}
+      ${w("\uC190\uC808 \uAE30\uC900","-"+t.risk.stop+"%","\uB9E4\uC218 \uC804 \uD544\uC218 \uC124\uC815")}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F9ED} \uC9C0\uB2C8 \uD30C\uC774\uD504\uB77C\uC778</h3>
+    <p class="card-sub">\uC21C\uC11C\uB300\uB85C \uC9C4\uD589\uD558\uC138\uC694. \uC55E \uB2E8\uACC4\uB97C \uAC74\uB108\uB6F0\uBA74 \uB4A4 \uB2E8\uACC4\uAC00 \uD568\uC815\uC774 \uB429\uB2C8\uB2E4.</p>
+    <div class="step-grid">
+      ${[{r:"discovery",i:"\u{1F50E}",t:"\u2460 \uC885\uBAA9 \uBC1C\uAD74",d:"RICE \uD504\uB86C\uD504\uD2B8\uB85C \uAE30\uC900\uBD80\uD130 \uC138\uC6B4\uB2E4"},{r:"cross",i:"\u2696\uFE0F",t:"\u2461 \uAD50\uCC28 \uAC80\uC99D",d:"3\uAC1C AI \uB2F5\uBCC0\uC758 \uAD50\uC9D1\uD569\uB9CC \uB0A8\uAE34\uB2E4"},{r:"steps",i:"\u{1F52C}",t:"\u2462 \uC2EC\uCE35 \uBD84\uC11D",d:"STEP 1~5 \xB7 WHAT\u2192WHEN"},{r:"valuation",i:"\u{1F4B0}",t:"\u2463 \uBC38\uB958\uC5D0\uC774\uC158",d:"\uB2E4\uAC01 \uBA40\uD2F0\uD50C + \uC548\uC804\uB9C8\uC9C4"},{r:"risk",i:"\u{1F6E1}",t:"\u2464 \uB9AC\uC2A4\uD06C",d:"Bull/Base/Bear + \uC190\uC808\uAC00 \uBA3C\uC800"},{r:"portfolio",i:"\u{1F4E6}",t:"\u2465 \uD3EC\uD2B8\uD3F4\uB9AC\uC624",d:"\uD22C\uC790\uC810\uC218 \uAE30\uBC18 \uCC28\uB4F1\uBC30\uBD84"}].map(a=>`
+        <button class="step-card ${t.done[a.r]?"done":""}" data-route="${a.r}">
+          <span class="emo">${a.i}</span>
+          <div class="t">${a.t}</div>
+          <div class="d">${r(a.d)}</div>
+        </button>`).join("")}
+    </div>
+  </div>
+
+  <div class="card-dark">
+    <h3 class="card-title">\u{1F6E0} \uC560\uB110\uB9AC\uC2A4\uD2B8\uC758 \uD575\uC2EC \uBD84\uC11D \uB3C4\uAD6C 6\uAC00\uC9C0</h3>
+    <p class="card-sub">\uC804\uBB38\uAC00\uAC00 \uC885\uBAA9\uC744 \uD3C9\uAC00\uD560 \uB54C \uC4F0\uB294 \uB3C4\uAD6C \u2014 \uC9C0\uB2C8\uB294 \uC774 6\uAC1C\uB97C \uC804\uBD80 \uAC15\uC81C\uD569\uB2C8\uB2E4</p>
+    <div class="step-grid">
+      ${ht.map(a=>`
+        <div style="background:#16293f;border:1px solid #24384f;border-radius:12px;padding:15px 16px">
+          <div style="font-size:15px;font-weight:800;color:#f4c65e">${r(a.k)}</div>
+          <div style="font-size:12px;color:#9db0c7;margin-top:5px;line-height:1.5">${r(a.d)}</div>
+          ${a.s?`<div style="font-size:10.5px;color:#6f849c;margin-top:6px">\u2014 ${r(a.s)}</div>`:""}
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <div class="alert alert-warn">
+    <span>\u26A0\uFE0F</span>
+    <div><strong>\uC9C0\uB2C8\uB294 \uD22C\uC790 \uC790\uBB38 \uB3C4\uAD6C\uAC00 \uC544\uB2D9\uB2C8\uB2E4.</strong>
+    \uC0DD\uC131\uB41C \uD504\uB86C\uD504\uD2B8\uC640 \uACC4\uC0B0 \uACB0\uACFC\uB294 \uC758\uC0AC\uACB0\uC815 \uBCF4\uC870 \uC790\uB8CC\uC774\uBA70, \uBAA8\uB4E0 \uC218\uCE58\uB294 AI \uB2F5\uBCC0\uC5D0\uC11C \uB098\uC628 \uAC12\uC774\uBBC0\uB85C
+    \uBC18\uB4DC\uC2DC \uAC70\uB798\uC18C\xB7DART \uC6D0\uBB38\uC73C\uB85C \uAD50\uCC28 \uD655\uC778\uD558\uC138\uC694. \uCD5C\uC885 \uD22C\uC790 \uD310\uB2E8\uACFC \uADF8 \uCC45\uC784\uC740 \uD22C\uC790\uC790 \uBCF8\uC778\uC5D0\uAC8C \uC788\uC2B5\uB2C8\uB2E4.</div>
+  </div>`}function Yt(){let t=m().discovery,s=A.find(e=>e.id===t.style)||A[0];return`
+  <div class="page-eyebrow">\u2460 \uC885\uBAA9 \uBC1C\uAD74</div>
+  <h1 class="page-title">\uC139\uD130\uBCC4 \uC720\uB9DD \uC885\uBAA9 \uBC1C\uAD74</h1>
+  <p class="page-desc">\uAC10\uACFC \uC720\uD29C\uBE0C \uCD94\uCC9C\uC744 \uBC97\uC5B4\uB098, \uC6D4\uC2A4\uD2B8\uB9AC\uD2B8 \uAE30\uC900\uC73C\uB85C \uC790\uB3D9 \uC2A4\uD06C\uB9AC\uB2DD\uD569\uB2C8\uB2E4.</p>
+
+  <div class="card">
+    <dl class="rail">
+      <dt>WHY</dt><dd>"\uAD1C\uCC2E\uC740 \uC8FC\uC2DD \uCD94\uCC9C\uD574\uC918" \uAC19\uC740 \uB9C9\uC5F0\uD55C \uC9C8\uBB38\uC5D0\uB294 \uC628\uAC16 \uB2F5\uBCC0\uC774 \uB098\uC635\uB2C8\uB2E4.
+        \uD544\uD130\uB97C \uBA3C\uC800 \uACE0\uC815\uD574\uC57C \uB2F5\uBCC0\uB3C4 \uC7AC\uD604 \uAC00\uB2A5\uD574\uC9D1\uB2C8\uB2E4.</dd>
+      <dt>HOW</dt><dd>\uC139\uD130 \xD7 \uC2A4\uD0C0\uC77C \xD7 \uC2A4\uD06C\uB9AC\uB2DD \uD544\uD130 \xD7 \uAE30\uAC04 \xD7 \uBAA9\uD45C\uC218\uC775\uB960\uC744 \uC870\uD569\uD574
+        RICE(Role\xB7Instruction\xB7Context\xB7Example) \uD504\uB86C\uD504\uD2B8\uB97C \uC790\uB3D9 \uC0DD\uC131\uD569\uB2C8\uB2E4.</dd>
+      <dt>OUTPUT</dt><dd>\uCD94\uCC9C \uC885\uBAA9 TOP ${t.count} + \uB9E4\uC218\xB7\uBAA9\uD45C\xB7\uC190\uC808\uAC00 + \uCD94\uCC9C \uADFC\uAC70 + \uCD9C\uCC98 URL
+        <span class="muted">\u2192 \uB2E4\uC74C \uB2E8\uACC4\uC5D0\uC11C 3\uAC1C AI \uAD50\uCC28 \uAC80\uC99D</span></dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F39B} \uC2A4\uD06C\uB9AC\uB2DD \uC870\uAC74</h3>
+    <p class="card-sub">\uAC70\uC7A5 \uAE30\uC900\uC744 \uAC15\uC81C \uC124\uC815\uD569\uB2C8\uB2E4 \u2014 \uD568\uC815 \u2460 \uCC28\uB2E8</p>
+
+    <div class="field">
+      <div class="field-label">\uD22C\uC790 \uC139\uD130 <span class="field-hint">\uBCF5\uC218 \uC120\uD0DD \uAC00\uB2A5</span></div>
+      ${S({name:"sectors",options:pt,value:t.sectors,multi:!0})}
+    </div>
+
+    <div class="field">
+      <div class="field-label">\uD22C\uC790 \uC2A4\uD0C0\uC77C</div>
+      ${S({name:"style",options:A,value:t.style})}
+      <div class="alert alert-info" style="margin-top:10px">
+        <span>\u{1F4D0}</span><div><strong>${r(s.label)} \uAE30\uBCF8 \uD544\uD130:</strong> ${r(s.filter)}</div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="field">
+        <div class="field-label">\uD22C\uC790 \uAE30\uAC04</div>
+        ${S({name:"horizon",options:W,value:t.horizon})}
+      </div>
+      <div class="field">
+        <div class="field-label">\uBAA9\uD45C \uC218\uC775\uB960</div>
+        ${S({name:"target",options:ut.map(e=>({id:String(e),label:e+"%"})),value:String(t.target)})}
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="field">
+        <div class="field-label">\uCD94\uCC9C \uAC1C\uC218</div>
+        ${S({name:"count",options:bt.map(e=>({id:String(e),label:e+"\uAC1C"})),value:String(t.count)})}
+      </div>
+      <div class="field">
+        <div class="field-label">\uC704\uD5D8 \uC131\uD5A5</div>
+        ${S({name:"risk",options:["\uC800\uC704\uD5D8","\uC911\uC704\uD5D8","\uACE0\uC704\uD5D8"],value:t.risk})}
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="field">
+        <div class="field-label">\uC2A4\uD06C\uB9AC\uB2DD \uD544\uD130 <span class="field-hint">\uBE44\uC6B0\uBA74 \uC2A4\uD0C0\uC77C \uAE30\uBCF8\uAC12 \uC0AC\uC6A9</span></div>
+        <input class="input" data-bind="discovery.filter" value="${r(t.filter)}"
+          placeholder="\uC608: PEG 1.5 \uC774\uD558, \uB9E4\uCD9C CAGR 15%+, \uC601\uC5C5\uC774\uC775 \uAC1C\uC120">
+      </div>
+      <div class="field">
+        <div class="field-label">\uC911\uC810 \uBD84\uC11D <span class="field-hint">\uC120\uD0DD</span></div>
+        <input class="input" data-bind="discovery.focus" value="${r(t.focus)}"
+          placeholder="\uC608: \uC2DC\uC7A5\uC810\uC720\uC728 \uD655\uB300, \uC2E0\uC0AC\uC5C5 \uC9C4\uCD9C">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">\uB300\uC0C1 \uC2DC\uC7A5</div>
+      ${S({name:"market",options:["\uD55C\uAD6D \uCF54\uC2A4\uD53C 200","\uCF54\uC2A4\uB2E5 150","\uBBF8\uAD6D S&P 500","\uB098\uC2A4\uB2E5 100"],value:t.market})}
+    </div>
+
+    <div class="field mb0">
+      <div class="field-label">\uC81C\uC678 \uC870\uAC74 <span class="field-hint">\uC904\uBC14\uAFC8\uC73C\uB85C \uAD6C\uBD84</span></div>
+      <textarea class="textarea" data-bind="discovery.exclusions" style="min-height:80px"
+        placeholder="\uD55C \uC904\uC5D0 \uD558\uB098\uC529">${r((t.exclusions||[]).join(`
+`))}</textarea>
+    </div>
+  </div>
+
+  <button class="btn btn-navy btn-lg btn-block" data-action="gen-discovery">
+    \u2728 RICE \uD504\uB86C\uD504\uD2B8 \uC0DD\uC131
+  </button>
+  <div id="discovery-out" class="mt"></div>`}function Kt(){let t=m().discovery,s=Ht({...t,count:t.count,target:t.target});return E("RICE \uD504\uB86C\uD504\uD2B8 (AI\uC5D0 \uBD99\uC5EC\uB123\uC744 \uBD80\uBD84)",s,"p-discovery")+`
+    <div class="alert alert-ok mt">
+      <span>\u27A1\uFE0F</span>
+      <div><strong>\uB2E4\uC74C \uB2E8\uACC4:</strong> \uC774 \uD504\uB86C\uD504\uD2B8\uB97C ChatGPT \xB7 Claude \xB7 Perplexity
+      <strong>\uC138 \uACF3 \uBAA8\uB450</strong>\uC5D0 \uB123\uACE0, \uAC01 \uB2F5\uBCC0\uC744 \u2461 \uAD50\uCC28 \uAC80\uC99D\uC5D0 \uBD99\uC5EC\uB123\uC73C\uC138\uC694.
+      \uD55C \uACF3\uB9CC \uC4F0\uBA74 \uD568\uC815 \u2461\uC5D0 \uADF8\uB300\uB85C \uBE60\uC9D1\uB2C8\uB2E4.</div>
+    </div>
+    <button class="btn btn-gold btn-lg btn-block mt" data-route="cross">
+      \u2696\uFE0F 3\uAC1C AI \uB2F5\uBCC0 \uAD50\uCC28 \uAC80\uC99D\uD558\uB7EC \uAC00\uAE30 \u2192
+    </button>`}function Qt(){let t=m();return`
+  <div class="page-eyebrow">\u2461 \uAD50\uCC28 \uAC80\uC99D</div>
+  <h1 class="page-title">3\uAC1C AI \uAD50\uCC28 \uAC80\uC99D</h1>
+  <p class="page-desc">
+    \uAC19\uC740 \uC870\uAC74\uC73C\uB85C \uC138 AI\uC5D0 \uBB3C\uC73C\uBA74 \uB2F5\uC774 \uB2E4\uB985\uB2C8\uB2E4. \uADF8 <strong>\uB2E4\uB978 \uBD80\uBD84\uC774 \uB9AC\uC2A4\uD06C</strong>\uC774\uACE0,
+    <strong>\uACB9\uCE58\uB294 \uBD80\uBD84\uC774 \uC2E0\uD638</strong>\uC785\uB2C8\uB2E4. \uC9C0\uB2C8\uB294 \uAD50\uC9D1\uD569\uB9CC \uB0A8\uAE41\uB2C8\uB2E4.
+  </p>
+
+  <div class="alert alert-warn">
+    <span>\u{1F6AB}</span>
+    <div><strong>\uD568\uC815 \u2461 \uCC28\uB2E8:</strong> \uD558\uB098\uC758 AI\uB9CC \uBBFF\uAE30 \u2192 3\uAC1C\uC758 AI\uB85C \uAD50\uCC28 \uAC80\uC99D.
+    \uAC01 AI \uB2F5\uBCC0\uC744 \uADF8\uB300\uB85C \uC544\uB798\uC5D0 \uBD99\uC5EC\uB123\uC73C\uBA74 \uC9C0\uB2C8\uAC00 \uC885\uBAA9\uBA85\uC744 \uC790\uB3D9 \uCD94\uCD9C\uD574 \uD569\uC758 \uC218\uC900\uC744 \uACC4\uC0B0\uD569\uB2C8\uB2E4.</div>
+  </div>
+
+  <div class="split-3">
+    ${D.map(s=>`
+      <div class="ai-col ${s.cls}">
+        <h4>${s.dot} ${r(s.label)}</h4>
+        <div class="cnt" data-count="${s.id}">\uB2F5\uBCC0\uC744 \uBD99\uC5EC\uB123\uC73C\uC138\uC694</div>
+        <textarea class="textarea code" data-bind="cross.${s.id}"
+          placeholder="${r(s.label)} \uB2F5\uBCC0 \uC804\uCCB4\uB97C \uBD99\uC5EC\uB123\uAE30">${r(t.cross[s.id]||"")}</textarea>
+      </div>`).join("")}
+  </div>
+
+  <button class="btn btn-navy btn-lg btn-block mt" data-action="run-cross">
+    \u{1F500} \uAD50\uCC28 \uAC80\uC99D \uBD84\uC11D (API \uBD88\uD544\uC694)
+  </button>
+
+  <div id="cross-out" class="mt"></div>`}function ot(){let t=m(),s=D.map(o=>({...o,text:t.cross[o.id]||"",tickers:H(t.cross[o.id])})),e=s.filter(o=>o.text.trim().length>40);if(e.length<2)return`<div class="alert alert-bad"><span>\u26D4</span>
+      <div><strong>\uCD5C\uC18C 2\uAC1C AI \uB2F5\uBCC0\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.</strong> \uD604\uC7AC ${e.length}\uAC1C \uC785\uB825\uB428.
+      \uAD50\uCC28 \uAC80\uC99D\uC758 \uBAA9\uC801\uC740 \uD55C \uBAA8\uB378\uC758 \uD3B8\uD5A5\uC744 \uB2E4\uB978 \uBAA8\uB378\uB85C \uC0C1\uC1C4\uD558\uB294 \uAC83\uC785\uB2C8\uB2E4.</div></div>`;let a=Lt(s),n=[...a.consensus3,...a.consensus2],i=new Set(y().map(o=>o.replace(/\s/g,""))),l=o=>i.has(o.replace(/\s/g,"")),c=o=>o.length?`<div class="tickers">${o.map(d=>`
+        <button class="tk hit${d.sources.length>=3?"3":"2"}" data-add-pick="${r(d.name)}"
+          title="${l(d.name)?"\uC774\uBBF8 \uB2F4\uAE40":"\uD074\uB9AD\uD574 \uBD84\uC11D \uB300\uC0C1\uC5D0 \uCD94\uAC00"}">
+          ${l(d.name)?"\u2714 ":"+ "}${r(d.name)}
+          <span class="badge-pill ${d.sources.length>=3?"bp-green":"bp-gold"}">${d.sources.length}/3</span>
+        </button>`).join("")}</div>`:'<p class="muted">\uD574\uB2F9 \uC5C6\uC74C</p>';return`
+  <div class="card">
+    <h3 class="card-title">\u{1F500} \uAD50\uCC28 \uAC80\uC99D \uACB0\uACFC</h3>
+    <p class="card-sub">${e.length}\uAC1C AI \uB2F5\uBCC0\uC5D0\uC11C \uC885\uBAA9\uBA85\uC744 \uCD94\uCD9C\uD574 \uC5B8\uAE09 \uD69F\uC218\uB85C \uD569\uC758 \uC218\uC900\uC744 \uD310\uC815\uD588\uC2B5\uB2C8\uB2E4.</p>
+
+    <div class="stat-row">
+      ${w("3/3 \uB9CC\uC7A5\uC77C\uCE58",a.consensus3.length+"\uAC1C","\uAC00\uC7A5 \uAC15\uD55C \uC2E0\uD638")}
+      ${w("2/3 \uD569\uC758",a.consensus2.length+"\uAC1C","\uAC80\uD1A0 \uB300\uC0C1")}
+      ${w("\uB2E8\uB3C5 \uCD94\uCC9C",a.single.length+"\uAC1C","\uADFC\uAC70 \uD655\uC778 \uD544\uC694")}
+    </div>
+
+    <div class="field">
+      <div class="field-label">\u2705\u2705\u2705 \uB9CC\uC7A5\uC77C\uCE58 \uCD94\uCC9C <span class="field-hint">3\uAC1C AI \uBAA8\uB450 \uC5B8\uAE09 \u2014 \uD074\uB9AD\uD574 \uBD84\uC11D \uB300\uC0C1\uC5D0 \uCD94\uAC00</span></div>
+      ${c(a.consensus3)}
+    </div>
+    <div class="field">
+      <div class="field-label">\u2705\u2705 2\uACF3 \uD569\uC758 <span class="field-hint">\uD074\uB9AD\uD574 \uBD84\uC11D \uB300\uC0C1\uC5D0 \uCD94\uAC00</span></div>
+      ${c(a.consensus2)}
+    </div>
+    <div class="field mb0">
+      <div class="field-label">\u26A0\uFE0F \uB2E8\uB3C5 \uCD94\uCC9C <span class="field-hint">\uC65C \uB098\uBA38\uC9C0 2\uACF3\uC774 \uBE60\uB728\uB838\uB294\uC9C0 \uD655\uC778 \uD6C4 \uD310\uB2E8</span></div>
+      ${a.single.length?`<div class="tickers">${a.single.slice(0,24).map(o=>`
+            <button class="tk" data-add-pick="${r(o.name)}">${l(o.name)?"\u2714 ":"+ "}${r(o.name)}
+            <span class="badge-pill bp-navy">${r(o.sources[0])}</span></button>`).join("")}</div>`:'<p class="muted">\uD574\uB2F9 \uC5C6\uC74C</p>'}
+    </div>
+  </div>
+
+  ${n.length?`
+  <div class="alert alert-ok">
+    <span>\u{1F3AF}</span>
+    <div><strong>\uACF5\uD1B5 ${n.length}\uC885\uBAA9:</strong> ${n.map(o=>r(o.name)).join(", ")}
+    \u2014 \uC885\uBAA9 \uCE69\uC744 \uD074\uB9AD\uD574 \uBD84\uC11D \uB300\uC0C1\uC5D0 \uB2F4\uC740 \uB4A4 \u2462 \uC2EC\uCE35 \uBD84\uC11D\uC73C\uB85C \uB118\uC5B4\uAC00\uC138\uC694.
+    ${i.size?`<br><strong>\uD604\uC7AC \uB2F4\uAE34 \uC885\uBAA9 ${i.size}\uAC1C:</strong> ${y().map(r).join(", ")}`:""}</div>
+  </div>`:""}
+
+  ${E("\uC885\uD569 \uBE44\uAD50 \uD504\uB86C\uD504\uD2B8 (\uADFC\uAC70 \uCDA9\uB3CC \uC9C0\uC810 \uCC3E\uAE30)",qt(s,n),"p-cross")}
+
+  <button class="btn btn-gold btn-lg btn-block mt" data-route="steps">
+    \u{1F52C} \uC120\uD0DD \uC885\uBAA9 \uD568\uAED8 \uBD84\uC11D\uD558\uAE30 \u2192
+  </button>`}var bs="genie.proxy.url";var ms=()=>{try{return localStorage.getItem(bs)||"http://127.0.0.1:8787"}catch{return"http://127.0.0.1:8787"}};async function lt(t,s={}){let e=new URL(ms()+t);for(let[i,l]of Object.entries(s))e.searchParams.set(i,l);let a=new AbortController,n=setTimeout(()=>a.abort(),8e3);try{let i=await fetch(e,{signal:a.signal}),l=await i.json().catch(()=>({}));if(!i.ok){let c=new Error(l.error||`\uD504\uB85D\uC2DC \uC751\uB2F5 ${i.status}`);throw c.hint=l.hint,c.upstreamStatus=l.upstreamStatus,c}return l}catch(i){if(i.name==="AbortError"){let l=new Error("\uC2DC\uC138 \uC870\uD68C \uC2DC\uAC04 \uCD08\uACFC (8\uCD08)");throw l.hint="\uD504\uB85D\uC2DC\uAC00 \uC751\uB2F5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB124\uD2B8\uC6CC\uD06C\uB97C \uD655\uC778\uD558\uC138\uC694.",l}if(i instanceof TypeError){let l=new Error("\uC2DC\uC138 \uD504\uB85D\uC2DC\uC5D0 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4");throw l.hint="node server/quote-proxy.mjs \uB97C \uC2E4\uD589\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.",l.offline=!0,l}throw i}finally{clearTimeout(n)}}async function Zt(){try{return{ok:!0,label:(await lt("/api/health")).label}}catch(t){return{ok:!1,error:t.message,hint:t.hint,offline:t.offline}}}async function rt(t){return(await lt("/api/search",{q:t})).rows||[]}async function Jt(t){let s=await lt("/api/quote",{codes:t.join(",")});return{rows:s.rows||[],asOf:s.asOf}}function Xt(t){let s=t?new Date(t):new Date,e=new Date(s.getTime()+(540+s.getTimezoneOffset())*6e4),a=n=>String(n).padStart(2,"0");return`${e.getFullYear()}.${a(e.getMonth()+1)}.${a(e.getDate())} ${a(e.getHours())}:${a(e.getMinutes())} (KST)`}function ts(t){return t==null||!Number.isFinite(t)?null:t>=1e12?(t/1e12).toFixed(1).replace(/\.0$/,"")+"\uC870\uC6D0":t>=1e8?Math.round(t/1e8).toLocaleString("ko-KR")+"\uC5B5\uC6D0":Math.round(t).toLocaleString("ko-KR")+"\uC6D0"}function vs(){let t=m(),s=t.picks||[];return`
+  <div class="card">
+    <h3 class="card-title">\u{1F3AF} \uBD84\uC11D \uB300\uC0C1 \uC885\uBAA9</h3>
+    <p class="card-sub">\uC2E4\uC2DC\uAC04 \uC2DC\uC138\uB97C \uC785\uB825\uD558\uBA74 \uD504\uB86C\uD504\uD2B8\uC5D0 <strong>\uC2DC\uC138 \uC575\uCEE4</strong>\uB85C \uBC15\uD600
+      AI\uC758 \uACFC\uAC70 \uD559\uC2B5\uAC12 \uC0AC\uC6A9\uC744 \uCC28\uB2E8\uD569\uB2C8\uB2E4 \u2014 \uD568\uC815 \u2463 \uB300\uC751</p>
+
+    <div class="btn-row" style="margin-bottom:6px">
+      <input class="input" id="pick-name" placeholder="\uC885\uBAA9\uBA85 \uB610\uB294 \uCF54\uB4DC (\uC608: SK\uD558\uC774\uB2C9\uC2A4 / 000660)" style="flex:1;min-width:200px">
+      <button class="btn btn-navy btn-sm" data-action="add-pick">+ \uCD94\uAC00</button>
+      ${window.GENIE_STANDALONE?"":'<button class="btn btn-ghost btn-sm" data-action="search-quote">\u{1F50D} \uD1A0\uC2A4 \uAC80\uC0C9</button>'}
+    </div>
+    <div id="quote-search" class="mb0"></div>
+
+    ${window.GENIE_STANDALONE?`
+    <div class="quote-bar">
+      <span class="quote-badge">\u{1F4DD} \uC218\uB3D9 \uC785\uB825 \uC804\uC6A9 \uBE4C\uB4DC</span>
+      <span class="muted">\uC2DC\uC138 \uC790\uB3D9 \uC870\uD68C\uB294 \uB85C\uCEEC \uD504\uB85D\uC2DC\uAC00 \uD544\uC694\uD574 \uC774 \uB2E8\uC77C \uD30C\uC77C \uBE4C\uB4DC\uC5D0\uC11C\uB294 \uB3D9\uC791\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.
+        \uC544\uB798\uC5D0 \uC2DC\uC138\uB97C \uC9C1\uC811 \uC785\uB825\uD558\uC138\uC694 \u2014 \uC785\uB825\uB41C \uAC12\uC740 \uD504\uB86C\uD504\uD2B8\uC758 \uC2DC\uC138 \uC575\uCEE4\uB85C \uADF8\uB300\uB85C \uB4E4\uC5B4\uAC11\uB2C8\uB2E4.</span>
+    </div>
+    `:`
+    <div class="quote-bar">
+      <span class="quote-badge" id="proxy-badge" data-action="check-proxy" role="button"
+            title="\uD074\uB9AD\uD558\uBA74 \uC2DC\uC138 \uD504\uB85D\uC2DC \uC5F0\uACB0\uC744 \uD655\uC778\uD569\uB2C8\uB2E4">\u26AA \uD504\uB85D\uC2DC \uD655\uC778 \uC911\u2026</span>
+      <button class="btn btn-gold btn-sm" data-action="refresh-quotes">\u{1F504} \uC2DC\uC138 \uC790\uB3D9 \uC870\uD68C</button>
+      <span class="muted" id="quote-msg"></span>
+    </div>
+    `}
+
+    ${s.length?`
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>\uC885\uBAA9</th><th>\uC885\uBAA9\uCF54\uB4DC</th><th>\uD604\uC7AC\uAC00(\uC6D0)</th><th>\uB4F1\uB77D(\uC6D0)</th><th>PER</th><th>PBR</th>
+          <th>\uC2DC\uCD1D</th><th>52\uC8FC \uBC34\uB4DC</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${s.map((e,a)=>`
+          <tr>
+            <td class="name">${r(e.name)}${e.source==="toss"?' <span class="badge-pill bp-green" title="\uD1A0\uC2A4 \uC790\uB3D9 \uC870\uD68C">\uC790\uB3D9</span>':""}</td>
+            <td><input class="input mono" style="width:88px;padding:6px 9px" data-pick="${a}.code"
+                 value="${r(e.code??"")}" placeholder="6\uC790\uB9AC"></td>
+            <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${a}.price"
+                 value="${r(e.price??"")}" placeholder="\uC22B\uC790\uB9CC"></td>
+            <td><input class="input" style="width:92px;padding:6px 9px" data-pick="${a}.change"
+                 value="${r(e.change??"")}" placeholder="\xB1\uC22B\uC790"></td>
+            <td><input class="input" style="width:72px;padding:6px 9px" data-pick="${a}.per"
+                 value="${r(e.per??"")}" placeholder="\uBC30\uC218"></td>
+            <td><input class="input" style="width:72px;padding:6px 9px" data-pick="${a}.pbr"
+                 value="${r(e.pbr??"")}" placeholder="\uBC30\uC218"></td>
+            <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${a}.cap"
+                 value="${r(e.cap??"")}" placeholder="\uC608: 47,000\uC5B5\uC6D0"></td>
+            <td><input class="input" style="width:150px;padding:6px 9px" data-pick="${a}.band"
+                 value="${r(e.band??"")}" placeholder="\uC608: \uCD5C\uC800~\uCD5C\uACE0"></td>
+            <td><button class="btn btn-ghost btn-sm" data-del-pick="${a}">\uC0AD\uC81C</button></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    <div class="field mt mb0">
+      <div class="field-label">\uC2DC\uC138 \uC870\uD68C \uC2DC\uC810 <span class="field-hint">\uC790\uB3D9 \uC870\uD68C \uC2DC \uC790\uB3D9\uC73C\uB85C \uCC44\uC6CC\uC9D1\uB2C8\uB2E4</span></div>
+      <input class="input" data-bind="asOf" value="${r(t.asOf)}"
+        placeholder="\uC608: 2026.08.26 15:30 (KST)" style="max-width:320px">
+    </div>
+    `:`<div class="alert alert-info"><span>\u2139\uFE0F</span>
+      <div>\uC544\uC9C1 \uC885\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC704\uC5D0\uC11C \uC9C1\uC811 \uCD94\uAC00\uD558\uAC70\uB098, \u2461 \uAD50\uCC28 \uAC80\uC99D\uC5D0\uC11C \uD569\uC758 \uC885\uBAA9\uC744 \uD074\uB9AD\uD574 \uB2F4\uC73C\uC138\uC694.</div></div>`}
+  </div>`}function ct(t){let s=m(),e=y();return t?fs(t):`
+  <div class="page-eyebrow">\u2462 \uC2EC\uCE35 \uBD84\uC11D</div>
+  <h1 class="page-title">STEP 1~5 \xB7 \uC560\uB110\uB9AC\uC2A4\uD2B8 \uBD84\uC11D \uC0AC\uC2AC</h1>
+  <p class="page-desc">WHAT \u2192 WHY \u2192 HOW \u2192 HOW MUCH \u2192 WHEN.
+    \uC9C8\uBB38\uC758 \uC21C\uC11C\uAC00 \uACE7 \uBD84\uC11D\uC758 \uC21C\uC11C\uC785\uB2C8\uB2E4. \uC21C\uC11C\uB97C \uC9C0\uD0A4\uBA74 \uB099\uAD00 \uD3B8\uD5A5\uC774 \uB07C\uC5B4\uB4E4 \uC790\uB9AC\uAC00 \uC904\uC5B4\uB4ED\uB2C8\uB2E4.</p>
+
+  ${vs()}
+
+  <div class="card">
+    <h3 class="card-title">\u{1F52C} \uBD84\uC11D \uB2E8\uACC4 \uC120\uD0DD</h3>
+    <p class="card-sub">${e.length?`\uB300\uC0C1: <strong>${e.map(r).join(", ")}</strong>`:"\u26A0\uFE0F \uBD84\uC11D \uB300\uC0C1 \uC885\uBAA9\uC744 \uBA3C\uC800 \uCD94\uAC00\uD558\uC138\uC694"}</p>
+    <div class="step-grid">
+      ${z.map(a=>`
+        <button class="step-card ${s.done[a.id]?"done":""}" data-route="steps/${a.id}">
+          ${s.done[a.id]?'<span class="badge">\uC644\uB8CC \u2713</span>':`<span class="badge">${r(a.n)}</span>`}
+          <span class="emo">${a.icon}</span>
+          <div class="t">${r(a.title)}</div>
+          <div class="d"><strong>${r(a.q)}</strong> \u2014 ${r(a.desc)}</div>
+        </button>`).join("")}
+    </div>
+  </div>
+
+  <div class="card-dark">
+    <h3 class="card-title">\u{1F48E} 5\uAC00\uC9C0 \uD574\uC790 \uB9E4\uD2B8\uB9AD\uC2A4 (\uBAA8\uB2DD\uC2A4\uD0C0 5\uBD84\uB958)</h3>
+    <p class="card-sub">STEP '\uC9C8\uC801 \uBD84\uC11D'\uC5D0\uC11C \uC774 \uB9E4\uD2B8\uB9AD\uC2A4\uB97C \uCC44\uC6B0\uAC8C \uB429\uB2C8\uB2E4</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>\uD574\uC790</th><th>\uD575\uC2EC \uC9C8\uBB38</th><th>\uAC15\uD560 \uB54C \uB098\uD0C0\uB098\uB294 \uC99D\uAC70</th></tr></thead>
+        <tbody>
+          ${_.map(a=>`<tr>
+            <td class="name">${a.icon} ${r(a.label)}</td>
+            <td>${r(a.q)}</td>
+            <td class="muted">${r({brand:"\uC5C5\uC885 \uD3C9\uADE0 \uB300\uBE44 \uB192\uC740 \uD310\uAC00\xB7\uB9C8\uC9C4, \uC7AC\uAD6C\uB9E4\uC728",switch:"\uACE0\uAC1D \uC774\uD0C8\uB960 5% \uBBF8\uB9CC, \uC7A5\uAE30 \uACC4\uC57D \uBE44\uC911",network:"\uC0AC\uC6A9\uC790 \uC99D\uAC00 \uC2DC \uB2E8\uC704 \uBE44\uC6A9 \uD558\uB77D, \uC591\uBA74\uC2DC\uC7A5",cost:"\uC5C5\uC885 \uCD5C\uC800 \uC6D0\uAC00, \uADDC\uBAA8\uC758 \uACBD\uC81C\xB7\uC218\uC9C1\uACC4\uC5F4\uD654",intan:"\uD575\uC2EC \uD2B9\uD5C8 \uB2E4\uC218, \uADDC\uC81C \uC778\uD5C8\uAC00 \uC7A5\uBCBD"}[a.id])}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <button class="btn btn-gold btn-lg btn-block" data-route="valuation">
+    \u{1F4B0} \uB2E4\uC74C \uB2E8\uACC4 \u2014 \uBC38\uB958\uC5D0\uC774\uC158 \u2192
+  </button>`}function fs(t){let s=z.find(i=>i.id===t);if(!s)return ct(null);let e=m(),a=y(),n={names:a,horizon:e.analysis.horizon,risk:e.analysis.risk,quotes:U(e),asOf:e.asOf||"\uC870\uD68C \uC2DC\uC810 \uBBF8\uC785\uB825"};return`
+  <button class="btn btn-ghost btn-sm" data-route="steps">\u2190 \uBD84\uC11D \uB2E8\uACC4\uB85C \uB3CC\uC544\uAC00\uAE30</button>
+  <div class="page-eyebrow" style="margin-top:16px">${r(s.n)} \xB7 ${r(s.q)}</div>
+  <h1 class="page-title">${s.icon} ${r(s.title)}</h1>
+  <p class="page-desc">${r(s.desc)}</p>
+
+  ${a.length?"":`<div class="alert alert-bad"><span>\u26D4</span>
+    <div>\uBD84\uC11D \uB300\uC0C1 \uC885\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. <button class="btn btn-ghost btn-sm" data-route="steps">\uC885\uBAA9 \uCD94\uAC00\uD558\uAE30</button></div></div>`}
+
+  <div class="card">
+    <h3 class="card-title">\u{1F4CC} \uB300\uC0C1 \xB7 \uC870\uAC74</h3>
+    <div class="tickers">${a.length?a.map(i=>`<span class="tk">${r(i)}</span>`).join(""):'<span class="muted">\uC5C6\uC74C</span>'}</div>
+    <div class="split">
+      <div class="field mb0">
+        <div class="field-label">\uD22C\uC790 \uAE30\uAC04</div>
+        ${S({name:"a-horizon",options:W,value:e.analysis.horizon})}
+      </div>
+      <div class="field mb0">
+        <div class="field-label">\uC704\uD5D8 \uC131\uD5A5</div>
+        ${S({name:"a-risk",options:["\uC800\uC704\uD5D8","\uC911\uC704\uD5D8","\uACE0\uC704\uD5D8"],value:e.analysis.risk})}
+      </div>
+    </div>
+  </div>
+
+  ${E(`${s.title} \u2014 RICE \uD504\uB86C\uD504\uD2B8`,it(t,n),"p-step-"+t)}
+
+  <div class="btn-row mt">
+    <button class="btn btn-navy" data-action="mark-done" data-step="${r(t)}">
+      ${e.done[t]?"\u2713 \uC644\uB8CC \uD45C\uC2DC\uB428 (\uD574\uC81C)":"\uC774 \uB2E8\uACC4 \uC644\uB8CC\uB85C \uD45C\uC2DC"}
+    </button>
+    <button class="btn btn-ghost" data-route="steps">\uB2E4\uB978 \uB2E8\uACC4 \uBCF4\uAE30</button>
+  </div>`}function U(t){return(t.picks||[]).filter(s=>u(s.price)!=null).map(s=>({name:s.name,price:u(s.price),change:u(s.change),per:s.per||null,pbr:s.pbr||null,cap:s.cap||null,band:s.band||null}))}function ss(){let t=m(),s=t.valuation,e=O.map(o=>({...o,value:u(s.rows?.[o.id]?.value),weight:u(s.rows?.[o.id]?.weight)??o.w})),a=St(e),n=xt(a.fair,s.marginPct),i=(t.picks||[])[0],l=u(i?.price),c=wt(a.fair,l);return`
+  <div class="page-eyebrow">\u2463 \uBC38\uB958\uC5D0\uC774\uC158</div>
+  <h1 class="page-title">\uC9C0\uAE08 \uC5BC\uB9C8\uC9DC\uB9AC\uC778\uAC00</h1>
+  <p class="page-desc">\uC88B\uC740 \uD68C\uC0AC\uC640 \uC88B\uC740 \uC8FC\uC2DD\uC740 \uB2E4\uB985\uB2C8\uB2E4.
+    <strong>\uD558\uB098\uC758 \uC9C0\uD45C\uB9CC \uBCF4\uB294 \uD568\uC815 \u2462</strong>\uC744 \uB9C9\uAE30 \uC704\uD574 \uC5EC\uB7EC \uBA40\uD2F0\uD50C\uC744 \uAC00\uC911 \uC885\uD569\uD569\uB2C8\uB2E4.</p>
+
+  <div class="card">
+    <div class="field">
+      <div class="field-label">\uD3C9\uAC00 \uBC29\uBC95 <span class="field-hint">MECE 3\uBD84\uB958</span></div>
+      ${S({name:"val-method",options:[{id:"relative",label:"\uC0C1\uB300\uAC00\uCE58"},{id:"absolute",label:"\uC808\uB300\uAC00\uCE58"},{id:"both",label:"\uC885\uD569"}],value:s.method})}
+    </div>
+    <div class="field mb0">
+      <div class="field-label">\uC548\uC804\uB9C8\uC9C4 <span class="field-hint">\uADF8\uB808\uC774\uC5C4 \uC6D0\uC804 \u2014 \uC801\uC815\uAC00\uC758 2/3 \uC774\uD558 \uB9E4\uC218</span></div>
+      ${S({name:"margin",options:mt.map(o=>({id:String(o),label:o+"%"})),value:String(s.marginPct)})}
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F9EE} \uBA40\uD2F0\uD50C\uBCC4 \uC801\uC815\uC8FC\uAC00 \uACC4\uC0B0\uAE30</h3>
+    <p class="card-sub">AI \uB2F5\uBCC0\uC5D0\uC11C \uB098\uC628 \uBA40\uD2F0\uD50C\uBCC4 \uC801\uC815\uC8FC\uAC00\uB97C \uC785\uB825\uD558\uBA74 \uAC00\uC911 \uC885\uD569\uAC00\uB97C \uACC4\uC0B0\uD569\uB2C8\uB2E4.
+      \uAC12\uC744 \uBE44\uC6CC\uB450\uBA74 \uADF8 \uC9C0\uD45C\uB294 \uAC00\uC911\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4.</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>\uC9C0\uD45C</th><th>\uC0B0\uC2DD</th><th>\uC801\uD569 \uB300\uC0C1</th><th>\uC801\uC815\uC8FC\uAC00(\uC6D0)</th><th>\uAC00\uC911\uCE58(%)</th></tr></thead>
+        <tbody>
+          ${O.map(o=>`
+          <tr>
+            <td class="name">${r(o.label)}</td>
+            <td class="muted">${r(o.formula)}</td>
+            <td class="muted">${r(o.use)}</td>
+            <td><input class="input" style="width:120px;padding:6px 9px" data-val="${o.id}.value"
+                 value="${r(s.rows?.[o.id]?.value??"")}" placeholder="\uC608: 420000"></td>
+            <td><input class="input" style="width:74px;padding:6px 9px" data-val="${o.id}.weight"
+                 value="${r(s.rows?.[o.id]?.weight??o.w)}"></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="stat-row">
+      ${w("\uAC00\uC911 \uC885\uD569 \uC801\uC815\uAC00",a.fair!=null?f(a.fair):"\u2014",`\uAC00\uC911\uCE58 \uD569 ${a.totalWeight}%`)}
+      ${w(`\uC548\uC804\uB9C8\uC9C4 ${s.marginPct}% \uC801\uC6A9 \uB9E4\uC218\uAC00`,n!=null?f(n):"\u2014","\uC774 \uAC00\uACA9 \uC774\uD558\uC5D0\uC11C\uB9CC \uB9E4\uC218")}
+      ${w("\uD604\uC7AC\uAC00",l!=null?f(l):"\u2014",i?.name||"\uC885\uBAA9 \uBBF8\uC120\uD0DD")}
+      ${w("\uC0C1\uC2B9\uC5EC\uB825",c!=null?j(c):"\u2014",c!=null?c>0?"\uC801\uC815\uAC00\uAE4C\uC9C0":"\uC774\uBBF8 \uC801\uC815\uAC00 \uCD08\uACFC":"\uD604\uC7AC\uAC00 \uC785\uB825 \uD544\uC694")}
+    </div>
+
+    ${a.fair!=null&&l!=null?`
+      <div class="alert ${l<=n?"alert-ok":l<=a.fair?"alert-warn":"alert-bad"}">
+        <span>${l<=n?"\u2705":l<=a.fair?"\u26A0\uFE0F":"\u26D4"}</span>
+        <div>${l<=n?`\uD604\uC7AC\uAC00\uAC00 \uC548\uC804\uB9C8\uC9C4 \uB9E4\uC218\uAC00(${f(n)}) <strong>\uC774\uD558</strong>\uC785\uB2C8\uB2E4. \uB9E4\uC218 \uAC80\uD1A0 \uAD6C\uAC04\uC785\uB2C8\uB2E4.`:l<=a.fair?`\uD604\uC7AC\uAC00\uAC00 \uC801\uC815\uAC00 \uC774\uD558\uC9C0\uB9CC \uC548\uC804\uB9C8\uC9C4 \uB9E4\uC218\uAC00(${f(n)})\uB294 \uB118\uC2B5\uB2C8\uB2E4. <strong>\uAE30\uB2E4\uB9AC\uAC70\uB098 \uBD84\uD560 \uC9C4\uC785</strong>\uD558\uC138\uC694.`:`\uD604\uC7AC\uAC00\uAC00 \uAC00\uC911 \uC801\uC815\uAC00(${f(a.fair)})\uB97C <strong>\uCD08\uACFC</strong>\uD569\uB2C8\uB2E4. \uC88B\uC740 \uD68C\uC0AC\uC5EC\uB3C4 \uC9C0\uAE08\uC740 \uBE44\uC309\uB2C8\uB2E4.`}
+        </div>
+      </div>`:""}
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F4D0} PEG \xB7 \uB4C0\uD401 \uBCF4\uC870 \uACC4\uC0B0\uAE30</h3>
+    <div class="split">
+      <div>
+        <div class="field-label">PEG = PER \xF7 EPS \uC131\uC7A5\uB960(%)</div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <input class="input" id="peg-per" placeholder="PER (\uC608: 20)" style="width:130px">
+          <input class="input" id="peg-g" placeholder="\uC131\uC7A5\uB960% (\uC608: 25)" style="width:150px">
+          <button class="btn btn-navy btn-sm" data-action="calc-peg">\uACC4\uC0B0</button>
+        </div>
+        <div id="peg-out" class="muted">PEG &lt; 1 \uC774\uBA74 \uD53C\uD130 \uB9B0\uCE58 \uAE30\uC900 \uB9E4\uC218 \uAD6C\uAC04</div>
+      </div>
+      <div>
+        <div class="field-label">\uB4C0\uD401 3\uBD84\uD574 \u2014 ROE = \uC21C\uC774\uC775\uB960 \xD7 \uC790\uC0B0\uD68C\uC804\uC728 \xD7 \uB808\uBC84\uB9AC\uC9C0</div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <input class="input" id="du-m" placeholder="\uC21C\uC774\uC775\uB960%" style="width:110px">
+          <input class="input" id="du-t" placeholder="\uC790\uC0B0\uD68C\uC804\uC728" style="width:110px">
+          <input class="input" id="du-l" placeholder="\uB808\uBC84\uB9AC\uC9C0" style="width:105px">
+          <button class="btn btn-navy btn-sm" data-action="calc-dupont">\uACC4\uC0B0</button>
+        </div>
+        <div id="du-out" class="muted">ROE\uAC00 \uAC19\uC544\uB3C4 \uADF8 \uCD9C\uCC98\uAC00 \uB9C8\uC9C4\uC778\uC9C0 \uBD80\uCC44\uC778\uC9C0\uC5D0 \uB530\uB77C \uC9C8\uC774 \uB2E4\uB985\uB2C8\uB2E4</div>
+      </div>
+    </div>
+  </div>
+
+  ${E("STEP 4 \xB7 \uBC38\uB958\uC5D0\uC774\uC158 RICE \uD504\uB86C\uD504\uD2B8",it("val",{names:y(),horizon:t.analysis.horizon,risk:t.analysis.risk,quotes:U(t),asOf:t.asOf||"\uC870\uD68C \uC2DC\uC810 \uBBF8\uC785\uB825"}),"p-val")}
+
+  <button class="btn btn-gold btn-lg btn-block mt" data-route="risk">
+    \u{1F6E1} \uB2E4\uC74C \uB2E8\uACC4 \u2014 \uB9AC\uC2A4\uD06C \uBD84\uC11D \u2192
+  </button>`}function es(){let t=m(),s=t.risk,e=(t.picks||[]).filter(i=>u(i.price)!=null),a=At(-50),n=e.map(i=>{let l=u(i.price),c=Ct(l,s),o=s.targets?.[i.name]||{},d=[{id:"bull",prob:s.probs.bull,target:u(o.bull)},{id:"base",prob:s.probs.base,target:u(o.base)},{id:"bear",prob:s.probs.bear,target:u(o.bear)}],g=Z(d,l),p=Tt(c.riskReward);return[`<span class="name">${r(i.name)}</span>`,`<span class="num">${f(l)}</span>`,`<span class="num neg">${f(c.stopPrice)}</span>`,`<span class="num pos">${f(c.tp1Price)}</span>`,`<span class="num pos">${f(c.tp2Price)}</span>`,`<span class="num">1 : ${c.riskReward?.toFixed(1)??"\u2014"}</span>`,`<span class="num ${g==null?"":g>=0?"pos":"neg"}">${g==null?"\uBAA9\uD45C\uAC00 \uC785\uB825":j(g)}</span>`,`<span class="badge-pill ${p.cls==="pos"?"bp-green":p.cls==="neg"?"bp-red":"bp-gold"}">${r(p.label)}</span>`]});return`
+  <div class="page-eyebrow">\u2464 \uB9AC\uC2A4\uD06C \uBD84\uC11D</div>
+  <h1 class="page-title">\uC2DC\uB098\uB9AC\uC624 \xB7 \uC190\uC775\uAD00\uB9AC</h1>
+  <p class="page-desc">\uC218\uC775\uBCF4\uB2E4 \uC190\uC2E4 \uD68C\uD53C\uAC00 \uBA3C\uC800\uC785\uB2C8\uB2E4.
+    <strong>-50%\uB294 -50%\uAC00 \uC544\uB2C8\uB77C, +${a.toFixed(0)}%\uAC00 \uB098\uC640\uC57C \uC6D0\uAE08 \uD68C\uBCF5</strong>\uC774\uB77C\uB294 \uB73B\uC785\uB2C8\uB2E4.</p>
+
+  <div class="alert alert-bad">
+    <span>\u{1F6AB}</span>
+    <div><strong>\uD568\uC815 \u2464 \uCC28\uB2E8:</strong> \uC190\uC808\uAC00 \uC5C6\uC774 \uB9E4\uC218 \u2192 Bull/Base/Bear + \uC190\uC808\uAC00\uB97C <strong>\uC0AC\uAE30 \uC804\uC5D0</strong> \uBA3C\uC800 \uC815\uD569\uB2C8\uB2E4.
+    \uC544\uB798 \uD45C\uAC00 \uBE44\uC5B4 \uC788\uC73C\uBA74 \uC544\uC9C1 \uB9E4\uC218\uD560 \uC900\uBE44\uAC00 \uC548 \uB41C \uAC83\uC785\uB2C8\uB2E4.</div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u2699\uFE0F \uC190\uC775\uAD00\uB9AC \uAE30\uC900</h3>
+    <p class="card-sub">\uAE30\uACC4\uC801\uC73C\uB85C \uC9C0\uD0AC \uC218 \uC788\uB294 \uC22B\uC790\uB85C \uBBF8\uB9AC \uACE0\uC815\uD569\uB2C8\uB2E4</p>
+    <div class="split-3">
+      <div class="field mb0">
+        <div class="field-label">\uC190\uC808 \uAE30\uC900 (-%)</div>
+        ${S({name:"stop",options:[10,15,20,25].map(i=>({id:String(i),label:"-"+i+"%"})),value:String(s.stop)})}
+      </div>
+      <div class="field mb0">
+        <div class="field-label">1\uCC28 \uC775\uC808 (+%)</div>
+        ${S({name:"tp1",options:[10,15,20,25].map(i=>({id:String(i),label:"+"+i+"%"})),value:String(s.tp1)})}
+      </div>
+      <div class="field mb0">
+        <div class="field-label">2\uCC28 \uC775\uC808 (+%)</div>
+        ${S({name:"tp2",options:[30,40,50,70].map(i=>({id:String(i),label:"+"+i+"%"})),value:String(s.tp2)})}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F3B2} \uC2DC\uB098\uB9AC\uC624\uBCC4 \uBAA9\uD45C\uAC00</h3>
+    <p class="card-sub">\uD655\uB960 \uD569\uACC4 ${s.probs.bull+s.probs.base+s.probs.bear}% \xB7
+      ${Y.map(i=>`<span class="${i.cls}">${r(i.label)} ${s.probs[i.id]}%</span>`).join(" / ")}</p>
+
+    <div class="split-3" style="margin-bottom:16px">
+      ${Y.map(i=>`
+        <div class="field mb0">
+          <div class="field-label"><span class="${i.cls}">${r(i.label)}</span> \uD655\uB960(%)</div>
+          <input class="input" data-prob="${i.id}" value="${s.probs[i.id]}" style="max-width:110px">
+          <div class="muted" style="margin-top:5px">${r(i.note)}</div>
+        </div>`).join("")}
+    </div>
+
+    ${e.length?`
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>\uC885\uBAA9</th><th>\uD604\uC7AC\uAC00</th>
+          <th class="sc-bull">Bull \uBAA9\uD45C\uAC00</th><th class="sc-base">Base \uBAA9\uD45C\uAC00</th><th class="sc-bear">Bear \uBAA9\uD45C\uAC00</th></tr></thead>
+        <tbody>
+          ${e.map(i=>`<tr>
+            <td class="name">${r(i.name)}</td>
+            <td class="num">${f(u(i.price))}</td>
+            ${["bull","base","bear"].map(l=>`
+              <td><input class="input" style="width:125px;padding:6px 9px"
+                data-target="${r(i.name)}.${l}"
+                value="${r(t.risk.targets?.[i.name]?.[l]??"")}" placeholder="\uBAA9\uD45C\uAC00"></td>`).join("")}
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`:`<div class="alert alert-info"><span>\u2139\uFE0F</span>
+      <div>\uD604\uC7AC\uAC00\uAC00 \uC785\uB825\uB41C \uC885\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \u2462 \uC2EC\uCE35 \uBD84\uC11D\uC5D0\uC11C \uC885\uBAA9\uACFC \uD604\uC7AC\uAC00\uB97C \uBA3C\uC800 \uC785\uB825\uD558\uC138\uC694.</div></div>`}
+  </div>
+
+  ${n.length?`
+  <div class="card">
+    <h3 class="card-title">\u{1F9ED} \uACB0\uC815 \uAC00\uC774\uB4DC \u2014 \uC885\uBAA9\uBCC4 \uB9E4\uC218 \xB7 \uC190\uC808 \xB7 \uC775\uC808</h3>
+    <p class="card-sub">"\uD55C \uB2EC \uB0B4 \uBC18\uD1A0\uB9C9 \uB098\uB3C4 \uBC84\uD2F8 \uC218 \uC788\uB294\uAC00"\uB97C \uC0AC\uAE30 \uC804\uC5D0 \uACB0\uC815\uD558\uC138\uC694</p>
+    ${N(["\uC885\uBAA9","\uD604\uC7AC\uAC00",`\uC190\uC808\uAC00(-${s.stop}%)`,`1\uCC28 \uC775\uC808(+${s.tp1}%)`,`2\uCC28 \uC775\uC808(+${s.tp2}%)`,"Risk/Reward","\uAE30\uB300\uC218\uC775\uB960","\uD310\uC815"],n)}
+    <div class="alert alert-info mt">
+      <span>\u{1F4CF}</span>
+      <div><strong>Risk/Reward 1:2 \uC774\uC0C1</strong>\uC774\uBA74 \uD22C\uC790 \uACE0\uB824 \u2014 1\uD68C \uC190\uC2E4\uC744 2\uD68C \uC218\uC775\uC73C\uB85C \uB36E\uC744 \uC218 \uC788\uB2E4\uB294 \uB73B\uC785\uB2C8\uB2E4.
+      1:1 \uBBF8\uB9CC\uC774\uBA74 \uAE30\uB300\uC218\uC775\uBCF4\uB2E4 \uAC10\uC218 \uC704\uD5D8\uC774 \uD07D\uB2C8\uB2E4.</div>
+    </div>
+  </div>`:""}
+
+  ${E("\uB9AC\uC2A4\uD06C \uBD84\uC11D RICE \uD504\uB86C\uD504\uD2B8 (\uC228\uC740 \uB9AC\uC2A4\uD06C 3\uAC1C + \uC2DC\uB098\uB9AC\uC624)",Ft({names:y(),quotes:U(t),asOf:t.asOf||"\uC870\uD68C \uC2DC\uC810 \uBBF8\uC785\uB825",probs:s.probs,stop:s.stop,tp1:s.tp1,tp2:s.tp2}),"p-risk")}
+
+  <button class="btn btn-gold btn-lg btn-block mt" data-route="portfolio">
+    \u{1F4E6} \uB2E4\uC74C \uB2E8\uACC4 \u2014 \uD3EC\uD2B8\uD3F4\uB9AC\uC624 \uBD84\uC11D \u2192
+  </button>`}function as(){let t=m(),s=u(t.portfolio.capital)||0,e=t.picks||[],a=e.map(o=>{let d=t.scores?.[o.name]||{},g=Rt(d,R),p=u(o.price),b=t.risk.targets?.[o.name]||{},P=Z([{prob:t.risk.probs.bull,target:u(b.bull)},{prob:t.risk.probs.base,target:u(b.base)},{prob:t.risk.probs.bear,target:u(b.bear)}],p);return{name:o.name,price:p,scorePct:g.pct,scoreSum:g.sum,expected:P}}),n=a.filter(o=>o.scoreSum>0),i=n.length?Ot(n,gt,s):null,l=i?It(i.rows,i.cashWeight):null,c={core:"#1e3550",sub:"#2a4463",watch:"#4a6382"};return`
+  <div class="page-eyebrow">\u2465 \uD3EC\uD2B8\uD3F4\uB9AC\uC624</div>
+  <h1 class="page-title">\uCC28\uB4F1\uBC30\uBD84 \u2014 Core \xB7 Satellite</h1>
+  <p class="page-desc">\uADE0\uB4F1\uBC30\uBD84\uC740 \uC0DD\uAC01\uC744 \uBA48\uCD98 \uBC30\uBD84\uC785\uB2C8\uB2E4.
+    <strong>\uD22C\uC790\uC810\uC218\uAC00 \uB192\uC740 \uC885\uBAA9\uC5D0 \uB354 \uC2E3\uB294</strong> \uAC83\uC774 \uD655\uC2E0\uB3C4\uB97C \uC790\uBCF8\uC5D0 \uBC18\uC601\uD558\uB294 \uBC29\uBC95\uC785\uB2C8\uB2E4.</p>
+
+  <div class="card">
+    <div class="field mb0">
+      <div class="field-label">\uCD1D \uD22C\uC790\uAE08 (\uC6D0)</div>
+      <input class="input" data-bind="portfolio.capital" value="${r(t.portfolio.capital)}"
+        style="max-width:240px" placeholder="10000000">
+      <div class="muted" style="margin-top:6px">${f(s)}</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F3C5} \uC885\uBAA9\uBCC4 \uD22C\uC790\uC810\uC218 (\uCD1D 100\uC810)</h3>
+    <p class="card-sub">${R.map(o=>`${o.label} ${o.max}\uC810`).join(" + ")} \u2014
+      AI \uBD84\uC11D \uACB0\uACFC\uB97C \uADFC\uAC70\uB85C \uC9C1\uC811 \uCC44\uC810\uD558\uC138\uC694</p>
+    ${e.length?`
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>\uC885\uBAA9</th>
+          ${R.map(o=>`<th>${r(o.label)} /${o.max}</th>`).join("")}
+          <th>\uCD1D\uC810</th><th>\uB4F1\uAE09</th></tr></thead>
+        <tbody>
+          ${a.map(o=>{let d=Pt(o.scorePct);return`<tr>
+              <td class="name">${r(o.name)}</td>
+              ${R.map(g=>`
+                <td><input class="input" style="width:66px;padding:6px 9px"
+                  data-score="${r(o.name)}.${g.id}" max="${g.max}"
+                  value="${r(t.scores?.[o.name]?.[g.id]??"")}" placeholder="0"></td>`).join("")}
+              <td class="num"><strong>${o.scoreSum} / 100</strong></td>
+              <td><span class="badge-pill ${d.cls}">${r(d.label)}</span></td>
+            </tr>`}).join("")}
+        </tbody>
+      </table>
+    </div>`:'<div class="alert alert-info"><span>\u2139\uFE0F</span><div>\uBD84\uC11D \uB300\uC0C1 \uC885\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div></div>'}
+  </div>
+
+  ${i?`
+  <div class="card">
+    <h3 class="card-title">\u{1F4E6} \uCC28\uB4F1\uBC30\uBD84 \uACB0\uACFC (\uCD1D ${f(s)})</h3>
+    <p class="card-sub">\uD575\uC2EC Core 35~40% \xB7 \uC8FC\uB825 Sub 20~25% \xB7 \uAD00\uB9DD Watch 10~15% \u2014 \uC794\uC5EC\uBD84\uC740 \uD604\uAE08</p>
+
+    <div class="wbar">
+      ${i.rows.map(o=>`<span style="width:${o.weight}%;background:${c[o.band.id]}"
+        title="${r(o.name)} ${o.weight.toFixed(1)}%">${o.weight>=8?r(o.name):""}</span>`).join("")}
+      ${i.cashWeight>.5?`<span style="width:${i.cashWeight}%;background:#b9a980;color:#2b2311">
+        ${i.cashWeight>=8?"\uD604\uAE08":""}</span>`:""}
+    </div>
+
+    ${N(["\uC885\uBAA9","\uBE44\uC911","\uAE08\uC561","\uB9E4\uC218 \uC8FC\uC2DD\uC218","\uC5ED\uD560","\uBE44\uC911 \uADFC\uAC70"],i.rows.map(o=>[`<span class="name">${r(o.name)}</span>`,`<span class="num"><strong>${o.weight.toFixed(1)}%</strong></span>`,`<span class="num">${f(o.amount)}</span>`,`<span class="num">${o.shares!=null?o.shares.toLocaleString("ko-KR")+"\uC8FC":"\uD604\uC7AC\uAC00 \uD544\uC694"}</span>`,`${o.band.icon} ${r(o.band.label)}`,`<span class="muted">\uD22C\uC790\uC810\uC218 ${o.scoreSum}/100 \xB7 ${r(o.band.label)} \uBC34\uB4DC(${o.band.min}~${o.band.max}%)</span>`]).concat(i.cashWeight>.5?[['<span class="name">\uD604\uAE08</span>',`<span class="num"><strong>${i.cashWeight.toFixed(1)}%</strong></span>`,`<span class="num">${f(i.cash)}</span>`,"\u2014","\u{1F4B5} \uD604\uAE08 \uBC84\uD37C",'<span class="muted">\uC2DC\uC7A5 \uAE09\uB77D \uC2DC \uCD94\uAC00 \uB9E4\uC218 \uC5EC\uB825</span>']]:[]))}
+
+    ${l?`
+    <h3 class="card-title mt">\u{1F4CA} \uD3EC\uD2B8\uD3F4\uB9AC\uC624 \uC885\uD569 \uC131\uACFC</h3>
+    ${N(["\uC9C0\uD45C","\uAC12","\uC124\uBA85"],[["\uAE30\uB300\uC218\uC775\uB960",`<span class="num ${l.expected==null?"":l.expected>=0?"pos":"neg"}">${l.expected==null?"\uC2DC\uB098\uB9AC\uC624 \uBAA9\uD45C\uAC00 \uC785\uB825 \uD544\uC694":j(l.expected)}</span>`,"\uD655\uB960\uAC00\uC911 \uD3C9\uADE0 (\uD604\uAE08 \uBE44\uC911 \uBC18\uC601)"],["VaR 99% (\uC5F0)",`<span class="num neg">${l.var99==null?"\uBCC0\uB3D9\uC131 \uC785\uB825 \uD544\uC694":j(l.var99)}</span>`,"99% \uC2E0\uB8B0\uAD6C\uAC04 \uCD5C\uB300 \uC608\uC0C1 \uC190\uC2E4"],["\uBCF4\uC720 \uC885\uBAA9 \uC218",`<span class="num">${l.names}\uAC1C</span>`,"3~5\uAC1C\uAC00 \uAD00\uB9AC \uAC00\uB2A5\uD55C \uBC94\uC704"],["\uD604\uAE08 \uBE44\uC911",`<span class="num">${i.cashWeight.toFixed(1)}%</span>`,"\uC2DC\uC7A5 \uC0C1\uD669 \uB300\uC751 \uC5EC\uB825"]])}`:""}
+
+    <div class="alert alert-warn mt">
+      <span>\u{1F501}</span>
+      <div><strong>\uB9AC\uBC38\uB7F0\uC2F1 \uD2B8\uB9AC\uAC70:</strong> \u2460 \uD2B9\uC815 \uC885\uBAA9 \uBE44\uC911\uC774 \uBC34\uB4DC \uC0C1\uD55C\uC744 5%p \uCD08\uACFC \u2461
+      \uD22C\uC790\uC810\uC218 \uC7AC\uCC44\uC810 \uC2DC \uB4F1\uAE09\uC774 \uD55C \uB2E8\uACC4 \uD558\uB77D \u2462 \uC190\uC808\uAC00 \uB3C4\uB2EC \u2014
+      \uC14B \uC911 \uD558\uB098\uB77C\uB3C4 \uCF1C\uC9C0\uBA74 \uC774 \uD654\uBA74\uC73C\uB85C \uB3CC\uC544\uC640 \uB2E4\uC2DC \uBC30\uBD84\uD558\uC138\uC694.</div>
+    </div>
+  </div>`:`<div class="alert alert-info"><span>\u2139\uFE0F</span>
+    <div>\uD22C\uC790\uC810\uC218\uB97C \uD558\uB098 \uC774\uC0C1 \uC785\uB825\uD558\uBA74 \uCC28\uB4F1\uBC30\uBD84\uC774 \uACC4\uC0B0\uB429\uB2C8\uB2E4.</div></div>`}
+
+  ${E("\uD3EC\uD2B8\uD3F4\uB9AC\uC624 \uCC28\uB4F1\uBC30\uBD84 RICE \uD504\uB86C\uD504\uD2B8",Ut({names:y(),capital:s,quotes:U(t),asOf:t.asOf||"\uC870\uD68C \uC2DC\uC810 \uBBF8\uC785\uB825",stop:t.risk.stop,tp1:t.risk.tp1,tp2:t.risk.tp2}),"p-port")}
+
+  <button class="btn btn-navy btn-lg btn-block mt" data-route="chain">
+    \u{1F517} \uB9C8\uC9C0\uB9C9 \uB2E8\uACC4 \u2014 Chain of Questions \u2192
+  </button>`}function ns(){let s=m().chain;return`
+  <div class="page-eyebrow">\uC9C8\uBB38 \uC0AC\uC2AC</div>
+  <h1 class="page-title">Chain of Questions \xB7 3\uB2E8\uACC4</h1>
+  <p class="page-desc">
+    \uD55C \uBC88 \uBB3B\uACE0 \uB05D\uB0B4\uBA74 AI\uB294 \uC88B\uC740 \uC774\uC57C\uAE30\uB9CC \uD569\uB2C8\uB2E4.
+    <strong>\uD310\uC815 \u2192 \uBC18\uC99D \u2192 \uD0AC \uC2A4\uC704\uCE58</strong> \uC21C\uC73C\uB85C \uC0AC\uC2AC\uC744 \uAC78\uC5B4\uC57C \uB2F5\uC774 \uAC80\uC99D \uAC00\uB2A5\uD574\uC9D1\uB2C8\uB2E4.
+  </p>
+
+  <div class="card">
+    <div class="field mb0">
+      <div class="field-label">\uBD84\uC11D \uB300\uC0C1 <span class="field-hint">\uC885\uBAA9\uBA85 \uB610\uB294 \uC2DC\uC7A5</span></div>
+      <input class="input" data-bind="chain.subject" value="${r(s.subject)}"
+        placeholder="\uC608: SK\uD558\uC774\uB2C9\uC2A4 / \uCF54\uC2A4\uD53C / \uBC18\uB3C4\uCCB4 \uC139\uD130" style="max-width:420px">
+    </div>
+  </div>
+
+  ${$t.map(e=>`
+    <div class="card">
+      <h3 class="card-title">
+        <span class="badge-pill bp-navy">${e.n}\uB2E8\uACC4</span> ${r(e.title)}
+      </h3>
+      <p class="card-sub">${r(e.goal)}</p>
+      ${e.n===2?`
+        <div class="field">
+          <div class="field-label">1\uB2E8\uACC4\uC5D0\uC11C AI\uAC00 \uB0B4\uB9B0 \uD310\uC815 <span class="field-hint">\uBD99\uC5EC\uB123\uC73C\uBA74 2\uB2E8\uACC4 \uD504\uB86C\uD504\uD2B8\uC5D0 \uD3EC\uD568\uB429\uB2C8\uB2E4</span></div>
+          <textarea class="textarea" data-bind="chain.prevVerdict" style="min-height:80px"
+            placeholder="\uC608: \uAD6D\uBA74 = \uD655\uC7A5 \uD6C4\uBC18, \uD655\uC2E0\uB3C4 72/100">${r(s.prevVerdict)}</textarea>
+        </div>`:""}
+      ${E(`${e.n}\uB2E8\uACC4 \uD504\uB86C\uD504\uD2B8`,Gt(e.n,s),"p-chain-"+e.n)}
+    </div>`).join("")}
+
+  <div class="card-dark">
+    <h3 class="card-title">\u{1F534} \uD0AC \uC2A4\uC704\uCE58 \uD45C \u2014 3\uB2E8\uACC4\uC5D0\uC11C \uBC1B\uAC8C \uB420 \uACB0\uACFC\uBB3C</h3>
+    <p class="card-sub">\uAC10\uC73C\uB85C \uBC84\uD2F0\uC9C0 \uC54A\uAE30 \uC704\uD55C, \uB098\uB9CC\uC758 \uAE30\uACC4\uC801 \uD589\uB3D9 \uC9C0\uCE68\uC11C</p>
+    ${N(["\uAC10\uC2DC \uC9C0\uD45C","\uC5B4\uB514\uC11C(\uC0AC\uC774\uD2B8)","\uD655\uC778 \uC8FC\uAE30","\uC774 \uC2E0\uD638\uAC00 \uCF1C\uC9C0\uBA74(\uD589\uB3D9 \uC9C0\uCE68)"],[['<span class="muted">\uC608: \uBC18\uB3C4\uCCB4 \uC7AC\uACE0\uC21C\uD658\uC9C0\uD45C</span>','<span class="muted">\uD1B5\uACC4\uCCAD KOSIS</span>','<span class="muted">\uC6D4 1\uD68C</span>','<span class="muted">3\uAC1C\uC6D4 \uC5F0\uC18D \uC0C1\uC2B9 \uC2DC \uBE44\uC911 \uC808\uBC18 \uCD95\uC18C</span>'],['<span class="muted">\uC608: \uC678\uAD6D\uC778 \uC21C\uB9E4\uC218 \uB204\uC801</span>','<span class="muted">KRX \uC815\uBCF4\uB370\uC774\uD130\uC2DC\uC2A4\uD15C</span>','<span class="muted">\uC8FC 1\uD68C</span>','<span class="muted">4\uC8FC \uC5F0\uC18D \uC21C\uB9E4\uB3C4 \uC2DC \uC2E0\uADDC \uB9E4\uC218 \uC911\uB2E8</span>'],['<span class="muted">\uC608: \uAE30\uC900\uAE08\uB9AC \xB7 \uAD6D\uACE0\uCC44 10\uB144</span>','<span class="muted">\uD55C\uAD6D\uC740\uD589 ECOS</span>','<span class="muted">\uC6D4 1\uD68C</span>','<span class="muted">50bp \uC774\uC0C1 \uAE09\uB4F1 \uC2DC \uC131\uC7A5\uC8FC \uBE44\uC911 \uCD95\uC18C</span>']])}
+    <div class="alert alert-warn mt mb0">
+      <span>\u{1F511}</span>
+      <div>\uC704\uB294 <strong>\uD615\uC2DD \uC608\uC2DC</strong>\uC785\uB2C8\uB2E4. \uC2E4\uC81C \uC9C0\uD45C\xB7\uC784\uACC4\uAC12\uC740 3\uB2E8\uACC4 \uD504\uB86C\uD504\uD2B8\uB97C AI\uC5D0 \uB123\uC5B4
+      \uB2F9\uC2E0 \uC885\uBAA9\uC5D0 \uB9DE\uAC8C \uBC1B\uC73C\uC138\uC694. 3\uAC1C \uC911 <strong>2\uAC1C\uAC00 \uCF1C\uC9C0\uBA74 \uC804\uB7C9 \uCCAD\uC0B0</strong> \uAC19\uC740 \uADDC\uCE59\uAE4C\uC9C0 \uBBF8\uB9AC \uC815\uD574\uB450\uB294 \uAC83\uC774 \uD575\uC2EC\uC785\uB2C8\uB2E4.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">\u{1F6E1} \uD560\uB8E8\uC2DC\uB124\uC774\uC158 \uBC29\uC9C0 \uC2E0\uB8B0\uC131 \uB8F0</h3>
+    <p class="card-sub">\uC9C0\uB2C8\uAC00 \uC0DD\uC131\uD558\uB294 <strong>\uBAA8\uB4E0</strong> \uD504\uB86C\uD504\uD2B8 \uB9D0\uBBF8\uC5D0 \uC790\uB3D9\uC73C\uB85C \uBD99\uC2B5\uB2C8\uB2E4 \u2014 \uD568\uC815 \u2463 \uCC28\uB2E8</p>
+    <ol style="font-size:13px;color:var(--ink-2);line-height:1.9;padding-left:20px;margin:0">
+      ${M.map(e=>`<li>${r(e)}</li>`).join("")}
+    </ol>
+  </div>`}var $s=[{group:"\uD30C\uC774\uD504\uB77C\uC778",items:[{r:"dashboard",ico:"\u{1F3E0}",label:"\uB300\uC2DC\uBCF4\uB4DC"},{r:"discovery",ico:"\u{1F50E}",label:"\uC885\uBAA9 \uBC1C\uAD74",step:"\u2460"},{r:"cross",ico:"\u2696\uFE0F",label:"\uAD50\uCC28 \uAC80\uC99D",step:"\u2461"},{r:"steps",ico:"\u{1F52C}",label:"\uC2EC\uCE35 \uBD84\uC11D",step:"\u2462"},{r:"valuation",ico:"\u{1F4B0}",label:"\uBC38\uB958\uC5D0\uC774\uC158",step:"\u2463"},{r:"risk",ico:"\u{1F6E1}",label:"\uB9AC\uC2A4\uD06C \uBD84\uC11D",step:"\u2464"},{r:"portfolio",ico:"\u{1F4E6}",label:"\uD3EC\uD2B8\uD3F4\uB9AC\uC624",step:"\u2465"}]},{group:"\uAC80\uC99D \uB3C4\uAD6C",items:[{r:"chain",ico:"\u{1F517}",label:"Chain of Questions"}]}],Ss={discovery:"discovery",cross:"cross",valuation:"val",risk:"risk",portfolio:"portfolio"};function xs(t){let s=m(),e=t.split("/")[0];return $s.map(a=>`
+    <div class="nav-group-label">${r(a.group)}</div>
+    ${a.items.map(n=>{let i=s.done[Ss[n.r]||n.r];return`<button class="nav-item ${e===n.r?"active":""} ${i?"done":""}" data-route="${n.r}">
+        <span class="ico">${n.ico}</span><span>${r(n.label)}</span>
+        ${n.step?`<span class="nav-step">${n.step}</span>`:""}
+      </button>`}).join("")}`).join("")}function ws(t){let[s,e]=t.split("/");switch(s){case"discovery":return Yt();case"cross":return Qt();case"steps":return ct(e||null);case"valuation":return ss();case"risk":return es();case"portfolio":return as();case"chain":return ns();default:return zt()}}var G="dashboard";function B(t,{push:s=!0}={}){G=t,s&&(location.hash="#"+t),h("#nav").innerHTML=xs(t);let e=h("#main");e.innerHTML=ws(t),e.scrollIntoView({block:"start"}),window.scrollTo(0,0),t==="cross"&&ls(),h("#proxy-badge")&&rs()}function L(){B(G,{push:!1})}var ks=["pick","val","target","score","prob","bind"];function ys(){let t=document.activeElement;if(!t||!t.dataset)return null;for(let s of ks)if(t.dataset[s]!=null)return{attr:`data-${s}`,value:t.dataset[s],caret:t.selectionStart};return null}function Es(t){if(!t)return;let s=document.querySelector(`[${t.attr}="${CSS.escape(t.value)}"]`);if(s&&(s.focus(),t.caret!=null))try{s.setSelectionRange(t.caret,t.caret)}catch{}}var is;function Cs(){clearTimeout(is),is=setTimeout(()=>{let t=ys();L(),Es(t)},0)}function os(t,s){let e=t.split("."),a={},n=a;e.forEach((i,l)=>{l===e.length-1?n[i]=s:(n[i]={},n=n[i])}),$(a,{silent:!0})}function ls(){for(let t of D){let s=h(`[data-count="${t.id}"]`);if(!s)continue;let e=m().cross[t.id]||"",a=H(e).length;s.textContent=e.trim().length>40?`\uC885\uBAA9 \uD6C4\uBCF4 ${a}\uAC1C \uCD94\uCD9C\uB428`:"\uB2F5\uBCC0\uC744 \uBD99\uC5EC\uB123\uC73C\uC138\uC694"}}function Ts(){let t=document.body;t.addEventListener("click",s=>{let e=s.target.closest("[data-route]");e&&(s.preventDefault(),B(e.dataset.route))}),t.addEventListener("input",s=>{let e=s.target;if(e.dataset.bind){let a=e.value;e.dataset.bind==="discovery.exclusions"&&(a=a.split(`
+`).map(n=>n.trim()).filter(Boolean)),os(e.dataset.bind,a),e.dataset.bind.startsWith("cross.")&&ls();return}if(e.dataset.pick){let[a,n]=e.dataset.pick.split("."),i=[...m().picks];i[+a]={...i[+a],[n]:e.value},k("picks",i);return}if(e.dataset.val){let[a,n]=e.dataset.val.split("."),i={...m().valuation.rows||{}};i[a]={...i[a]||{},[n]:e.value},k("valuation.rows",i);return}if(e.dataset.target){let a=e.dataset.target.lastIndexOf("."),n=e.dataset.target.slice(0,a),i=e.dataset.target.slice(a+1),l={...m().risk.targets||{}};l[n]={...l[n]||{},[i]:e.value},k("risk.targets",l);return}if(e.dataset.prob){os("risk.probs."+e.dataset.prob,u(e.value)??0);return}if(e.dataset.score){let a=e.dataset.score.lastIndexOf("."),n=e.dataset.score.slice(0,a),i=e.dataset.score.slice(a+1),l={...m().scores||{}};l[n]={...l[n]||{},[i]:e.value},k("scores",l)}}),t.addEventListener("change",s=>{let e=s.target;(e.dataset.val||e.dataset.target||e.dataset.prob||e.dataset.score||e.dataset.pick?.endsWith(".price")||e.dataset.bind==="portfolio.capital")&&Cs()}),_t(t,(s,e)=>{({sectors:()=>k("discovery.sectors",e),style:()=>$({discovery:{style:e}}),horizon:()=>$({discovery:{horizon:e}}),target:()=>$({discovery:{target:+e}}),count:()=>$({discovery:{count:+e}}),risk:()=>$({discovery:{risk:e}}),market:()=>$({discovery:{market:e}}),"a-horizon":()=>$({analysis:{horizon:e}}),"a-risk":()=>$({analysis:{risk:e}}),"val-method":()=>$({valuation:{method:e}}),margin:()=>$({valuation:{marginPct:+e}}),stop:()=>$({risk:{stop:+e}}),tp1:()=>$({risk:{tp1:+e}}),tp2:()=>$({risk:{tp2:+e}})}[s]||(()=>{}))(),s!=="sectors"&&L()}),t.addEventListener("click",s=>{let e=s.target.closest("[data-action]");if(e)return As(e.dataset.action,e);let a=s.target.closest("[data-add-pick]");if(a)return dt(a.dataset.addPick);let n=s.target.closest("[data-pick-found]");if(n){dt(n.dataset.pickName,n.dataset.pickFound);let l=h("#quote-search");l&&(l.innerHTML="");return}let i=s.target.closest("[data-del-pick]");if(i){let l=[...m().picks],c=l.splice(+i.dataset.delPick,1)[0];k("picks",l),x(`${c?.name??"\uC885\uBAA9"} \uC0AD\uC81C\uB428`),L()}}),Mt(t)}function dt(t,s=""){let e=String(t||"").trim();if(!e)return x("\uC885\uBAA9\uBA85\uC744 \uC785\uB825\uD558\uC138\uC694");let a=[...m().picks];if(a.some(n=>n.name.replace(/\s/g,"")===e.replace(/\s/g,"")))return x(`${e} \uC740(\uB294) \uC774\uBBF8 \uB2F4\uACA8 \uC788\uC2B5\uB2C8\uB2E4`);if(a.length>=10)return x("\uCD5C\uB300 10\uC885\uBAA9\uAE4C\uC9C0 \uB2F4\uC744 \uC218 \uC788\uC2B5\uB2C8\uB2E4");if(a.push({name:e,code:String(s||"").replace(/^A/,""),price:"",change:"",per:"",pbr:"",cap:"",band:""}),k("picks",a),x(`${e} \uCD94\uAC00\uB428 (\uCD1D ${a.length}\uC885\uBAA9)`),G==="cross"){let n=h("#cross-out");if(n){n.innerHTML=ot();return}}L()}function As(t,s){switch(t){case"gen-discovery":h("#discovery-out").innerHTML=Kt(),q("discovery"),h("#discovery-out").scrollIntoView({behavior:"smooth",block:"start"});break;case"run-cross":{h("#cross-out").innerHTML=ot(),Object.values(m().cross).filter(a=>a?.trim().length>40).length>=2&&q("cross"),h("#cross-out").scrollIntoView({behavior:"smooth",block:"start"});break}case"add-pick":dt(h("#pick-name")?.value);break;case"mark-done":{let e=s.dataset.step;q(e,!m().done[e]),L();break}case"calc-peg":{let e=u(h("#peg-per")?.value),a=u(h("#peg-g")?.value),n=kt(e,a),i=yt(n);h("#peg-out").innerHTML=n==null?'<span class="muted">PER\uACFC \uC131\uC7A5\uB960\uC744 \uBAA8\uB450 \uC785\uB825\uD558\uC138\uC694</span>':`PEG = <strong class="mono">${n.toFixed(2)}</strong> \u2014 <span class="${i.cls}">${r(i.label)}</span>`;break}case"calc-dupont":{let e=u(h("#du-m")?.value),a=u(h("#du-t")?.value),n=u(h("#du-l")?.value),i=Et({netMargin:e,assetTurnover:a,leverage:n});h("#du-out").innerHTML=i==null?'<span class="muted">\uC138 \uAC12\uC744 \uBAA8\uB450 \uC785\uB825\uD558\uC138\uC694</span>':`ROE = <strong class="mono">${i.toFixed(1)}%</strong>
+           <span class="muted">(${e}% \xD7 ${a} \xD7 ${n})</span> \u2014
+           ${n>=3?'<span class="neg">\uB808\uBC84\uB9AC\uC9C0 \uC758\uC874\uB3C4\uAC00 \uB192\uC2B5\uB2C8\uB2E4</span>':'<span class="pos">\uB808\uBC84\uB9AC\uC9C0 \uBD80\uB2F4\uC774 \uD06C\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4</span>'}`;break}case"check-proxy":rs({verbose:!0});break;case"search-quote":Rs(h("#pick-name")?.value);break;case"refresh-quotes":Ps(s);break;case"reset":confirm("\uC800\uC7A5\uB41C \uBAA8\uB4E0 \uC785\uB825(\uC885\uBAA9\xB7\uC2DC\uC138\xB7\uC810\uC218\xB7AI \uB2F5\uBCC0)\uC744 \uC0AD\uC81C\uD558\uACE0 \uCD08\uAE30\uD654\uD560\uAE4C\uC694?")&&(Nt(),x("\uCD08\uAE30\uD654\uB418\uC5C8\uC2B5\uB2C8\uB2E4"),B("dashboard"));break}}function I(t,s="muted"){let e=h("#quote-msg");e&&(e.className=s,e.textContent=t)}async function rs({verbose:t=!1}={}){let s=h("#proxy-badge");if(!s)return;s.className="quote-badge",s.textContent="\u26AA \uD655\uC778 \uC911\u2026";let e=await Zt();e.ok?(s.className="quote-badge ok",s.textContent="\u{1F7E2} \uD504\uB85D\uC2DC \uC5F0\uACB0\uB428",s.title=`${e.label} \xB7 \uC0C1\uB300 \uC11C\uBC84 \uB3C4\uB2EC \uC5EC\uBD80\uB294 \uC870\uD68C \uC2DC \uD655\uC778\uB429\uB2C8\uB2E4`,t&&I(`\uD504\uB85D\uC2DC \uC5F0\uACB0\uB428 (${e.label}). \uC2E4\uC81C \uB3C4\uB2EC \uC5EC\uBD80\uB294 \uC2DC\uC138 \uC870\uD68C \uC2DC \uD655\uC778\uB429\uB2C8\uB2E4.`)):e.offline?(s.className="quote-badge off",s.textContent="\u{1F7E1} \uD504\uB85D\uC2DC \uBBF8\uC2E4\uD589",t&&I("node server/quote-proxy.mjs \uB97C \uC2E4\uD589\uD55C \uB4A4 \uB2E4\uC2DC \uD655\uC778\uD558\uC138\uC694. (\uC218\uB3D9 \uC785\uB825\uC740 \uADF8\uB300\uB85C \uAC00\uB2A5\uD569\uB2C8\uB2E4)")):(s.className="quote-badge err",s.textContent="\u{1F534} \uC5F0\uACB0 \uC2E4\uD328",t&&I(e.hint||e.error||"\uD504\uB85D\uC2DC \uC751\uB2F5 \uC624\uB958"))}async function Rs(t){let s=String(t||"").trim(),e=h("#quote-search");if(e){if(!s)return e.innerHTML="",x("\uAC80\uC0C9\uC5B4\uB97C \uC785\uB825\uD558\uC138\uC694");e.innerHTML='<p class="muted">\uAC80\uC0C9 \uC911\u2026</p>';try{let a=await rt(s);if(!a.length){e.innerHTML='<p class="muted">\uAC80\uC0C9 \uACB0\uACFC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. \uC885\uBAA9\uBA85\uC744 \uC9C1\uC811 \uC785\uB825\uD574 \uCD94\uAC00\uD558\uC138\uC694.</p>';return}e.innerHTML=`<div class="qs-list">${a.map(n=>`
+      <button class="qs-item" data-pick-found="${r(n.code)}" data-pick-name="${r(n.name)}">
+        ${r(n.name)}<span class="code">${r(n.code)}</span>
+      </button>`).join("")}</div>`}catch(a){e.innerHTML=`<div class="alert alert-warn"><span>\u26A0\uFE0F</span>
+      <div><strong>${r(a.message)}</strong>${a.hint?"<br>"+r(a.hint):""}
+      <br>\uC885\uBAA9\uBA85\uC744 \uC9C1\uC811 \uC785\uB825\uD574 \uCD94\uAC00\uD558\uACE0 \uC2DC\uC138\uB294 \uC218\uB3D9\uC73C\uB85C \uB123\uC5B4\uB3C4 \uB429\uB2C8\uB2E4.</div></div>`}}}async function Ps(t){let s=m().picks||[];if(!s.length)return x("\uBA3C\uC800 \uC885\uBAA9\uC744 \uCD94\uAC00\uD558\uC138\uC694");let e=s.map((n,i)=>({i,code:(n.code||"").trim(),name:n.name})),a=e.filter(n=>!n.code);t&&(t.disabled=!0,t.textContent="\uC870\uD68C \uC911\u2026"),I("\uC2DC\uC138 \uC870\uD68C \uC911\u2026");try{let n=null;for(let p of a)try{let b=await rt(p.name),P=b.find(V=>V.name.replace(/\s/g,"")===p.name.replace(/\s/g,""))||b[0];P&&(p.code=String(P.code||"").replace(/^A/,""))}catch(b){n=n||b}let i=e.map(p=>p.code).filter(Boolean);if(!i.length)throw n||new Error("\uC870\uD68C\uD560 \uC885\uBAA9\uCF54\uB4DC\uB97C \uCC3E\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 \u2014 \uC885\uBAA9\uCF54\uB4DC\uB97C \uC9C1\uC811 \uC785\uB825\uD574 \uBCF4\uC138\uC694");let{rows:l,asOf:c}=await Jt(i),o=new Map(l.map(p=>[String(p.code||"").replace(/^A/,""),p])),d=[...s],g=0;for(let p of e){let b=o.get(String(p.code).replace(/^A/,""));!b||b.price==null||(d[p.i]={...d[p.i],code:p.code,price:String(b.price),change:b.change!=null?String(Math.round(b.change)):d[p.i].change,per:b.per!=null?String(b.per):d[p.i].per,pbr:b.pbr!=null?String(b.pbr):d[p.i].pbr,cap:ts(b.cap)??d[p.i].cap,band:b.band??d[p.i].band,source:"toss"},g++)}k("picks",d),$({asOf:Xt(c)},{silent:!0}),g===0?I("\uC751\uB2F5\uC740 \uBC1B\uC558\uC9C0\uB9CC \uC2DC\uC138\uB97C \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. --probe \uB85C \uC751\uB2F5 \uD615\uD0DC\uB97C \uD655\uC778\uD558\uC138\uC694.","neg"):x(`${g}\uAC1C \uC885\uBAA9 \uC2DC\uC138\uB97C \uAC31\uC2E0\uD588\uC2B5\uB2C8\uB2E4`),L()}catch(n){I(`${n.message}${n.hint?" \u2014 "+n.hint:""}`,"neg"),x("\uC2DC\uC138 \uC870\uD68C \uC2E4\uD328 \u2014 \uC218\uB3D9 \uC785\uB825\uC744 \uC0AC\uC6A9\uD558\uC138\uC694")}finally{t&&document.contains(t)&&(t.disabled=!1,t.textContent="\u{1F504} \uC2DC\uC138 \uC790\uB3D9 \uC870\uD68C")}}jt();Ts();window.addEventListener("hashchange",()=>{let t=location.hash.replace(/^#/,"")||"dashboard";t!==G&&B(t,{push:!1})});B(location.hash.replace(/^#/,"")||"dashboard",{push:!1});})();
+
+</script>
+</body>
+</html>

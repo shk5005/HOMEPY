@@ -125,7 +125,34 @@ server/providers/toss.mjs                     ← 비공식 WTS 엔드포인트
 - 조회 성공 시 `picks[].source = 'toss'` 로 표시되고 `asOf` 가 KST로 자동 기입
 - 종목코드는 접두사 없는 6자리로 저장하고, 조회 시 어댑터가 `A` 를 붙임
 
-## 6. UI 규칙
+## 6. 단일 HTML 번들 (build.mjs)
+
+```
+assets/js/*.js (ES 모듈 8개) ──esbuild(IIFE)──┐
+assets/css/genie.css ─────────주석 제거───────┼──> dist/genie.html
+index.html 의 body 마크업 ────────────────────┘    dist/genie.artifact.html
+```
+
+**출력은 전부 ASCII로 굽는다.** 한글을 원문 그대로 두면, 문서가 UTF-8로
+해석되지 않는 환경에서 바이트가 깨진다. 실제로 `extractTickers()` 의
+`/^[가-힣...]/` 문자범위가 망가져 "Range out of order" 로 번들 전체가
+파싱 단계에서 죽었다. 세 경로 모두 이스케이프한다.
+
+| 대상 | 방식 | 비고 |
+|------|------|------|
+| JS | `\uXXXX` | 문자열·템플릿·정규식·주석 어디서든 의미 동일 |
+| CSS | `\XXXXXX` (6자리 고정폭) | 뒤에 공백 불필요 |
+| 마크업 | `&#xXXXX;` | 숫자 문자 참조 |
+| `<title>`·`description` | 평문 UTF-8 | 발행 도구가 읽는 메타데이터 (의도적 예외) |
+
+**단일 빌드에서 꺼지는 것** — `define: { GENIE_STANDALONE: true }` 로 치환 후
+minify 가 죽은 가지를 제거한다.
+
+- 시세 자동 조회·토스 검색 → 로컬 프록시에 접근할 수 없으므로 수동 입력 안내로 대체
+- 프롬프트 `.txt` 저장 → 뷰어가 페이지발 다운로드를 막으므로 구현까지 산출물에서 제거
+  (누르면 아무 일도 없는 버튼을 남기지 않는다). 복사는 그대로 동작
+
+## 7. UI 규칙
 
 - **이벤트 위임**: `document.body` 한 곳에서 `data-route` · `data-action` · `data-bind` ·
   `data-pick` · `data-val` · `data-target` · `data-score` · `data-prob` 속성을 처리

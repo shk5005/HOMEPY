@@ -22,16 +22,24 @@ export function pickEditor() {
     <div class="btn-row" style="margin-bottom:6px">
       <input class="input" id="pick-name" placeholder="종목명 또는 코드 (예: SK하이닉스 / 000660)" style="flex:1;min-width:200px">
       <button class="btn btn-navy btn-sm" data-action="add-pick">+ 추가</button>
-      <button class="btn btn-ghost btn-sm" data-action="search-quote">🔍 토스 검색</button>
+      ${window.GENIE_STANDALONE ? '' : '<button class="btn btn-ghost btn-sm" data-action="search-quote">🔍 토스 검색</button>'}
     </div>
     <div id="quote-search" class="mb0"></div>
 
+    ${window.GENIE_STANDALONE ? `
+    <div class="quote-bar">
+      <span class="quote-badge">📝 수동 입력 전용 빌드</span>
+      <span class="muted">시세 자동 조회는 로컬 프록시가 필요해 이 단일 파일 빌드에서는 동작하지 않습니다.
+        아래에 시세를 직접 입력하세요 — 입력된 값은 프롬프트의 시세 앵커로 그대로 들어갑니다.</span>
+    </div>
+    ` : `
     <div class="quote-bar">
       <span class="quote-badge" id="proxy-badge" data-action="check-proxy" role="button"
             title="클릭하면 시세 프록시 연결을 확인합니다">⚪ 프록시 확인 중…</span>
       <button class="btn btn-gold btn-sm" data-action="refresh-quotes">🔄 시세 자동 조회</button>
       <span class="muted" id="quote-msg"></span>
     </div>
+    `}
 
     ${picks.length ? `
     <div class="tbl-wrap">
