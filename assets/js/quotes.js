@@ -59,7 +59,7 @@ async function call(path, params = {}) {
 export async function health() {
   try {
     const j = await call('/api/health');
-    return { ok: true, label: j.label };
+    return { ok: true, label: j.label, keyed: !!j.keyed };
   } catch (e) {
     return { ok: false, error: e.message, hint: e.hint, offline: e.offline };
   }

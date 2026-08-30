@@ -18,9 +18,31 @@
    ============================================================ */
 
 import { createServer } from 'node:http';
-import * as toss from './providers/toss.mjs';
+import { readFileSync, existsSync } from 'node:fs';
+import { maskSecret } from './providers/_extract.mjs';
 
-const PROVIDERS = { toss };
+/* ---------- .env 로딩 (의존성 없이) ----------
+   API 키는 소스나 저장소에 두지 않는다. .env 는 .gitignore 에 있고,
+   형식은 .env.example 에 있다. 이미 설정된 환경변수가 항상 우선한다. */
+function loadEnv(file = '.env') {
+  if (!existsSync(file)) return 0;
+  let n = 0;
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/i);
+    if (!m || line.trimStart().startsWith('#')) continue;
+    const key = m[1];
+    let val = m[2].trim().replace(/^["']|["']$/g, '');
+    if (process.env[key] === undefined) { process.env[key] = val; n++; }
+  }
+  return n;
+}
+const envLoaded = loadEnv();
+
+// .env 를 읽은 뒤에 어댑터를 가져와야 모듈 최상단의 설정이 반영된다
+const toss = await import('./providers/toss.mjs');
+const tossOpen = await import('./providers/toss-open.mjs');
+
+const PROVIDERS = { toss, 'toss-open': tossOpen };
 const ALLOWED_HOSTS = new Set(Object.values(PROVIDERS).map(p => p.HOST));
 
 const argv = process.argv.slice(2);
@@ -29,13 +51,22 @@ const argOf = name => {
   return i >= 0 ? argv[i + 1] : null;
 };
 const PORT = Number(argOf('--port')) || 8787;
-const PROVIDER = argOf('--provider') || 'toss';
+// 키가 있으면 문서화된 오픈 API 를 먼저 쓰고, 없으면 비공식 WTS 로 떨어진다
+const PROVIDER = argOf('--provider') || (tossOpen.hasKey() ? 'toss-open' : 'toss');
 
 /* ---------- probe 모드: 원본 응답을 그대로 찍어 매핑을 확인 ---------- */
 async function probe() {
   const p = PROVIDERS[PROVIDER];
   const searchQ = argOf('--probe-search');
   const quoteQ  = argOf('--probe');
+  console.log(`\n프로바이더: ${p.label}`);
+  if (p.describeRequest) {
+    const d = p.describeRequest(searchQ ? 'search' : 'quote',
+      searchQ || (quoteQ || '005930').split(',').map(x => x.trim()));
+    console.log(`요청:     ${d.url}`);
+    console.log(`인증방식: ${d.authStyle}`);
+    console.log(`헤더:     ${JSON.stringify(d.headers)}`);
+  }
   try {
     if (searchQ) {
       console.log(`\n▶ ${p.label} 검색 원본 응답 — "${searchQ}"\n`);
@@ -60,7 +91,13 @@ server/providers/toss.mjs 의 FIELD_MAP 에 추가하세요.
   } catch (e) {
     console.error(`\n✖ ${p.label} 호출 실패: ${e.message}`);
     if (e.body) console.error('응답 일부:', e.body);
-    console.error(`
+    if (e.hint) console.error(`힌트: ${e.hint}`);
+    console.error(p.id === 'toss-open' ? `
+확인할 점:
+  1. 이 머신에서 ${p.HOST} 로 나가는 네트워크가 열려 있는지
+  2. 401/403 이면 키와 인증 방식 (.env 의 TOSS_AUTH_STYLE)
+  3. 404 면 엔드포인트 경로 (.env 의 TOSS_QUOTE_PATH / TOSS_SEARCH_PATH)
+  4. 공식 문서의 base URL 이 ${p.BASE} 와 다른지 (.env 의 TOSS_API_BASE)` : `
 확인할 점:
   1. 이 머신에서 ${p.HOST} 로 나가는 네트워크가 열려 있는지
   2. 토스가 해당 경로를 변경/차단했는지 (비공식 엔드포인트라 예고 없이 바뀝니다)
@@ -106,7 +143,11 @@ const server = createServer(async (req, res) => {
 
   try {
     if (url.pathname === '/api/health') {
-      return send(res, 200, { ok: true, provider: provider.id, label: provider.label });
+      return send(res, 200, {
+        ok: true, provider: provider.id, label: provider.label,
+        // 키 자체가 아니라 '설정되었는지'만 알린다
+        keyed: typeof provider.hasKey === 'function' ? provider.hasKey() : false
+      });
     }
 
     if (url.pathname === '/api/search') {
@@ -128,11 +169,16 @@ const server = createServer(async (req, res) => {
 
     return send(res, 404, { error: '없는 경로' });
   } catch (e) {
-    // 업스트림 실패는 502로 구분해 UI가 '수동 입력'으로 안내할 수 있게 한다
+    // 업스트림 실패는 502로 구분해 UI가 '수동 입력'으로 안내할 수 있게 한다.
+    // 어댑터가 원인별 힌트를 붙였으면 그대로 쓴다 — 인증 실패와 경로 오류는
+    // 사용자가 할 일이 서로 다르므로 뭉뚱그리면 안 된다.
+    const fallbackHint = provider.id === 'toss'
+      ? `${provider.label} 호출 실패. 비공식 엔드포인트라 형태가 바뀌었을 수 있습니다.`
+      : `${provider.label} 호출 실패.`;
     return send(res, 502, {
       error: e.message,
-      hint: `${provider.label} 호출 실패. 비공식 엔드포인트라 형태가 바뀌었을 수 있습니다. ` +
-            `node server/quote-proxy.mjs --probe 005930 으로 원본 응답을 확인하세요.`,
+      hint: (e.hint || fallbackHint) +
+            ` 진단: node server/quote-proxy.mjs --probe 005930`,
       upstreamStatus: e.status ?? null
     });
   }
@@ -142,19 +188,21 @@ if (argv.includes('--probe') || argv.includes('--probe-search')) {
   probe();
 } else {
   server.listen(PORT, '127.0.0.1', () => {
+    const p = PROVIDERS[PROVIDER];
+    const keyLine = p.hasKey?.()
+      ? `   API 키: ${p.keyHint()}  (환경변수에서 로드)`
+      : `   API 키: 없음 — 비공식 WTS 경로로 동작합니다`;
     console.log(`
-🧞 지니 시세 프록시
+지니 시세 프록시
    http://127.0.0.1:${PORT}
-   프로바이더: ${PROVIDERS[PROVIDER].label}
+   프로바이더: ${p.label}
+${keyLine}${envLoaded ? `\n   .env 에서 ${envLoaded}개 값 로드` : ''}
 
    GET /api/health
    GET /api/search?q=삼성전자
    GET /api/quote?codes=005930,000660
 
-   ⚠️ 토스증권은 공개 개발자 API를 제공하지 않습니다.
-      이 프록시는 비공식 WTS 엔드포인트를 호출하므로
-      예고 없이 응답이 바뀌거나 차단될 수 있습니다.
-      실패 시 앱은 수동 시세 입력으로 자동 전환됩니다.
+   실패 시 앱은 수동 시세 입력으로 자동 전환됩니다.
 `);
   });
 }

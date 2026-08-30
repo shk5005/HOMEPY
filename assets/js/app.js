@@ -377,7 +377,8 @@ async function refreshProxyBadge({ verbose = false } = {}) {
     // 실제 조회를 해봐야 알 수 있으므로 배지가 그것까지 보증하지 않도록 표기한다.
     badge.className = 'quote-badge ok';
     badge.textContent = '🟢 프록시 연결됨';
-    badge.title = `${h.label} · 상대 서버 도달 여부는 조회 시 확인됩니다`;
+    badge.title = `${h.label}${h.keyed ? ' · API 키 적용됨' : ''}` +
+                  ` · 상대 서버 도달 여부는 조회 시 확인됩니다`;
     if (verbose) setMsg(`프록시 연결됨 (${h.label}). 실제 도달 여부는 시세 조회 시 확인됩니다.`);
   } else if (h.offline) {
     badge.className = 'quote-badge off';
@@ -464,7 +465,8 @@ async function refreshQuotes(btn) {
         pbr: r.pbr != null ? String(r.pbr) : next[t.i].pbr,
         cap: Q.formatCap(r.cap) ?? next[t.i].cap,
         band: r.band ?? next[t.i].band,
-        source: 'toss'
+        // 어느 프로바이더에서 왔는지 그대로 보존한다 (toss / toss-open)
+        source: r.source || 'auto'
       };
       hit++;
     }

@@ -1,1 +1,5 @@
 node_modules/
+
+# 비밀값 — 절대 커밋하지 않는다
+.env
+.env.local

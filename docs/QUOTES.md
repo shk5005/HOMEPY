@@ -14,6 +14,41 @@
 
 프록시는 의존성이 없는 Node 스크립트 한 개이며 `127.0.0.1` 에만 바인딩합니다.
 
+## API 키 설정 (토스증권 오픈 API)
+
+```bash
+cp .env.example .env      # 그리고 키를 채운다
+node server/quote-proxy.mjs
+```
+
+```
+GENIE_TOSS_API_KEY=발급받은_키
+```
+
+키가 설정되면 프록시가 **오픈 API**(`toss-open`)를 쓰고,
+없으면 비공식 WTS(`toss`)로 자동 폴백합니다. 기동 로그에 어느 쪽인지 표시됩니다.
+
+**키는 저장소에 넣지 마세요.** `.env` 는 `.gitignore` 에 있고, 키는
+프록시 프로세스 안에서만 존재합니다 — 브라우저로 내려가지 않으며,
+로그·진단 출력에는 `tsck_live***abcd (32자)` 형태로 마스킹되어 나옵니다.
+
+### 엔드포인트·인증 방식이 다르다면
+
+공식 문서를 확인하지 못한 채 기본값을 넣어두었습니다. 코드를 고칠 필요 없이
+`.env` 값만 바꾸면 됩니다.
+
+| 변수 | 기본값 | 언제 바꾸나 |
+|------|--------|-------------|
+| `TOSS_API_BASE` | `https://openapi.tossinvest.com` | base URL 이 다를 때 |
+| `TOSS_AUTH_STYLE` | `bearer` | 401/403 → `header`·`query`·`basic` 시도 |
+| `TOSS_AUTH_HEADER` | `X-API-Key` | `AUTH_STYLE=header` 일 때 헤더 이름 |
+| `TOSS_QUOTE_PATH` | `/v1/stocks/prices` | 404 일 때 |
+| `TOSS_SEARCH_PATH` | `/v1/stocks/search` | 404 일 때 |
+| `TOSS_CODE_PARAM` | `codes` | 종목코드 파라미터 이름이 다를 때 |
+
+`--probe` 가 실제로 보내는 URL·인증방식·헤더를 먼저 출력하므로,
+문서와 대조해 어긋난 값만 고치면 됩니다.
+
 ## 실행
 
 ```bash
@@ -42,7 +77,17 @@ localStorage.setItem('genie.proxy.url', 'http://127.0.0.1:9000')
 앱은 이 상태에서도 **수동 입력으로 정상 동작**합니다.
 
 ### 🔴 연결 실패 / 502
-프록시는 떴지만 토스 호출이 실패한 경우입니다. 원본 응답을 확인하세요.
+프록시는 떴지만 토스 호출이 실패한 경우입니다. 상태 코드별로 할 일이 다르며,
+프록시가 원인별 힌트를 그대로 전달합니다.
+
+| 코드 | 원인 | 조치 |
+|------|------|------|
+| 401 / 403 | 키 또는 인증 방식 | 키 유효성 확인, `TOSS_AUTH_STYLE` 변경 |
+| 404 | 엔드포인트 경로 | `TOSS_QUOTE_PATH` / `TOSS_SEARCH_PATH` 확인 |
+| 429 | 호출 한도 초과 | 잠시 후 재시도 |
+| 그 외 | 네트워크·차단 | 방화벽·VPN·사내망 확인 |
+
+원본 응답을 확인하세요.
 
 ```bash
 node server/quote-proxy.mjs --probe 005930

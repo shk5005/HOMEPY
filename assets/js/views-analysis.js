@@ -51,7 +51,7 @@ export function pickEditor() {
         <tbody>
           ${picks.map((p, i) => `
           <tr>
-            <td class="name">${esc(p.name)}${p.source === 'toss' ? ' <span class="badge-pill bp-green" title="토스 자동 조회">자동</span>' : ''}</td>
+            <td class="name">${esc(p.name)}${p.source ? ` <span class="badge-pill bp-green" title="${esc(p.source === 'toss-open' ? '토스 오픈 API 자동 조회' : '토스 WTS 자동 조회')}">자동</span>` : ''}</td>
             <td><input class="input mono" style="width:88px;padding:6px 9px" data-pick="${i}.code"
                  value="${esc(p.code ?? '')}" placeholder="6자리"></td>
             <td><input class="input" style="width:110px;padding:6px 9px" data-pick="${i}.price"
