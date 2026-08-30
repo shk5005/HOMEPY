@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- ARTIFACT:BEGIN -->
+<title>시장 계절 시계</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#e9ecf1; --surface:#fbfcfe; --surface-2:#f1f4f8; --surface-3:#e6ebf2;
+  --ink:#0f141b; --ink-2:#47525f; --muted:#78838f;
+  --grid:#dde2e9; --line:rgba(15,20,27,.12); --line-2:rgba(15,20,27,.06);
+  --up:#c8393c; --down:#2a6fd0; --mid:#cbd2db;
+  --accent:#9a6f14; --accent-2:#b8892a; --accent-soft:#f2e6cb;
+  --shadow:0 1px 2px rgba(15,20,27,.05), 0 10px 28px rgba(15,20,27,.07);
+  --font-display:"Gowun Batang","Nanum Myeongjo","Batang",Georgia,serif;
+  --font-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0b0f14; --surface:#111820; --surface-2:#18202a; --surface-3:#1f2833;
+    --ink:#eaf0f7; --ink-2:#a6b2c0; --muted:#6e7a89;
+    --grid:#1e2731; --line:rgba(234,240,247,.14); --line-2:rgba(234,240,247,.07);
+    --up:#e2645f; --down:#4b90e2; --mid:#39434f;
+    --accent:#dda63c; --accent-2:#b5842a; --accent-soft:#332810;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0b0f14; --surface:#111820; --surface-2:#18202a; --surface-3:#1f2833;
+  --ink:#eaf0f7; --ink-2:#a6b2c0; --muted:#6e7a89;
+  --grid:#1e2731; --line:rgba(234,240,247,.14); --line-2:rgba(234,240,247,.07);
+  --up:#e2645f; --down:#4b90e2; --mid:#39434f;
+  --accent:#dda63c; --accent-2:#b5842a; --accent-soft:#332810;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px rgba(0,0,0,.4);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font-body); font-weight:400; font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px; margin:0 auto; padding:28px 20px 72px;}
+h1,h2,h3{margin:0; text-wrap:balance; font-weight:400}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+  gap:20px; padding-bottom:20px; border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:10px;
+}
+.masthead h1{font-family:var(--font-display); font-size:clamp(30px,4.4vw,46px); line-height:1.12; letter-spacing:-.01em}
+.masthead p{margin:10px 0 0; color:var(--ink-2); max-width:56ch; font-size:14px}
+.stamp{
+  flex:0 0 auto; border:1px solid var(--line); border-radius:var(--r);
+  background:var(--surface); padding:11px 14px; box-shadow:var(--shadow); max-width:290px;
+}
+.stamp b{display:block; font-size:11.5px; font-family:var(--font-mono); letter-spacing:.06em; color:var(--up); margin-bottom:4px}
+.stamp span{font-size:12px; color:var(--ink-2); line-height:1.5; display:block}
+
+/* ---------- kpi ---------- */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px; margin:22px 0}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; box-shadow:var(--shadow)}
+.kpi .k-label{font-size:11.5px; font-family:var(--font-mono); letter-spacing:.09em; color:var(--muted); text-transform:uppercase}
+.kpi .k-val{font-size:29px; line-height:1.15; margin-top:7px; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.kpi .k-sub{font-size:12.5px; color:var(--ink-2); margin-top:3px}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-family:var(--font-mono);
+  padding:2px 8px; border-radius:999px; border:1px solid var(--line); vertical-align:middle;
+}
+.chip.up{color:var(--up); border-color:color-mix(in oklab, var(--up) 40%, transparent); background:color-mix(in oklab, var(--up) 10%, transparent)}
+.chip.down{color:var(--down); border-color:color-mix(in oklab, var(--down) 40%, transparent); background:color-mix(in oklab, var(--down) 10%, transparent)}
+.chip.flat{color:var(--ink-2)}
+
+/* ---------- cards ---------- */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:18px}
+.card > header{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:4px}
+.card h2{font-family:var(--font-display); font-size:20px}
+.card .hint{font-size:12px; color:var(--muted); font-family:var(--font-mono)}
+.card > p.lede{margin:2px 0 14px; font-size:13px; color:var(--ink-2)}
+
+.hero{display:grid; grid-template-columns:352px minmax(0,1fr); gap:16px; align-items:stretch}
+@media (max-width:980px){ .hero{grid-template-columns:1fr} }
+.split{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:16px; margin-top:16px}
+@media (max-width:980px){ .split{grid-template-columns:1fr} }
+.stack{margin-top:16px}
+
+/* ---------- dial ---------- */
+.dial-wrap{display:flex; flex-direction:column; align-items:center; gap:14px}
+#dial{width:100%; max-width:322px; height:auto; touch-action:none; cursor:pointer}
+#dial:focus-visible{outline:2px solid var(--accent); outline-offset:4px; border-radius:50%}
+.seg{cursor:pointer; transition:opacity .15s}
+.seg:hover{opacity:.72}
+.mlabel{font-family:var(--font-mono); font-size:11px; fill:var(--muted)}
+.mlabel.on{fill:var(--ink); font-weight:600}
+.center-m{font-family:var(--font-display); font-size:52px; fill:var(--ink)}
+.center-s{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; fill:var(--muted)}
+.center-d{font-family:var(--font-body); font-size:13px; font-weight:600}
+
+.controls{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:100%}
+button.btn{
+  font-family:var(--font-body); font-size:13px; color:var(--ink); background:var(--surface-2);
+  border:1px solid var(--line); border-radius:7px; padding:7px 13px; cursor:pointer;
+  transition:background .15s, border-color .15s, color .15s;
+}
+button.btn:hover{background:var(--surface-3)}
+button.btn[aria-pressed="true"]{background:var(--accent-soft); border-color:color-mix(in oklab, var(--accent) 45%, transparent); color:var(--accent)}
+button.btn.primary{min-width:96px; font-weight:600}
+.speed{display:inline-flex; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+.speed button{border:0; border-radius:0; background:var(--surface-2); padding:7px 11px; font-family:var(--font-mono); font-size:12px; color:var(--ink-2); cursor:pointer}
+.speed button + button{border-left:1px solid var(--line)}
+.speed button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.factors{width:100%; border-top:1px solid var(--line-2); padding-top:12px}
+.factors .fh{font-family:var(--font-mono); font-size:11px; letter-spacing:.09em; color:var(--muted); text-transform:uppercase; margin-bottom:7px}
+.ftags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px}
+.ftag{font-size:12px; padding:3px 9px; border-radius:999px; background:var(--surface-2); border:1px solid var(--line)}
+.fwhy{font-size:12.5px; color:var(--ink-2); line-height:1.55}
+
+/* ---------- field ---------- */
+#field{width:100%; height:auto; display:block}
+.ax{stroke:var(--grid); stroke-width:1}
+.ax-base{stroke:var(--line); stroke-width:1}
+.ax-t{font-family:var(--font-mono); font-size:10.5px; fill:var(--muted)}
+.ax-title{font-family:var(--font-mono); font-size:11px; fill:var(--ink-2); letter-spacing:.06em}
+.quad{font-family:var(--font-body); font-size:11px; fill:var(--muted); opacity:.62}
+.bub{stroke:var(--surface); stroke-width:2; cursor:pointer}
+.bub-l{font-family:var(--font-body); font-size:11.5px; font-weight:500; fill:var(--ink); stroke:var(--surface); stroke-width:3.2; paint-order:stroke fill; pointer-events:none}
+.lead{stroke:var(--muted); stroke-width:1; opacity:.4}
+.orbit{fill:none; stroke:var(--muted); stroke-width:1; opacity:.34; stroke-dasharray:2 3}
+.legend{display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid var(--line-2); font-size:12px; color:var(--ink-2)}
+.lg-scale{display:flex; align-items:center; gap:8px}
+.lg-bar{width:132px; height:9px; border-radius:999px; border:1px solid var(--line);
+  background:linear-gradient(90deg,var(--down),var(--mid),var(--up))}
+.lg-size{display:flex; align-items:center; gap:7px}
+.lg-size i{display:inline-block; border-radius:50%; background:var(--mid); border:1px solid var(--line)}
+.filters{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px}
+.fchip{font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2); cursor:pointer; font-family:var(--font-body)}
+.fchip[aria-pressed="true"]{background:var(--surface-3); color:var(--ink); border-color:var(--line); font-weight:500}
+.fchip[aria-pressed="false"]{opacity:.5; text-decoration:line-through}
+</style>
+<style>
+/* ---------- bar race ---------- */
+#race{position:relative; height:322px; margin-top:4px}
+.row{position:absolute; left:0; right:0; height:34px; display:grid; grid-template-columns:96px minmax(0,1fr) 46px;
+  align-items:center; gap:9px; transition:transform .35s cubic-bezier(.4,0,.2,1), opacity .25s}
+.row .rname{font-size:12.5px; color:var(--ink-2); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.row .rtrack{height:16px; background:var(--surface-2); border-radius:3px; overflow:hidden; border:1px solid var(--line-2)}
+.row .rbar{height:100%; background:var(--accent-2); border-radius:0 3px 3px 0; transition:width .18s linear}
+.row .rval{font-family:var(--font-mono); font-size:12px; color:var(--ink); font-variant-numeric:tabular-nums; text-align:right}
+.row.dim{opacity:.28}
+
+/* ---------- heatmap ---------- */
+.heat-scroll{overflow-x:auto; padding-bottom:4px}
+.heat{display:grid; grid-template-columns:104px repeat(12,minmax(38px,1fr)); gap:3px; min-width:620px}
+.heat .hh{font-family:var(--font-mono); font-size:11px; color:var(--muted); text-align:center; padding-bottom:2px}
+.heat .hh.on{color:var(--ink); font-weight:600}
+.heat .hr{font-size:12px; color:var(--ink-2); display:flex; align-items:center; justify-content:flex-end; padding-right:8px; white-space:nowrap}
+.cell{height:26px; border-radius:3px; cursor:pointer; border:1px solid transparent}
+.cell.now{border-color:var(--ink); box-shadow:0 0 0 1px var(--surface) inset}
+
+/* ---------- events ---------- */
+.evgrid{display:grid; grid-template-columns:150px repeat(12,minmax(30px,1fr)); gap:3px; align-items:center; min-width:660px}
+.evgrid .eh{font-family:var(--font-mono); font-size:11px; color:var(--muted); text-align:center}
+.evgrid .eh.on{color:var(--ink); font-weight:600}
+.evgrid .en{font-size:12.5px; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.evgrid .en sup{font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-left:3px}
+.evcell{height:22px; border-radius:3px; background:var(--surface-2); display:flex; align-items:center; justify-content:center}
+.evcell.on{background:var(--accent-soft)}
+.evcell.on::after{content:""; width:7px; height:7px; border-radius:50%; background:var(--accent)}
+.evcell.col{outline:1px solid var(--line); outline-offset:1px}
+.evnote{font-size:12px; color:var(--muted); margin-top:12px; padding-top:10px; border-top:1px solid var(--line-2)}
+
+/* ---------- perspectives ---------- */
+.tabs{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 14px}
+.tab{font-family:var(--font-body); font-size:13px; padding:6px 13px; border-radius:7px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--ink-2); cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.pane{display:none}
+.pane[data-on="1"]{display:block}
+.pane ul{margin:0; padding:0; list-style:none; display:grid; gap:10px}
+.pane li{padding-left:15px; border-left:2px solid var(--accent-2); font-size:14px; color:var(--ink-2); line-height:1.62}
+.pane li strong{color:var(--ink); font-weight:600}
+.moat{display:grid; grid-template-columns:repeat(auto-fit,minmax(212px,1fr)); gap:11px}
+.moat div{background:var(--surface-2); border:1px solid var(--line-2); border-radius:8px; padding:12px 14px}
+.moat b{display:block; font-family:var(--font-mono); font-size:11.5px; letter-spacing:.05em; color:var(--accent); margin-bottom:5px}
+.moat span{font-size:13px; color:var(--ink-2)}
+
+/* ---------- horizons ---------- */
+.horizons{display:grid; grid-template-columns:repeat(auto-fit,minmax(232px,1fr)); gap:12px}
+.hz{background:var(--surface-2); border:1px solid var(--line-2); border-radius:8px; padding:15px}
+.hz .hz-t{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase}
+.hz h3{font-family:var(--font-display); font-size:19px; margin:5px 0 8px}
+.hz p{margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.6}
+.hz .meter{height:4px; border-radius:999px; background:var(--surface-3); margin-top:12px; overflow:hidden}
+.hz .meter i{display:block; height:100%; background:var(--accent-2)}
+
+/* ---------- method & tables ---------- */
+details.method{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:0; margin-top:16px}
+details.method > summary{cursor:pointer; padding:16px 18px; font-family:var(--font-display); font-size:19px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:12px}
+details.method > summary::-webkit-details-marker{display:none}
+details.method > summary::after{content:"펼치기"; font-family:var(--font-mono); font-size:11px; color:var(--muted); letter-spacing:.08em}
+details.method[open] > summary::after{content:"접기"}
+.method-body{padding:0 18px 18px; border-top:1px solid var(--line-2)}
+.method-body h3{font-size:13px; font-family:var(--font-mono); letter-spacing:.08em; color:var(--accent); text-transform:uppercase; margin:18px 0 8px}
+.method-body p, .method-body li{font-size:13.5px; color:var(--ink-2); line-height:1.65}
+.method-body ol{padding-left:18px; margin:0; display:grid; gap:6px}
+.tbl-scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:13px; min-width:560px}
+th,td{text-align:left; padding:7px 10px; border-bottom:1px solid var(--line-2); white-space:nowrap}
+th{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; font-weight:500}
+td.num{font-family:var(--font-mono); font-variant-numeric:tabular-nums; text-align:right}
+td.wrap{white-space:normal; min-width:230px; color:var(--ink-2)}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed; z-index:60; pointer-events:none; opacity:0; transition:opacity .12s;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow);
+  padding:10px 12px; font-size:12.5px; max-width:264px; color:var(--ink)}
+#tip[data-on="1"]{opacity:1}
+#tip b{display:block; font-size:13px; margin-bottom:5px}
+#tip dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:2px 10px}
+#tip dt{color:var(--muted); font-size:11.5px}
+#tip dd{margin:0; font-family:var(--font-mono); font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
+#tip .tnote{margin-top:6px; padding-top:6px; border-top:1px solid var(--line-2); color:var(--ink-2); font-size:11.5px; line-height:1.5}
+
+footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); line-height:1.65}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important; transition-duration:.001ms !important}
+}
+</style>
+<!-- ARTIFACT:HEAD_END -->
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div>
+    <div class="eyebrow">Seasonality · 12-month cycle</div>
+    <h1>시장 계절 시계</h1>
+    <p>1년은 직선이 아니라 원입니다. 12개월 다이얼을 돌리면 시장의 계절 요인, 업종 순환, 이벤트 일정이 한 화면에서 함께 움직입니다.</p>
+  </div>
+  <div class="stamp">
+    <b>⚠ 정성 인코딩 · 실측 수익률 아님</b>
+    <span>모든 수치는 원문 표의 ▲/▼ 방향 표기를 지수로 변환한 <em>추정치</em>입니다. 과거 수익률 백테스트가 아니며 매매 신호로 쓸 수 없습니다. 변환 규칙은 하단 방법론 참조.</span>
+  </div>
+</header>
+
+<section class="kpis" aria-label="현재 월 요약">
+  <div class="kpi"><div class="k-label">현재 월</div><div class="k-val" id="kMonth">1월</div><div class="k-sub" id="kSeason">겨울</div></div>
+  <div class="kpi"><div class="k-label">시장 방향성</div><div class="k-val" id="kDir">+60</div><div class="k-sub"><span class="chip" id="kDirChip">강세</span></div></div>
+  <div class="kpi"><div class="k-label">변동성 지수</div><div class="k-val" id="kVol">45</div><div class="k-sub" id="kVolSub">연중 하위권</div></div>
+  <div class="kpi"><div class="k-label">이벤트 밀도</div><div class="k-val" id="kEv">4</div><div class="k-sub" id="kEvSub">일정 4건</div></div>
+  <div class="kpi"><div class="k-label">수요 1위 업종</div><div class="k-val" style="font-size:21px" id="kTop">난방·가스</div><div class="k-sub" id="kTopSub">계절 수요 88</div></div>
+</section>
+
+<section class="hero">
+  <div class="card">
+    <header><h2>계절 다이얼</h2><span class="hint">클릭·드래그 / ← →</span></header>
+    <p class="lede">바깥 고리는 월별 방향성, 안쪽 눈금은 변동성입니다.</p>
+    <div class="dial-wrap">
+      <svg id="dial" viewBox="-176 -176 352 352" role="img" aria-label="12개월 계절 다이얼" tabindex="0"></svg>
+      <div class="controls">
+        <button class="btn primary" id="btnPlay" aria-pressed="false">▶ 재생</button>
+        <div class="speed" role="group" aria-label="재생 속도">
+          <button data-sp="0.5" aria-pressed="false">0.5×</button>
+          <button data-sp="1" aria-pressed="true">1×</button>
+          <button data-sp="2" aria-pressed="false">2×</button>
+        </div>
+        <button class="btn" id="btnOrbit" aria-pressed="false">연간 궤도</button>
+      </div>
+      <div class="factors">
+        <div class="fh">이 달의 계절 요인</div>
+        <div class="ftags" id="fTags"></div>
+        <div class="fwhy" id="fWhy"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <header><h2>업종 계절 궤도</h2><span class="hint">가로 = 계절 수요 · 세로 = 변동성</span></header>
+    <p class="lede">각 업종은 1년에 걸쳐 자기 궤도를 한 바퀴 돕니다. 버블 색은 방향성, 크기는 계절성의 뚜렷함(연중 진폭)입니다.</p>
+    <div class="filters" id="filters" role="group" aria-label="업종 필터"></div>
+    <svg id="field" viewBox="0 0 680 442" role="img" aria-label="업종별 계절 수요 대 변동성 모션 차트"></svg>
+    <div class="legend">
+      <div class="lg-scale"><span>약세</span><span class="lg-bar" role="img" aria-label="방향성 색상 스케일: 파랑 약세에서 빨강 강세"></span><span>강세</span></div>
+      <div class="lg-size"><span>계절성 진폭</span><i style="width:11px;height:11px"></i><i style="width:19px;height:19px"></i><i style="width:27px;height:27px"></i></div>
+    </div>
+  </div>
+</section>
+
+<section class="split">
+  <div class="card">
+    <header><h2>수요 랭킹 레이스</h2><span class="hint">계절 수요 지수</span></header>
+    <p class="lede">월이 흐르면 순위가 바뀝니다. 봄 여행 → 여름 냉방 → 가을 IT → 겨울 난방의 바통 터치.</p>
+    <div id="race"></div>
+  </div>
+  <div class="card">
+    <header><h2>업종 × 월 방향성 격자</h2><span class="hint">셀에 마우스를 올리면 수치</span></header>
+    <p class="lede">궤도 차트와 같은 색 스케일입니다. 세로줄 하나가 다이얼의 한 시점에 해당합니다.</p>
+    <div class="heat-scroll"><div class="heat" id="heat"></div></div>
+  </div>
+</section>
+
+<section class="card stack">
+  <header><h2>반복되는 시장 일정</h2><span class="hint">현재 월 열이 강조됩니다</span></header>
+  <p class="lede">계절성과 별개로 캘린더에 고정된 이벤트들입니다. 계절 요인과 겹치는 달일수록 변동성이 커집니다.</p>
+  <div class="heat-scroll"><div class="evgrid" id="evgrid"></div></div>
+  <div class="evnote" id="evNote"></div>
+</section>
+
+<section class="card stack">
+  <header><h2>같은 데이터, 네 개의 시선</h2></header>
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-p="pos" aria-selected="true">긍정</button>
+    <button class="tab" role="tab" data-p="neg" aria-selected="false">부정</button>
+    <button class="tab" role="tab" data-p="red" aria-selected="false">Red Team</button>
+    <button class="tab" role="tab" data-p="moat" aria-selected="false">경제적 해자</button>
+  </div>
+  <div class="pane" data-p="pos" data-on="1" role="tabpanel">
+    <ul>
+      <li><strong>수십 년간 반복된 패턴</strong>이므로 투자 <strong>타이밍</strong>을 잡는 참고 자료로 쓸 수 있습니다.</li>
+      <li>소비·생산 주기가 일정한 업종일수록 계절성이 <strong>비교적 뚜렷하게</strong> 드러납니다. 위 궤도 차트에서 버블이 큰 업종이 여기에 해당합니다.</li>
+    </ul>
+  </div>
+  <div class="pane" data-p="neg" role="tabpanel">
+    <ul>
+      <li><strong>거시 변수가 계절성을 쉽게 무력화합니다.</strong> 금리, 지정학적 리스크, 경기침체 앞에서 달력은 힘을 잃습니다.</li>
+      <li>AI·반도체 같은 성장주는 계절성보다 <strong>산업 사이클</strong>의 영향을 더 크게 받습니다. 그래서 이 대시보드에서 반도체·IT의 계절 진폭을 가장 낮게 잡았습니다.</li>
+    </ul>
+  </div>
+  <div class="pane" data-p="red" role="tabpanel">
+    <ul>
+      <li><strong>알려진 패턴은 이미 가격에 있습니다.</strong> 많은 투자자가 1월 효과나 산타랠리를 기대하면 그 기대가 선반영되어 실제 수익 기회는 줄어듭니다.</li>
+      <li><strong>과거 통계는 미래를 보장하지 않습니다.</strong> 특정 국가·시장에서는 계절성이 약하거나 이미 사라졌을 수 있습니다.</li>
+      <li><strong>이 대시보드 자체도 반증 대상입니다.</strong> 여기 표시된 모든 숫자는 서술형 표를 지수로 옮긴 추정치이며, 실측 수익률로 검증된 적이 없습니다.</li>
+    </ul>
+  </div>
+  <div class="pane" data-p="moat" role="tabpanel">
+    <p class="lede" style="margin-top:0">계절성은 기업의 경쟁우위를 드러내기도 합니다. 성수기에 무슨 일이 벌어지는지가 해자의 성능 시험입니다.</p>
+    <div class="moat">
+      <div><b>Cost Advantage</b><span>성수기에도 높은 마진을 유지합니다.</span></div>
+      <div><b>Network Effect</b><span>연말 쇼핑 시즌의 사용자 증가가 더 큰 가치를 만듭니다.</span></div>
+      <div><b>Switching Cost</b><span>계절과 무관하게 고객이 유지됩니다.</span></div>
+      <div><b>Intangible Asset</b><span>강력한 브랜드는 성수기에 수요가 더욱 집중됩니다.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="horizons stack" aria-label="투자 기간별 활용법">
+  <div class="hz"><div class="hz-t">단기 · 1~3개월</div><h3>계절성이 주인공</h3><p>실적 시즌, FOMC, 옵션 만기, 계절성 매매를 직접 활용하는 구간입니다.</p><div class="meter"><i style="width:88%"></i></div></div>
+  <div class="hz"><div class="hz-t">중기 · 3~12개월</div><h3>업종 순환과 함께</h3><p>계절성 하나만 보지 않고 업종 순환과 경기 사이클을 함께 고려합니다.</p><div class="meter"><i style="width:52%"></i></div></div>
+  <div class="hz"><div class="hz-t">장기 · 1년 이상</div><h3>해자가 주인공</h3><p>계절성보다 경제적 해자, 이익 성장, 산업 구조 변화를 우선 평가합니다.</p><div class="meter"><i style="width:16%"></i></div></div>
+</section>
+
+<section class="card stack" style="background:var(--surface-2)">
+  <header><h2>핵심 결론</h2></header>
+  <p style="margin:8px 0 0; font-size:15px; color:var(--ink-2); max-width:78ch; line-height:1.72">
+    계절성은 <strong style="color:var(--ink)">투자 타이밍을 보조하는 도구</strong>로는 유용하지만, 장기 성과는 결국 기업의 이익 성장, 현금흐름, 경제적 해자의 지속성이 좌우합니다.
+    따라서 계절성은 <strong style="color:var(--ink)">진입·분할매수·리밸런싱 시점을 조정하는 보조 지표</strong>로 쓸 때 가장 효과적입니다. 위 다이얼의 화살표는 방향을 가리킬 뿐, 규모를 보장하지 않습니다.
+  </p>
+</section>
+
+<details class="method">
+  <summary>방법론 · 원자료 · 표 보기</summary>
+  <div class="method-body">
+    <h3>이 대시보드가 하는 일과 하지 않는 일</h3>
+    <p>원자료는 “주식시장 계절성” 서술형 정리 한 편입니다. 표에는 <b>▲ / ▼ / ▲▼</b> 같은 방향 기호와 계절별 강세 업종만 있고, 수익률·확률 같은 숫자는 <b>하나도 없습니다</b>. 이 대시보드의 모든 수치는 그 기호를 움직일 수 있는 지수로 옮긴 <b>인코딩 결과</b>이며, 다음 규칙을 따릅니다.</p>
+    <ol>
+      <li><b>방향성 점수(−100~+100)</b> — ▲는 양수, ▼는 음수, ▲▼는 0 근처. 크기는 원문의 표현 강도(“역사적 약세”, “1월 효과”처럼 단정적일수록 큰 절댓값)를 반영해 배정했습니다.</li>
+      <li><b>변동성 지수(0~100)</b> — 원문이 “변동성 확대”, “큰 변동”, “거래량 감소로 변동성 확대”라고 명시한 달을 높게 배정했습니다. 10월이 최고치입니다.</li>
+      <li><b>업종 계절 수요</b> — 원문의 업종별 계절 표(봄/여름/가을/겨울)에서 각 업종의 성수기 중심월을 잡고, 월을 원형 축으로 둔 정규 곡선으로 보간했습니다. 연중 진폭이 버블 크기입니다.</li>
+      <li><b>업종 방향성</b> — 해당 업종의 수요 편차(표준화 점수)에 그 달의 시장 방향성을 섞어 계산합니다. 업종은 자기 계절뿐 아니라 시장 전체 흐름도 함께 탑니다.</li>
+      <li><b>업종 변동성</b> — 시장 변동성에, 계절이 바뀌는 속도(수요 곡선의 기울기)를 더했습니다. 성수기에 진입·이탈하는 달일수록 높습니다.</li>
+    </ol>
+    <p><b>확인 불가 영역:</b> 각 패턴의 실제 승률, 평균 수익률, 통계적 유의성, 시장별(KOSPI·S&P500) 차이는 원자료에 없으므로 이 대시보드에도 없습니다. 추정치로 채우지 않았습니다.</p>
+    <p><b>출처 구분:</b> 이벤트 표에서 <sup>원</sup>은 원문에 명시된 항목, <sup>력</sup>은 월 배정을 위해 보탠 시장 관례(FOMC 연 8회, MSCI 정기변경 2·5·8·11월, 동시만기 3·6·9·12월)입니다. 관례는 해마다 바뀔 수 있으니 실제 일정은 매년 확인해야 합니다.</p>
+
+    <h3>월별 시장 계절 요인 (원문 표 + 인코딩)</h3>
+    <div class="tbl-scroll"><table id="tblMonth"><thead><tr><th>시기</th><th>계절적 요인</th><th>주가 영향</th><th class="num">방향성</th><th class="num">변동성</th><th>이유</th></tr></thead><tbody></tbody></table></div>
+
+    <h3>업종별 계절성 (원문 표 + 인코딩 파라미터)</h3>
+    <div class="tbl-scroll"><table id="tblSector"><thead><tr><th>업종</th><th>계절</th><th>이유</th><th class="num">성수기 중심</th><th class="num">연중 최고</th><th class="num">연중 최저</th><th class="num">진폭</th></tr></thead><tbody></tbody></table></div>
+
+    <h3>업종 × 월 방향성 지수 전체 표</h3>
+    <div class="tbl-scroll"><table id="tblGrid"><thead></thead><tbody></tbody></table></div>
+  </div>
+</details>
+
+<footer>
+  원자료 · 주식시장 계절성 정리(서술형 표 4종: 월별 계절 요인, 업종별 계절성, 투자 이벤트, 경제적 해자 관점).
+  숫자는 모두 그 서술을 옮긴 <b>추정 인코딩</b>이며 실측 수익률·확률이 아닙니다. 특정 종목의 매수·매도 권유가 아닙니다.
+</footer>
+
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+
+/* ============================ 데이터 ============================
+   원문(서술형 표)의 ▲/▼/▲▼ 표기를 지수로 옮긴 인코딩. 실측 수익률이 아님. */
+const MONTHS=[
+ {m:1, f:["1월 효과"],              sym:"▲",  score: 60, vol:45, why:"연말 매도 후 재매수, 기관 자금 집행 시작"},
+ {m:2, f:["실적 발표 시즌"],        sym:"▲▼", score:  5, vol:70, why:"전년도 실적과 올해 가이던스 공개"},
+ {m:3, f:["실적 시즌","배당락 이후"], sym:"▼→▲", score:-10, vol:68, why:"배당 매력 감소 후 실적 기대감이 뒤따름"},
+ {m:4, f:["배당락 이후","소비 증가"], sym:"▲",  score: 45, vol:52, why:"실적 기대감 반영, 여행·레저·항공·유통 성수기 시작"},
+ {m:5, f:["Sell in May","소비 증가"], sym:"▼",  score:-20, vol:55, why:"거래량 감소와 기관 투자 둔화가 소비 성수기를 상쇄"},
+ {m:6, f:["Sell in May","여름 휴가철"], sym:"▼", score:-30, vol:62, why:"휴가철 진입으로 거래량이 줄고 기관 투자가 둔화"},
+ {m:7, f:["2분기 실적 발표","여름 휴가철"], sym:"▲▼", score:-5, vol:66, why:"실적이 기대보다 좋거나 나쁘면 큰 변동"},
+ {m:8, f:["여름 휴가철","2분기 실적"], sym:"▼", score:-25, vol:72, why:"거래량 감소로 변동성 확대"},
+ {m:9, f:["역사적 약세"],           sym:"▼",  score:-60, vol:74, why:"펀드 리밸런싱, 세금 이슈, 투자심리 약화"},
+ {m:10,f:["변동성 확대"],           sym:"▲▼", score:  0, vol:88, why:"과거 금융위기 기억으로 변동성 증가"},
+ {m:11,f:["산타랠리","윈도드레싱"],  sym:"▲",  score: 50, vol:46, why:"연말 소비 증가, 기관 윈도드레싱"},
+ {m:12,f:["산타랠리","절세 매도"],   sym:"▲▼", score: 35, vol:54, why:"연말 소비가 밀어올리고 손실 종목 절세 매도가 눌러내림"}
+];
+
+const SECTORS=[
+ {id:"tr", n:"여행·항공",    s:"봄",   peak:4.3,  base:38, amp:46, w:2.1, why:"여행 수요 증가"},
+ {id:"cs", n:"화장품",       s:"봄",   peak:4.0,  base:42, amp:34, w:2.0, why:"여행 수요 증가"},
+ {id:"ac", n:"에어컨·가전",  s:"여름", peak:6.7,  base:36, amp:50, w:1.8, why:"냉방 수요 증가"},
+ {id:"pw", n:"전력·유틸리티",s:"여름", peak:7.6,  base:44, amp:44, w:1.9, why:"냉방 수요 증가"},
+ {id:"bv", n:"음료",         s:"여름", peak:7.4,  base:43, amp:40, w:2.0, why:"냉방 수요 증가"},
+ {id:"sm", n:"반도체·IT",    s:"가을", peak:10.0, base:52, amp:28, w:2.7, why:"신제품 출시 시즌 · 산업 사이클 영향이 계절성보다 커 진폭을 낮게 인코딩"},
+ {id:"gs", n:"난방·가스",    s:"겨울", peak:1.0,  base:40, amp:48, w:1.9, why:"난방 수요 증가"},
+ {id:"ap", n:"의류",         s:"겨울", peak:12.2, base:44, amp:32, w:2.2, why:"겨울 소비 증가"}
+];
+
+const EVENTS=[
+ {n:"FOMC 회의",      note:"금리 기대 변화",              src:"력", ms:[1,3,5,6,7,9,11,12]},
+ {n:"CPI 발표",       note:"인플레이션 전망",             src:"원", ms:[1,2,3,4,5,6,7,8,9,10,11,12]},
+ {n:"고용지표",       note:"경기 판단",                   src:"원", ms:[1,2,3,4,5,6,7,8,9,10,11,12]},
+ {n:"옵션 만기일",    note:"변동성 증가",                 src:"원", ms:[1,2,3,4,5,6,7,8,9,10,11,12]},
+ {n:"MSCI 지수 변경", note:"외국인 자금 유입·유출",       src:"력", ms:[2,5,8,11]},
+ {n:"쿼드러플 위칭데이", note:"선물·옵션 동시만기, 단기 급등락", src:"력", ms:[3,6,9,12]}
+];
+
+const SEASON=m=>(m===12||m<=2)?"겨울":(m<=5)?"봄":(m<=8)?"여름":"가을";
+
+/* ============================ 수학 ============================ */
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>t*t*(3-2*t);
+function circd(a,b){const d=Math.abs(a-b)%12; return Math.min(d,12-d);}
+
+function demand(sec,t){const d=circd(t,sec.peak); return sec.base+sec.amp*Math.exp(-(d*d)/(2*sec.w*sec.w));}
+function slope(sec,t){return (demand(sec,t+0.06)-demand(sec,t-0.06))/0.12;}
+function marketAt(t){
+  const a=Math.floor(t), f=smooth(t-a);
+  const i0=(a-1+12)%12, i1=a%12;
+  return {score:lerp(MONTHS[i0].score,MONTHS[i1].score,f), vol:lerp(MONTHS[i0].vol,MONTHS[i1].vol,f)};
+}
+
+/* 업종별 통계(표준화·진폭·기울기 정규화) — 12개월 표본에서 1회 계산 */
+let MAXSLOPE=0;
+SECTORS.forEach(s=>{
+  const v=[]; for(let m=1;m<=12;m++) v.push(demand(s,m));
+  s.mean=v.reduce((a,b)=>a+b,0)/12;
+  s.sd=Math.sqrt(v.reduce((a,b)=>a+(b-s.mean)*(b-s.mean),0)/12)||1;
+  s.max=Math.max.apply(null,v); s.min=Math.min.apply(null,v); s.range=s.max-s.min;
+  for(let m=1;m<13;m+=0.25) MAXSLOPE=Math.max(MAXSLOPE,Math.abs(slope(s,m)));
+});
+const RMIN=Math.min.apply(null,SECTORS.map(s=>s.range));
+const RMAX=Math.max.apply(null,SECTORS.map(s=>s.range));
+SECTORS.forEach(s=>{ s.r=9+20*((s.range-RMIN)/(RMAX-RMIN||1)); });
+
+function sDir(sec,t){const z=(demand(sec,t)-sec.mean)/sec.sd; return cl(42*z+0.45*marketAt(t).score,-100,100);}
+function sVol(sec,t){return cl(0.72*marketAt(t).vol+0.28*(100*Math.abs(slope(sec,t))/MAXSLOPE),22,100);}
+
+/* 방향성 → 발산형 색 (파랑 약세 ↔ 회색 중립 ↔ 빨강 강세) */
+function colorFor(v){
+  const p=(8+Math.min(100,Math.abs(v))*0.9).toFixed(1);
+  return 'color-mix(in oklab, var('+(v>=0?'--up':'--down')+') '+p+'%, var(--mid))';
+}
+const dirWord=v=> v>=35?"강세":v>=12?"완만한 강세":v>-12?"중립·혼조":v>-35?"완만한 약세":"약세";
+
+/* ============================ 상태 ============================ */
+const RM=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t=1, playing=false, speed=1, orbit=false, last=0;
+const off=Object.create(null);
+const $=s=>document.querySelector(s);
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); return e;};
+
+/* ============================ 툴팁 ============================ */
+const tip=$('#tip');
+function showTip(ev,html){
+  tip.innerHTML=html; tip.dataset.on="1";
+  const r=tip.getBoundingClientRect();
+  let x=ev.clientX+16, y=ev.clientY+16;
+  if(x+r.width>innerWidth-10) x=ev.clientX-r.width-16;
+  if(y+r.height>innerHeight-10) y=ev.clientY-r.height-16;
+  tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+}
+const hideTip=()=>{tip.dataset.on="0";};
+
+/* ============================ 다이얼 ============================ */
+const dial=$('#dial');
+const pol=(r,d)=>{const a=(d-90)*Math.PI/180; return [r*Math.cos(a), r*Math.sin(a)];};
+function ringPath(r0,r1,d0,d1){
+  const p0=pol(r1,d0),p1=pol(r1,d1),p2=pol(r0,d1),p3=pol(r0,d0), la=(d1-d0)>180?1:0;
+  return 'M'+p0[0]+' '+p0[1]+'A'+r1+' '+r1+' 0 '+la+' 1 '+p1[0]+' '+p1[1]+
+         'L'+p2[0]+' '+p2[1]+'A'+r0+' '+r0+' 0 '+la+' 0 '+p3[0]+' '+p3[1]+'Z';
+}
+const segs=[], labs=[];
+(function buildDial(){
+  const gBase=el('g',{}); dial.appendChild(gBase);
+  gBase.appendChild(el('circle',{cx:0,cy:0,r:150,fill:'none',stroke:'var(--line-2)','stroke-width':1}));
+  MONTHS.forEach((mo,i)=>{
+    const c=i*30;
+    const seg=el('path',{d:ringPath(118,150,c-13.6,c+13.6),fill:colorFor(mo.score),class:'seg'});
+    seg.addEventListener('click',()=>{ setT(mo.m); pause(); });
+    seg.addEventListener('pointerenter',e=>showTip(e,
+      '<b>'+mo.m+'월 · '+SEASON(mo.m)+'</b><dl>'+
+      '<dt>방향성</dt><dd>'+(mo.score>0?'+':'')+mo.score+'</dd>'+
+      '<dt>변동성</dt><dd>'+mo.vol+'</dd>'+
+      '<dt>원문 표기</dt><dd>'+mo.sym+'</dd></dl>'+
+      '<div class="tnote">'+mo.f.join(' · ')+'<br>'+mo.why+'</div>'));
+    seg.addEventListener('pointermove',e=>showTip(e,tip.innerHTML));
+    seg.addEventListener('pointerleave',hideTip);
+    gBase.appendChild(seg); segs.push(seg);
+
+    const vl=34*mo.vol/100;
+    gBase.appendChild(el('path',{d:ringPath(108-vl,108,c-3.4,c+3.4),fill:'var(--muted)',opacity:.34}));
+
+    const p=pol(164,c);
+    const tx=el('text',{x:p[0],y:p[1]+4,class:'mlabel','text-anchor':'middle'});
+    tx.textContent=mo.m; gBase.appendChild(tx); labs.push(tx);
+  });
+  const head=el('g',{id:'head'});
+  head.appendChild(el('line',{x1:0,y1:-100,x2:0,y2:-156,stroke:'var(--ink)','stroke-width':2,'stroke-linecap':'round'}));
+  head.appendChild(el('circle',{cx:0,cy:-134,r:4.5,fill:'var(--ink)'}));
+  dial.appendChild(head);
+  const ct=el('g',{});
+  ct.appendChild(el('text',{id:'cSeason',x:0,y:-44,class:'center-s','text-anchor':'middle'}));
+  ct.appendChild(el('text',{id:'cMonth',x:0,y:14,class:'center-m','text-anchor':'middle'}));
+  ct.appendChild(el('text',{id:'cDir',x:0,y:42,class:'center-d','text-anchor':'middle'}));
+  dial.appendChild(ct);
+})();
+
+/* ============================ 궤도 차트 ============================ */
+const field=$('#field');
+const FX0=64,FX1=652,FY0=24,FY1=390;
+const px=d=>FX0+(cl(d,5,100)-5)/95*(FX1-FX0);
+const py=v=>FY1-(cl(v,25,100)-25)/75*(FY1-FY0);
+const bubs={}, orbs={};
+(function buildField(){
+  const g=el('g',{}); field.appendChild(g);
+  for(let v=30;v<=100;v+=10){
+    g.appendChild(el('line',{x1:FX0,y1:py(v),x2:FX1,y2:py(v),class:'ax'}));
+    if(v%20===0){const tx=el('text',{x:FX0-9,y:py(v)+3.5,class:'ax-t','text-anchor':'end'}); tx.textContent=v; g.appendChild(tx);}
+  }
+  for(let d=10;d<=100;d+=10){
+    g.appendChild(el('line',{x1:px(d),y1:FY0,x2:px(d),y2:FY1,class:'ax'}));
+    if(d%20===0){const tx=el('text',{x:px(d),y:FY1+18,class:'ax-t','text-anchor':'middle'}); tx.textContent=d; g.appendChild(tx);}
+  }
+  g.appendChild(el('line',{x1:FX0,y1:FY1,x2:FX1,y2:FY1,class:'ax-base'}));
+  g.appendChild(el('line',{x1:FX0,y1:FY0,x2:FX0,y2:FY1,class:'ax-base'}));
+  const xt=el('text',{x:(FX0+FX1)/2,y:FY1+40,class:'ax-title','text-anchor':'middle'}); xt.textContent='계절 수요 지수 →'; g.appendChild(xt);
+  const yt=el('text',{x:0,y:0,class:'ax-title','text-anchor':'middle',transform:'translate(20,'+((FY0+FY1)/2)+') rotate(-90)'}); yt.textContent='변동성 지수 →'; g.appendChild(yt);
+  [['비수기 · 불안',FX0+10,FY0+16,'start'],['성수기 · 과열 주의',FX1-10,FY0+16,'end'],
+   ['비수기 · 소강',FX0+10,FY1-10,'start'],['성수기 · 안정',FX1-10,FY1-10,'end']]
+  .forEach(q=>{const x=el('text',{x:q[1],y:q[2],class:'quad','text-anchor':q[3]}); x.textContent=q[0]; g.appendChild(x);});
+
+  const go=el('g',{id:'orbits'}); field.appendChild(go);
+  const gb=el('g',{id:'bubbles'}); field.appendChild(gb);
+  const gl=el('g',{id:'blabels'}); field.appendChild(gl);
+  SECTORS.forEach(s=>{
+    let d='';
+    for(let k=0;k<=96;k++){const m=1+k*12/96; d+=(k?'L':'M')+px(demand(s,m)).toFixed(1)+' '+py(sVol(s,m)).toFixed(1);}
+    const o=el('path',{d:d+'Z',class:'orbit',visibility:'hidden'}); go.appendChild(o); orbs[s.id]=o;
+
+    const grp=el('g',{});
+    const ld=el('line',{class:'lead',visibility:'hidden'});
+    grp.appendChild(ld);
+    const c=el('circle',{r:s.r,class:'bub'});
+    const lb=el('text',{class:'bub-l','text-anchor':'middle'}); lb.textContent=s.n;
+    grp.appendChild(c); gb.appendChild(grp); gl.appendChild(lb);
+    bubs[s.id]={g:grp,c:c,l:lb,d:ld};
+    const tipFor=e=>showTip(e,
+      '<b>'+s.n+'</b><dl>'+
+      '<dt>계절 수요</dt><dd>'+demand(s,t).toFixed(0)+'</dd>'+
+      '<dt>방향성</dt><dd>'+(sDir(s,t)>0?'+':'')+sDir(s,t).toFixed(0)+'</dd>'+
+      '<dt>변동성</dt><dd>'+sVol(s,t).toFixed(0)+'</dd>'+
+      '<dt>계절 진폭</dt><dd>'+s.range.toFixed(0)+'</dd></dl>'+
+      '<div class="tnote">원문 분류: '+s.s+' · '+s.why+'</div>');
+    c.addEventListener('pointerenter',tipFor);
+    c.addEventListener('pointermove',tipFor);
+    c.addEventListener('pointerleave',hideTip);
+  });
+})();
+
+/* ============================ 랭킹 레이스 ============================ */
+const raceEl=$('#race'), rows={};
+(function buildRace(){
+  raceEl.style.height=(SECTORS.length*34+4)+'px';
+  SECTORS.forEach(s=>{
+    const r=document.createElement('div'); r.className='row';
+    r.innerHTML='<div class="rname">'+s.n+'</div><div class="rtrack"><div class="rbar"></div></div><div class="rval">0</div>';
+    const tipFor=e=>showTip(e,'<b>'+s.n+'</b><dl><dt>계절 수요</dt><dd>'+demand(s,t).toFixed(0)+
+      '</dd><dt>연중 최고</dt><dd>'+s.max.toFixed(0)+'</dd><dt>연중 최저</dt><dd>'+s.min.toFixed(0)+
+      '</dd></dl><div class="tnote">성수기 중심 '+s.peak.toFixed(1)+'월 ('+s.s+')</div>');
+    r.addEventListener('pointerenter',tipFor); r.addEventListener('pointermove',tipFor);
+    r.addEventListener('pointerleave',hideTip);
+    raceEl.appendChild(r);
+    rows[s.id]={el:r,bar:r.querySelector('.rbar'),val:r.querySelector('.rval')};
+  });
+})();
+
+/* ============================ 격자 & 이벤트 ============================ */
+const heatEl=$('#heat'), hcells={}, hheads=[], hrows={};
+(function buildHeat(){
+  heatEl.appendChild(document.createElement('div'));
+  for(let m=1;m<=12;m++){const d=document.createElement('div'); d.className='hh'; d.textContent=m; heatEl.appendChild(d); hheads.push(d);}
+  SECTORS.forEach(s=>{
+    const n=document.createElement('div'); n.className='hr'; n.textContent=s.n; heatEl.appendChild(n); hrows[s.id]=n;
+    for(let m=1;m<=12;m++){
+      const c=document.createElement('div'); c.className='cell';
+      const v=sDir(s,m); c.style.background=colorFor(v);
+      const tipFor=e=>showTip(e,'<b>'+s.n+' · '+m+'월</b><dl><dt>방향성</dt><dd>'+(v>0?'+':'')+v.toFixed(0)+
+        '</dd><dt>계절 수요</dt><dd>'+demand(s,m).toFixed(0)+'</dd><dt>변동성</dt><dd>'+sVol(s,m).toFixed(0)+'</dd></dl>'+
+        '<div class="tnote">'+dirWord(v)+' · '+MONTHS[m-1].f.join(' · ')+'</div>');
+      c.addEventListener('pointerenter',tipFor); c.addEventListener('pointermove',tipFor);
+      c.addEventListener('pointerleave',hideTip);
+      c.addEventListener('click',()=>{setT(m); pause();});
+      heatEl.appendChild(c); hcells[s.id+'-'+m]=c;
+    }
+  });
+})();
+
+const evEl=$('#evgrid'), evcells=[], evheads=[];
+(function buildEvents(){
+  evEl.appendChild(document.createElement('div'));
+  for(let m=1;m<=12;m++){const d=document.createElement('div'); d.className='eh'; d.textContent=m; evEl.appendChild(d); evheads.push(d);}
+  EVENTS.forEach(e=>{
+    const n=document.createElement('div'); n.className='en'; n.innerHTML=e.n+'<sup>'+e.src+'</sup>'; n.title=e.note; evEl.appendChild(n);
+    const rowCells=[];
+    for(let m=1;m<=12;m++){
+      const c=document.createElement('div'); c.className='evcell'+(e.ms.indexOf(m)>=0?' on':'');
+      const tipFor=ev=>showTip(ev,'<b>'+e.n+'</b><div class="tnote">'+e.note+'<br>'+
+        (e.ms.length===12?'매월 반복':e.ms.join('·')+'월')+' · 출처: '+(e.src==='원'?'원문 명시':'시장 관례(원문에 월 배정 없음)')+'</div>');
+      c.addEventListener('pointerenter',tipFor); c.addEventListener('pointermove',tipFor);
+      c.addEventListener('pointerleave',hideTip);
+      evEl.appendChild(c); rowCells.push(c);
+    }
+    evcells.push(rowCells);
+  });
+  $('#evNote').innerHTML='<sup>원</sup> 원문에 명시된 이벤트 &nbsp;·&nbsp; <sup>력</sup> 월 배정을 위해 보탠 시장 관례 (FOMC 연 8회, MSCI 정기변경 2·5·8·11월, 동시만기 3·6·9·12월) — 실제 일정은 매년 확인 필요';
+})();
+
+/* ============================ 필터 ============================ */
+(function buildFilters(){
+  const box=$('#filters');
+  SECTORS.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='fchip'; b.type='button'; b.setAttribute('aria-pressed','true'); b.textContent=s.n;
+    b.addEventListener('click',()=>{
+      off[s.id]=!off[s.id];
+      b.setAttribute('aria-pressed', off[s.id]?'false':'true');
+      hrows[s.id].style.opacity = off[s.id]?'.35':'1';
+      for(let m=1;m<=12;m++) hcells[s.id+'-'+m].style.opacity = off[s.id]?'.18':'1';
+      draw();
+    });
+    box.appendChild(b);
+  });
+})();
+
+/* ============================ 표 ============================ */
+(function buildTables(){
+  const tb=document.querySelector('#tblMonth tbody');
+  MONTHS.forEach(m=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+m.m+'월</td><td>'+m.f.join(' / ')+'</td><td>'+m.sym+'</td>'+
+      '<td class="num">'+(m.score>0?'+':'')+m.score+'</td><td class="num">'+m.vol+'</td><td class="wrap">'+m.why+'</td>';
+    tb.appendChild(tr);
+  });
+  const ts=document.querySelector('#tblSector tbody');
+  SECTORS.forEach(s=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+s.n+'</td><td>'+s.s+'</td><td class="wrap">'+s.why+'</td>'+
+      '<td class="num">'+s.peak.toFixed(1)+'월</td><td class="num">'+s.max.toFixed(0)+'</td>'+
+      '<td class="num">'+s.min.toFixed(0)+'</td><td class="num">'+s.range.toFixed(0)+'</td>';
+    ts.appendChild(tr);
+  });
+  let h='<tr><th>업종</th>'; for(let m=1;m<=12;m++) h+='<th style="text-align:right">'+m+'월</th>'; h+='</tr>';
+  document.querySelector('#tblGrid thead').innerHTML=h;
+  const tg=document.querySelector('#tblGrid tbody');
+  SECTORS.forEach(s=>{
+    let r='<td>'+s.n+'</td>';
+    for(let m=1;m<=12;m++){const v=sDir(s,m); r+='<td class="num">'+(v>0?'+':'')+v.toFixed(0)+'</td>';}
+    const tr=document.createElement('tr'); tr.innerHTML=r; tg.appendChild(tr);
+  });
+})();
+
+/* ============================ 그리기 ============================ */
+let lastMonth=0;
+function draw(){
+  const mi=Math.min(12,Math.max(1,Math.floor(t)));
+  const mo=MONTHS[mi-1], mk=marketAt(t);
+
+  document.getElementById('head').setAttribute('transform','rotate('+((t-1)*30)+')');
+  document.getElementById('cMonth').textContent=mi;
+  document.getElementById('cSeason').textContent=SEASON(mi)+' · '+mi+'월';
+  const cd=document.getElementById('cDir');
+  cd.textContent=dirWord(mk.score); cd.setAttribute('fill',colorFor(mk.score>=0?Math.max(45,mk.score):Math.min(-45,mk.score)));
+
+  const placed=[];
+  SECTORS.forEach(s=>{
+    const b=bubs[s.id], d=demand(s,t), v=sVol(s,t), x=px(d), y=py(v);
+    b.c.setAttribute('cx',x.toFixed(1)); b.c.setAttribute('cy',y.toFixed(1));
+    b.c.setAttribute('fill',colorFor(sDir(s,t)));
+    b.g.setAttribute('opacity',off[s.id]?0.07:1);
+    b.l.setAttribute('opacity',off[s.id]?0:1);
+    b.g.style.pointerEvents=off[s.id]?'none':'auto';
+    orbs[s.id].setAttribute('visibility',(orbit&&!off[s.id])?'visible':'hidden');
+    if(!off[s.id]) placed.push({b:b,s:s,x:x,y:y,ly:y+s.r+13,w:s.n.length*11.5});
+  });
+  /* 라벨 겹침 해소: 세로로 겹치는 라벨을 아래로 밀고, 멀어지면 지시선을 그림 */
+  placed.sort((a,b)=>a.ly-b.ly);
+  for(let i=1;i<placed.length;i++){
+    for(let j=0;j<i;j++){
+      const a=placed[j],c=placed[i];
+      if(Math.abs(a.x-c.x)<(a.w+c.w)/2 && c.ly-a.ly<14) c.ly=a.ly+14;
+    }
+  }
+  placed.forEach(p=>{
+    p.b.l.setAttribute('x',p.x.toFixed(1)); p.b.l.setAttribute('y',p.ly.toFixed(1));
+    const gap=p.ly-(p.y+p.s.r+13);
+    if(gap>3){
+      p.b.d.setAttribute('x1',p.x.toFixed(1)); p.b.d.setAttribute('y1',(p.y+p.s.r+2).toFixed(1));
+      p.b.d.setAttribute('x2',p.x.toFixed(1)); p.b.d.setAttribute('y2',(p.ly-9).toFixed(1));
+      p.b.d.setAttribute('visibility','visible');
+    } else p.b.d.setAttribute('visibility','hidden');
+  });
+
+  const rank=SECTORS.slice().sort((a,b)=>demand(b,t)-demand(a,t));
+  rank.forEach((s,i)=>{
+    const r=rows[s.id], d=demand(s,t);
+    r.el.style.transform='translateY('+(i*34)+'px)';
+    r.el.classList.toggle('dim',!!off[s.id]);
+    r.bar.style.width=cl(d,0,100).toFixed(1)+'%';
+    r.val.textContent=d.toFixed(0);
+  });
+
+  if(mi!==lastMonth){
+    lastMonth=mi;
+    labs.forEach((l,i)=>l.classList.toggle('on',i===mi-1));
+    hheads.forEach((h,i)=>h.classList.toggle('on',i===mi-1));
+    evheads.forEach((h,i)=>h.classList.toggle('on',i===mi-1));
+    SECTORS.forEach(s=>{for(let m=1;m<=12;m++) hcells[s.id+'-'+m].classList.toggle('now',m===mi);});
+    evcells.forEach(rc=>rc.forEach((c,i)=>c.classList.toggle('col',i===mi-1)));
+    $('#fTags').innerHTML=mo.f.map(f=>'<span class="ftag">'+f+'</span>').join('')+
+      '<span class="ftag" style="font-family:var(--font-mono)">'+mo.sym+'</span>';
+    $('#fWhy').textContent=mo.why;
+    $('#kMonth').textContent=mi+'월';
+    $('#kSeason').textContent=SEASON(mi)+' · 원문 표기 '+mo.sym;
+    const vols=MONTHS.map(x=>x.vol).sort((a,b)=>b-a);
+    $('#kVolSub').textContent='연중 '+(vols.indexOf(mo.vol)+1)+'위 / 12개월';
+    const evs=EVENTS.filter(e=>e.ms.indexOf(mi)>=0);
+    $('#kEv').textContent=evs.length;
+    $('#kEvSub').textContent=evs.filter(e=>e.ms.length<12).map(e=>e.n).join(', ')||'상시 일정만';
+  }
+
+  $('#kDir').textContent=(mk.score>0?'+':'')+mk.score.toFixed(0);
+  $('#kDir').style.color=colorFor(mk.score>=0?Math.max(45,mk.score):Math.min(-45,mk.score));
+  const chip=$('#kDirChip');
+  chip.textContent=dirWord(mk.score);
+  chip.className='chip '+(mk.score>=12?'up':mk.score<=-12?'down':'flat');
+  $('#kVol').textContent=mk.vol.toFixed(0);
+  const top=rank.find(s=>!off[s.id])||rank[0];
+  $('#kTop').textContent=top.n;
+  $('#kTopSub').textContent='계절 수요 '+demand(top,t).toFixed(0)+' · '+top.s;
+}
+
+/* ============================ 시계 ============================ */
+function setT(v){ t=((v-1)%12+12)%12+1; draw(); }
+function play(){ playing=true; last=0; $('#btnPlay').textContent='❚❚ 일시정지'; $('#btnPlay').setAttribute('aria-pressed','true'); requestAnimationFrame(tick); }
+function pause(){ playing=false; $('#btnPlay').textContent='▶ 재생'; $('#btnPlay').setAttribute('aria-pressed','false'); }
+function tick(ts){
+  if(!playing) return;
+  if(!last) last=ts;
+  const dt=Math.min(120,ts-last); last=ts;
+  t+=dt/2000*speed;
+  if(t>=13) t-=12;
+  draw();
+  requestAnimationFrame(tick);
+}
+$('#btnPlay').addEventListener('click',()=>playing?pause():play());
+$('#btnOrbit').addEventListener('click',e=>{orbit=!orbit; e.currentTarget.setAttribute('aria-pressed',String(orbit)); draw();});
+document.querySelectorAll('.speed button').forEach(b=>b.addEventListener('click',()=>{
+  speed=parseFloat(b.dataset.sp);
+  document.querySelectorAll('.speed button').forEach(o=>o.setAttribute('aria-pressed',String(o===b)));
+}));
+
+/* 다이얼 드래그 · 키보드 */
+let dragging=false;
+function angleFrom(ev){
+  const r=dial.getBoundingClientRect();
+  const x=ev.clientX-(r.left+r.width/2), y=ev.clientY-(r.top+r.height/2);
+  if(Math.hypot(x,y)<r.width*0.14) return null;
+  const deg=(Math.atan2(y,x)*180/Math.PI+90+360)%360;
+  return 1+deg/30;
+}
+dial.addEventListener('pointerdown',e=>{const a=angleFrom(e); if(a===null) return; dragging=true; pause(); dial.setPointerCapture(e.pointerId); t=a; draw();});
+dial.addEventListener('pointermove',e=>{ if(!dragging) return; const a=angleFrom(e); if(a!==null){t=a; draw();} });
+dial.addEventListener('pointerup',()=>{dragging=false;});
+dial.addEventListener('pointercancel',()=>{dragging=false;});
+dial.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowUp'){pause(); setT(Math.floor(t)+1); e.preventDefault();}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowDown'){pause(); setT(Math.floor(t)-1); e.preventDefault();}
+  else if(e.key===' '||e.key==='Enter'){playing?pause():play(); e.preventDefault();}
+});
+
+/* 관점 탭 */
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b) return;
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  document.querySelectorAll('.pane').forEach(p=>{ if(p.dataset.p===b.dataset.p) p.dataset.on='1'; else delete p.dataset.on; });
+});
+
+window.addEventListener('scroll',hideTip,{passive:true});
+draw();
+if(!RM) setTimeout(play,700);
+})();
+</script>
+<!-- ARTIFACT:END -->
+</body>
+</html>
