@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- ARTIFACT:BEGIN -->
+<title>의사결정 무결성 콘솔</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;900&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --bg:#e8eae7; --surface:#fafbf9; --surface-2:#f0f2ee; --surface-3:#e3e7e1;
+  --ink:#111512; --ink-2:#48524a; --muted:#79837b;
+  --grid:#dde1d9; --line:rgba(17,21,18,.13); --line-2:rgba(17,21,18,.06);
+  --analyst:#4a3aa7; --red:#eb6834; --accent:#4a3aa7;
+  --pass:#0ca30c; --flag:#fab219; --stop:#d03b3b;
+  --pass-bg:#e4f4e4; --flag-bg:#fdf1d8; --stop-bg:#f8e2e2; --accent-bg:#e7e4f5;
+  --shadow:0 1px 2px rgba(17,21,18,.05), 0 10px 26px rgba(17,21,18,.07);
+  --fd:"Gothic A1",system-ui,"Malgun Gothic",sans-serif;
+  --fb:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Segoe UI",sans-serif;
+  --fm:"JetBrains Mono","IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0a0d0b; --surface:#111614; --surface-2:#18201c; --surface-3:#202a24;
+    --ink:#e9f0ea; --ink-2:#a3b0a7; --muted:#6c7970;
+    --grid:#1c2620; --line:rgba(233,240,234,.15); --line-2:rgba(233,240,234,.07);
+    --analyst:#9085e9; --red:#d95926; --accent:#9085e9;
+    --pass-bg:#0f2a10; --flag-bg:#2f2409; --stop-bg:#301414; --accent-bg:#1d1a33;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.42);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0a0d0b; --surface:#111614; --surface-2:#18201c; --surface-3:#202a24;
+  --ink:#e9f0ea; --ink-2:#a3b0a7; --muted:#6c7970;
+  --grid:#1c2620; --line:rgba(233,240,234,.15); --line-2:rgba(233,240,234,.07);
+  --analyst:#9085e9; --red:#d95926; --accent:#9085e9;
+  --pass-bg:#0f2a10; --flag-bg:#2f2409; --stop-bg:#301414; --accent-bg:#1d1a33;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 12px 30px rgba(0,0,0,.42);
+}
+
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--fb); font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px; margin:0 auto; padding:26px 20px 72px}
+h1,h2,h3{margin:0; text-wrap:balance}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+.mono{font-family:var(--fm); font-variant-numeric:tabular-nums}
+
+/* masthead */
+.masthead{display:flex; flex-wrap:wrap; gap:22px; align-items:flex-end; justify-content:space-between; padding-bottom:18px; border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--fm); font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:9px}
+.masthead h1{font-family:var(--fd); font-weight:900; font-size:clamp(28px,4.2vw,44px); line-height:1.1; letter-spacing:-.03em}
+.masthead p{margin:10px 0 0; color:var(--ink-2); font-size:14px; max-width:60ch}
+.flowline{font-family:var(--fm); font-size:11.5px; color:var(--muted); margin-top:12px; letter-spacing:-.01em}
+.flowline b{color:var(--ink-2); font-weight:500}
+.stamp{flex:0 0 auto; max-width:300px; border:1px solid var(--line); border-left:3px solid var(--flag); border-radius:var(--r); background:var(--surface); padding:11px 14px; box-shadow:var(--shadow)}
+.stamp b{display:block; font-family:var(--fm); font-size:11px; letter-spacing:.05em; color:var(--flag); margin-bottom:4px}
+.stamp span{font-size:12px; color:var(--ink-2); line-height:1.5}
+
+/* kpi */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:11px; margin:20px 0}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:13px 15px; box-shadow:var(--shadow)}
+.kpi .kl{font-family:var(--fm); font-size:10.5px; letter-spacing:.11em; color:var(--muted); text-transform:uppercase}
+.kpi .kv{font-family:var(--fd); font-weight:900; font-size:28px; line-height:1.2; margin-top:6px; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.kpi .ks{font-size:12px; color:var(--ink-2); margin-top:2px}
+
+/* cards */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:17px}
+.card > header{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.card h2{font-family:var(--fd); font-weight:700; font-size:19px; letter-spacing:-.02em}
+.card .hint{font-family:var(--fm); font-size:11px; color:var(--muted)}
+.card > p.lede{margin:5px 0 13px; font-size:13px; color:var(--ink-2)}
+.hero{display:grid; grid-template-columns:330px minmax(0,1fr); gap:14px; align-items:start}
+@media (max-width:1000px){.hero{grid-template-columns:1fr}}
+.split{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; margin-top:14px}
+.split.wide{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+@media (max-width:1000px){.split,.split.wide{grid-template-columns:1fr}}
+.stack{margin-top:14px}
+
+/* verdict chips */
+.v{display:inline-flex; align-items:center; gap:5px; font-family:var(--fm); font-size:10.5px; font-weight:500;
+   padding:2px 7px; border-radius:4px; letter-spacing:.03em; white-space:nowrap}
+.v.pass{color:var(--pass); background:var(--pass-bg)}
+.v.flag{color:var(--flag); background:var(--flag-bg)}
+.v.stop{color:var(--stop); background:var(--stop-bg)}
+.v.dead{color:var(--muted); background:var(--surface-2)}
+
+/* pipeline spine */
+.spine{position:relative; padding:4px 0 0}
+.gate{display:grid; grid-template-columns:26px 1fr; gap:10px; align-items:center; padding:5px 7px; border-radius:7px;
+  cursor:pointer; border:1px solid transparent; transition:background .15s, border-color .15s}
+.gate:hover{background:var(--surface-2)}
+.gate.on{background:var(--accent-bg); border-color:color-mix(in oklab, var(--accent) 40%, transparent)}
+.gate .num{font-family:var(--fm); font-size:11px; font-weight:700; color:var(--muted); text-align:center;
+  border:1px solid var(--line); border-radius:5px; padding:3px 0; background:var(--surface)}
+.gate.on .num{color:var(--accent); border-color:color-mix(in oklab, var(--accent) 50%, transparent)}
+.gate.done .num{color:var(--ink-2)}
+.gate .gt{min-width:0}
+.gate .ge{font-family:var(--fm); font-size:10.5px; letter-spacing:.05em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.gate .gk{font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.gate.on .gk{color:var(--ink-2)}
+.spine-rail{position:absolute; left:20px; top:12px; bottom:12px; width:2px; background:var(--grid); border-radius:2px}
+.spine-fill{position:absolute; left:0; top:0; width:2px; background:var(--accent); border-radius:2px}
+.loopback{display:block; line-height:1.75; margin-top:9px; padding:7px 9px; border:1px dashed var(--line);
+  border-radius:7px; font-family:var(--fm); font-size:10.5px; color:var(--muted); letter-spacing:.02em}
+.loopback b{color:var(--accent); font-weight:500}
+
+/* controls */
+.controls{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px}
+button.btn{font-family:var(--fb); font-size:12.5px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line);
+  border-radius:6px; padding:6px 12px; cursor:pointer; transition:background .15s}
+button.btn:hover{background:var(--surface-3)}
+button.btn[aria-pressed="true"]{background:var(--accent-bg); border-color:color-mix(in oklab,var(--accent) 45%,transparent); color:var(--accent)}
+.speed{display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden}
+.speed button{border:0; background:var(--surface-2); padding:6px 10px; font-family:var(--fm); font-size:11.5px; color:var(--ink-2); cursor:pointer}
+.speed button+button{border-left:1px solid var(--line)}
+.speed button[aria-pressed="true"]{background:var(--accent-bg); color:var(--accent); font-weight:700}
+</style>
+<style>
+/* claim chips + survival field */
+.claims{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 12px}
+.cchip{display:inline-flex; align-items:center; gap:7px; font-family:var(--fb); font-size:12px; padding:4px 10px;
+  border-radius:999px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-2); cursor:pointer}
+.cchip[aria-pressed="true"]{background:var(--accent-bg); border-color:color-mix(in oklab,var(--accent) 45%,transparent); color:var(--ink); font-weight:500}
+.cchip i{width:8px; height:8px; border-radius:50%; display:inline-block}
+#surv{width:100%; height:auto; display:block}
+.ax{stroke:var(--grid); stroke-width:1}
+.ax-base{stroke:var(--line); stroke-width:1}
+.ax-t{font-family:var(--fm); font-size:10px; fill:var(--muted)}
+.ax-title{font-family:var(--fm); font-size:10.5px; fill:var(--ink-2); letter-spacing:.05em}
+.zone{font-family:var(--fb); font-size:10.5px; fill:var(--muted); opacity:.7}
+.trail{fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity:.85}
+.trail.ghost{opacity:.16; stroke-dasharray:3 4}
+.node{stroke:var(--surface); stroke-width:2; cursor:pointer}
+.nlabel{font-family:var(--fb); font-size:11px; font-weight:500; fill:var(--ink); stroke:var(--surface); stroke-width:3.2; paint-order:stroke fill; pointer-events:none}
+.gateline{stroke:var(--accent); stroke-width:1.5; opacity:.55}
+.legend{display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-top:11px; padding-top:11px; border-top:1px solid var(--line-2); font-size:12px; color:var(--ink-2)}
+.legend .li{display:inline-flex; align-items:center; gap:6px}
+.legend .li i{width:11px; height:11px; border-radius:50%; display:inline-block}
+
+/* gate console */
+.gconsole dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:9px 14px; align-items:start}
+.gconsole dt{font-family:var(--fm); font-size:10.5px; letter-spacing:.08em; color:var(--muted); text-transform:uppercase; padding-top:2px}
+.gconsole dd{margin:0; font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.gconsole dd b{color:var(--ink); font-weight:600}
+.gtitle{font-family:var(--fm); font-size:15px; font-weight:700; letter-spacing:.02em; color:var(--ink)}
+.gsub{font-size:13px; color:var(--ink-2); margin-top:2px}
+.ghead{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid var(--line-2)}
+
+/* battle */
+.battle{display:grid; gap:8px}
+.brow{display:grid; grid-template-columns:1fr 74px 1fr; gap:8px; align-items:center}
+.bside{height:15px; border-radius:3px; background:var(--surface-2); position:relative; overflow:hidden}
+.bside i{position:absolute; top:0; bottom:0; transition:width .2s linear}
+.bside.a i{right:0; background:var(--analyst); border-radius:3px 0 0 3px}
+.bside.r i{left:0; background:var(--red); border-radius:0 3px 3px 0}
+.blabel{font-family:var(--fm); font-size:10.5px; color:var(--muted); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.brow.on .blabel{color:var(--ink); font-weight:700}
+.bhead{display:grid; grid-template-columns:1fr 74px 1fr; gap:8px; font-family:var(--fm); font-size:11px; margin-bottom:4px}
+.bhead .l{text-align:right; color:var(--analyst); font-weight:700}
+.bhead .r{color:var(--red); font-weight:700}
+.bhead .c{text-align:center; color:var(--muted)}
+.bfoot{margin-top:11px; padding-top:10px; border-top:1px solid var(--line-2); font-size:12.5px; color:var(--ink-2)}
+
+/* bias grid */
+.bgrid{display:grid; grid-template-columns:112px repeat(6,minmax(42px,1fr)); gap:3px; min-width:520px}
+.bgrid .bh{font-size:11px; color:var(--ink-2); text-align:center; line-height:1.3; padding-bottom:3px}
+.bgrid .bh em{display:block; font-family:var(--fm); font-size:9px; font-style:normal; color:var(--muted); letter-spacing:-.02em}
+.bgrid .br{font-size:12px; color:var(--ink-2); display:flex; align-items:center; justify-content:flex-end; padding-right:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.bgrid .br.on{color:var(--ink); font-weight:600}
+.bcell{height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--fm); font-size:10.5px; cursor:default; border:1px solid transparent}
+.bcell.on{border-color:var(--ink)}
+.scroll-x{overflow-x:auto; padding-bottom:4px}
+
+/* moat dumbbell */
+.moat{display:grid; gap:11px}
+.mrow{display:grid; grid-template-columns:96px minmax(0,1fr) 62px; gap:10px; align-items:center}
+.mname{font-size:12.5px; color:var(--ink-2); text-align:right}
+.mtrack{position:relative; height:22px}
+.mtrack .base{position:absolute; left:0; right:0; top:10px; height:2px; background:var(--grid)}
+.mtrack .seg{position:absolute; top:10px; height:2px; background:var(--muted); opacity:.6}
+.mtrack .dot{position:absolute; top:5px; width:12px; height:12px; border-radius:50%; margin-left:-6px; border:2px solid var(--surface)}
+.mtrack .dot.now{background:var(--analyst)}
+.mtrack .dot.fut{background:var(--muted)}
+.mdelta{font-family:var(--fm); font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
+.mdelta.neg{color:var(--stop)}
+.mnote{margin-top:12px; padding-top:10px; border-top:1px solid var(--line-2); font-size:12.5px; color:var(--ink-2)}
+.blocked{padding:26px 14px; text-align:center; color:var(--muted); font-size:13px; border:1px dashed var(--line); border-radius:8px}
+
+/* kill switch */
+.ks{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px}
+@media (max-width:860px){.ks{grid-template-columns:1fr}}
+.kcond{display:grid; gap:7px}
+.kbtn{display:grid; grid-template-columns:20px 1fr auto; gap:10px; align-items:center; text-align:left; width:100%;
+  font-family:var(--fb); font-size:13.5px; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line);
+  border-radius:8px; padding:9px 12px; cursor:pointer; transition:background .15s, border-color .15s, color .15s}
+.kbtn:hover{background:var(--surface-3)}
+.kbtn .box{width:18px; height:18px; border-radius:4px; border:1.5px solid var(--muted); display:grid; place-items:center; font-size:11px; color:transparent}
+.kbtn[aria-pressed="true"]{background:var(--stop-bg); border-color:color-mix(in oklab,var(--stop) 45%,transparent); color:var(--ink)}
+.kbtn[aria-pressed="true"] .box{background:var(--stop); border-color:var(--stop); color:#fff}
+.kbtn .w{font-family:var(--fm); font-size:11px; color:var(--muted)}
+.verdict{border:1px solid var(--line); border-radius:10px; padding:16px; background:var(--surface-2); display:flex; flex-direction:column; gap:10px}
+.verdict .vt{font-family:var(--fm); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+.verdict .vh{font-family:var(--fd); font-weight:900; font-size:26px; letter-spacing:-.02em; line-height:1.2}
+.verdict .vd{font-size:13px; color:var(--ink-2); line-height:1.6}
+.meter{height:8px; border-radius:999px; background:var(--surface-3); overflow:hidden; position:relative}
+.meter i{display:block; height:100%; background:var(--stop); transition:width .2s}
+.meter .thr{position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--ink); opacity:.55}
+.mrow2{display:flex; justify-content:space-between; font-family:var(--fm); font-size:11px; color:var(--muted)}
+</style>
+<style>
+/* memory */
+.memwrap{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:center}
+@media (max-width:900px){.memwrap{grid-template-columns:1fr}}
+#memcycle{width:100%; max-width:470px; height:auto; display:block; margin:0 auto}
+.mc-node{font-family:var(--fm); font-size:10px; fill:var(--ink-2)}
+.mc-ring{fill:none; stroke:var(--grid); stroke-width:1.5}
+.mc-arc{fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linecap:round}
+.stores{display:grid; gap:9px}
+.store{display:grid; grid-template-columns:112px minmax(0,1fr) 44px; gap:10px; align-items:center}
+.store .sn{font-family:var(--fm); font-size:11px; color:var(--ink-2); text-align:right}
+.store .st{height:9px; border-radius:999px; background:var(--surface-2); overflow:hidden; border:1px solid var(--line-2)}
+.store .st i{display:block; height:100%; background:var(--accent); transition:width .25s}
+.store .sv{font-family:var(--fm); font-size:11.5px; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums}
+.cycler{display:flex; align-items:center; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line-2)}
+.cycler label{font-family:var(--fm); font-size:11px; color:var(--muted); white-space:nowrap}
+.cycler input[type=range]{flex:1; accent-color:var(--accent)}
+.cycler output{font-family:var(--fm); font-size:12px; color:var(--ink); min-width:74px; text-align:right; font-variant-numeric:tabular-nums}
+
+/* levels */
+.levels{display:grid; gap:8px}
+.lv{display:grid; grid-template-columns:64px 1fr; gap:12px; align-items:center; padding:10px 12px; border-radius:8px;
+  background:var(--surface-2); border:1px solid var(--line-2)}
+.lv.top{background:var(--accent-bg); border-color:color-mix(in oklab,var(--accent) 35%,transparent)}
+.lv .ln{font-family:var(--fd); font-weight:900; font-size:15px; color:var(--muted); letter-spacing:-.02em}
+.lv.top .ln{color:var(--accent)}
+.lv .lt{font-size:13px; color:var(--ink); font-weight:600; margin-bottom:2px}
+.lv .lf{font-family:var(--fm); font-size:11px; color:var(--ink-2); letter-spacing:-.01em; line-height:1.5}
+
+/* tabs */
+.tabs{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 12px}
+.tab{font-family:var(--fb); font-size:12.5px; padding:6px 12px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--ink-2); cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink)}
+.pane{display:none}
+.pane[data-on="1"]{display:block}
+.chain{font-family:var(--fm); font-size:12px; color:var(--ink-2); line-height:2; word-break:keep-all}
+.chain b{color:var(--ink); font-weight:700}
+.chain .arw{color:var(--accent); padding:0 3px}
+
+/* philosophy */
+.phil{display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:10px}
+.phil div{background:var(--surface-2); border:1px solid var(--line-2); border-left:2px solid var(--accent); border-radius:7px; padding:11px 13px}
+.phil b{display:block; font-family:var(--fm); font-size:10.5px; color:var(--accent); letter-spacing:.08em; margin-bottom:4px}
+.phil span{font-size:13px; color:var(--ink-2)}
+
+/* method + tables */
+details.method{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); margin-top:14px}
+details.method > summary{cursor:pointer; padding:15px 17px; font-family:var(--fd); font-weight:700; font-size:18px; list-style:none; display:flex; justify-content:space-between; align-items:center}
+details.method > summary::-webkit-details-marker{display:none}
+details.method > summary::after{content:"펼치기"; font-family:var(--fm); font-size:11px; color:var(--muted)}
+details.method[open] > summary::after{content:"접기"}
+.mbody{padding:0 17px 17px; border-top:1px solid var(--line-2)}
+.mbody h3{font-family:var(--fm); font-size:12px; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; margin:16px 0 7px}
+.mbody p,.mbody li{font-size:13.5px; color:var(--ink-2); line-height:1.65}
+.mbody ol{padding-left:18px; margin:0; display:grid; gap:5px}
+table{border-collapse:collapse; width:100%; font-size:12.5px; min-width:640px}
+th,td{text-align:left; padding:6px 9px; border-bottom:1px solid var(--line-2); white-space:nowrap}
+th{font-family:var(--fm); font-size:10.5px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; font-weight:500}
+td.num{font-family:var(--fm); text-align:right; font-variant-numeric:tabular-nums}
+td.wrap{white-space:normal; min-width:250px; color:var(--ink-2)}
+
+#tip{position:fixed; z-index:60; pointer-events:none; opacity:0; transition:opacity .12s; background:var(--surface);
+  border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:10px 12px; font-size:12.5px; max-width:270px; color:var(--ink)}
+#tip[data-on="1"]{opacity:1}
+#tip b{display:block; font-size:13px; margin-bottom:5px}
+#tip dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:2px 10px}
+#tip dt{color:var(--muted); font-size:11.5px}
+#tip dd{margin:0; font-family:var(--fm); font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
+#tip .tn{margin-top:6px; padding-top:6px; border-top:1px solid var(--line-2); color:var(--ink-2); font-size:11.5px; line-height:1.5}
+
+footer{margin-top:30px; padding-top:16px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); line-height:1.65}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important}}
+</style>
+<!-- ARTIFACT:HEAD_END -->
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div>
+    <div class="eyebrow">AI Decision Integrity System</div>
+    <h1>의사결정 무결성 콘솔</h1>
+    <p>“정답을 찾는 AI”가 아니라 <b>“틀릴 가능성을 계속 탐지·차단·기록하는 AI”</b>. 12개 게이트를 실제 주장 5건에 통과시키며 어디서, 왜 멈추는지 봅니다.</p>
+    <div class="flowline">
+      기존 <b>질문 → 답변</b> &nbsp;·&nbsp; 개선 <b>질문 → 전제 → 데이터 → 반증 → 인과 → 편향 → 시나리오 → 결론</b>
+    </div>
+  </div>
+  <div class="stamp">
+    <b>⚠ 시스템 명세 시뮬레이터</b>
+    <span>신뢰도·편향·해자 수치는 아키텍처 설명을 움직이게 만들기 위한 <em>예시 인코딩</em>입니다. 실제 모델 출력이나 백테스트 결과가 아닙니다.</span>
+  </div>
+</header>
+
+<section class="kpis" aria-label="파이프라인 현재 상태">
+  <div class="kpi"><div class="kl">현재 게이트</div><div class="kv" id="kGate">① QUESTION</div><div class="ks" id="kGateKo">질문의 본질 분해</div></div>
+  <div class="kpi"><div class="kl">생존 가설</div><div class="kv" id="kAlive">5 / 5</div><div class="ks" id="kAliveSub">아직 차단 없음</div></div>
+  <div class="kpi"><div class="kl">평균 신뢰도</div><div class="kv" id="kConf">56</div><div class="ks">생존 가설 기준</div></div>
+  <div class="kpi"><div class="kl">편향 점수</div><div class="kv" id="kBias">—</div><div class="ks" id="kBiasSub">선택 가설 기준</div></div>
+  <div class="kpi"><div class="kl">차단 / 플래그</div><div class="kv" id="kStop">0 / 0</div><div class="ks">누적 게이트 판정</div></div>
+</section>
+
+<section class="hero">
+  <div class="card">
+    <header><h2>게이트 파이프라인</h2><span class="hint">클릭 / ↑ ↓</span></header>
+    <p class="lede">채워진 레일이 지금까지 통과한 구간입니다.</p>
+    <div class="spine" id="spine" tabindex="0" role="listbox" aria-label="12개 검증 게이트">
+      <div class="spine-rail"><div class="spine-fill" id="spineFill"></div></div>
+    </div>
+    <div class="loopback">↺ <b>⑫ POST-MORTEM</b> → PATTERN MEMORY → <b>① 다음 판단</b></div>
+    <div class="controls">
+      <button class="btn" id="btnPlay" aria-pressed="false" style="min-width:92px;font-weight:600">▶ 재생</button>
+      <div class="speed" role="group" aria-label="재생 속도">
+        <button data-sp="0.5" aria-pressed="false">0.5×</button>
+        <button data-sp="1" aria-pressed="true">1×</button>
+        <button data-sp="2" aria-pressed="false">2×</button>
+      </div>
+      <button class="btn" id="btnGhost" aria-pressed="true">전체 경로</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <header><h2>가설 생존 궤도</h2><span class="hint">가로 = 게이트 · 세로 = 신뢰도</span></header>
+    <p class="lede">주장 5건이 파이프라인을 통과합니다. 게이트에 걸리면 그 자리에서 궤적이 끊깁니다. 칩을 눌러 아래 패널의 분석 대상을 바꿉니다.</p>
+    <div class="claims" id="claims" role="group" aria-label="가설 선택"></div>
+    <svg id="surv" viewBox="0 0 700 372" role="img" aria-label="게이트별 가설 신뢰도 생존 궤적"></svg>
+    <div class="legend">
+      <span class="li"><i style="background:var(--pass)"></i>통과</span>
+      <span class="li"><i style="background:var(--flag)"></i>플래그 · 불확실</span>
+      <span class="li"><i style="background:var(--stop)"></i>차단 · 가설 폐기</span>
+      <span class="li"><i style="background:var(--muted);opacity:.4"></i>폐기 이후</span>
+      <span class="li">원 크기 = 근거 강도</span>
+    </div>
+  </div>
+</section>
+
+<section class="split wide">
+  <div class="card gconsole">
+    <header><h2>게이트 콘솔</h2><span class="hint" id="gcCase">선택 가설</span></header>
+    <div class="ghead" style="margin-top:12px">
+      <div><div class="gtitle" id="gcName">① QUESTION ENGINE</div><div class="gsub" id="gcKo">질문의 본질 분해</div></div>
+      <span class="v pass" id="gcV">통과</span>
+    </div>
+    <dl>
+      <dt>하는 일</dt><dd id="gcDo"></dd>
+      <dt>통과 조건</dt><dd id="gcPass"></dd>
+      <dt>실패 시</dt><dd id="gcFail"></dd>
+      <dt>산출물</dt><dd id="gcOut"></dd>
+      <dt>이 가설에서</dt><dd id="gcCaseNote"></dd>
+    </dl>
+  </div>
+
+  <div class="card">
+    <header><h2>Evidence Battle</h2><span class="hint">Analyst ⚔ Red Team</span></header>
+    <p class="lede">한 모델이 찬성 논거와 반대 논거를 <b>동시에</b> 만들고 충돌시킵니다. 자기검증보다 한 단계 강한 구조입니다.</p>
+    <div class="bhead"><span class="l">ANALYST 찬성</span><span class="c">GATE</span><span class="r">RED TEAM 반대</span></div>
+    <div class="battle" id="battle"></div>
+    <div class="bfoot" id="battleFoot"></div>
+  </div>
+</section>
+
+<section class="split">
+  <div class="card">
+    <header><h2>Bias Engine · Munger Layer</h2><span class="hint">높을수록 편향 위험</span></header>
+    <p class="lede">데이터 검증만으로는 부족합니다. 인간도 AI도 인지적 오류를 범하므로 별도 엔진이 6개 편향을 채점합니다.</p>
+    <div class="scroll-x"><div class="bgrid" id="bgrid"></div></div>
+    <div class="bfoot" id="biasFoot"></div>
+  </div>
+
+  <div class="card">
+    <header><h2>Moat Engine · Decay</h2><span class="hint">현재 ● → 10년 후 ●</span></header>
+    <p class="lede">“지금 해자가 강한가”보다 중요한 질문은 <b>“10년 후에도 그 해자가 존재하는가”</b>입니다.</p>
+    <div id="moatBox"></div>
+  </div>
+</section>
+
+<section class="card stack">
+  <header><h2>⑪ Kill Switch — 이 판단을 폐기할 조건</h2><span class="hint">조건을 눌러 발동시켜 보세요</span></header>
+  <p class="lede">“좋은 투자입니다”로 끝내면 안 됩니다. 어떤 조건이 발생하면 판단을 버릴지 <b>미리</b> 정의해야 합니다. 발동 가중치 합이 임계치 50을 넘으면 가설이 폐기됩니다.</p>
+  <div class="ks">
+    <div class="kcond" id="kcond"></div>
+    <div class="verdict">
+      <div class="vt">Decision</div>
+      <div class="vh" id="vHead">조건부 채택</div>
+      <div class="vd" id="vDesc"></div>
+      <div>
+        <div class="meter"><i id="vMeter" style="width:0%"></i><span class="thr" style="left:50%"></span></div>
+        <div class="mrow2"><span>발동 가중치 <b id="vSum" class="mono">0</b></span><span>임계치 50</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card stack">
+  <header><h2>Decision Memory — 시간이 쌓는 해자</h2><span class="hint">누적 사이클을 움직여 보세요</span></header>
+  <p class="lede">이 구조에서 가장 강력한 경제적 해자는 모델 자체가 아니라, 사이클이 돌수록 축적되는 <b>Decision · Causal · Failure · Pattern · Moat Memory</b>일 가능성이 높습니다.</p>
+  <div class="memwrap">
+    <svg id="memcycle" viewBox="-62 -8 524 316" role="img" aria-label="판단 기록에서 패턴 기억으로 이어지는 순환 구조"></svg>
+    <div>
+      <div class="stores" id="stores"></div>
+      <div class="cycler">
+        <label for="cyc">누적 사이클</label>
+        <input type="range" id="cyc" min="0" max="60" value="8" step="1">
+        <output id="cycOut">8 사이클</output>
+      </div>
+      <div class="bfoot" id="memFoot"></div>
+    </div>
+  </div>
+</section>
+
+<section class="split">
+  <div class="card">
+    <header><h2>진화 사다리</h2><span class="hint">Level 1 → 5</span></header>
+    <div class="levels" id="levels" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <header><h2>파이프라인 문자열</h2></header>
+    <div class="tabs" role="tablist" id="tabs">
+      <button class="tab" role="tab" data-p="a" aria-selected="true">기존 AI</button>
+      <button class="tab" role="tab" data-p="b" aria-selected="false">개선 AI</button>
+      <button class="tab" role="tab" data-p="c" aria-selected="false">궁극적 형태</button>
+    </div>
+    <div class="pane" data-p="a" data-on="1" role="tabpanel">
+      <p class="chain"><b>질문</b><span class="arw">→</span><b>답변</b></p>
+      <p style="font-size:13px;color:var(--ink-2);margin-top:10px">검증 게이트가 없으므로 틀린 전제도 그대로 통과합니다.</p>
+    </div>
+    <div class="pane" data-p="b" role="tabpanel">
+      <p class="chain"><b>질문</b><span class="arw">→</span>전제검증<span class="arw">→</span>데이터검증<span class="arw">→</span>반대논리<span class="arw">→</span>인과검증<span class="arw">→</span>편향검증<span class="arw">→</span>시나리오<span class="arw">→</span><b>결론</b></p>
+      <p style="font-size:13px;color:var(--ink-2);margin-top:10px">결론에 도달하기 전 6개 관문을 통과해야 합니다.</p>
+    </div>
+    <div class="pane" data-p="c" role="tabpanel">
+      <p class="chain"><b>질문</b><span class="arw">→</span>분해<span class="arw">→</span>검증<span class="arw">→</span>반증<span class="arw">→</span>인과<span class="arw">→</span>편향<span class="arw">→</span>스트레스 테스트<span class="arw">→</span>시나리오<span class="arw">→</span><b>의사결정</b><span class="arw">→</span>사후검증</p>
+      <p style="font-size:13px;color:var(--ink-2);margin-top:10px">사후검증이 다시 입력으로 돌아가면서 루프가 닫힙니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="card stack">
+  <header><h2>핵심 철학 — 경쟁력은 똑똑함이 아니라 이것</h2></header>
+  <div class="phil" id="phil" style="margin-top:12px"></div>
+</section>
+
+<details class="method">
+  <summary>방법론 · 데이터 출처 · 표 보기</summary>
+  <div class="mbody">
+    <h3>이 콘솔이 무엇인가</h3>
+    <p>원자료는 “AI Decision Integrity System”이라는 <b>아키텍처 설계 문서</b>입니다. 12개 게이트, Analyst/Red Team 이중 역할, Munger 편향 6종, Moat Decay, Kill Switch, Decision Memory, Level 1~5 진화 단계 — 모두 원문에 서술된 구조 그대로 옮겼습니다. 원문에 <b>수치는 하나도 없습니다.</b></p>
+    <p>따라서 이 콘솔의 신뢰도·편향 점수·해자 값은 그 구조가 실제로 돌 때 무엇이 벌어지는지 보여주기 위한 <b>예시 인코딩(worked example)</b>입니다. 실제 모델 출력, 백테스트, 통계가 아닙니다. 이 구분이 흐려지면 이 콘솔 자체가 ③ DATA GATE에서 차단되어야 할 대상이 됩니다.</p>
+
+    <h3>가설 5건의 출처</h3>
+    <ol>
+      <li><b>AI 수요↑ → A기업 이익↑</b> — 원문 §2가 직접 든 전제 오류 예시. “수요 증가 ≠ 기업 이익 증가 ≠ 주가 상승”. ② PREMISE GATE에서 차단.</li>
+      <li><b>삼성전자 = HBM 최대 수혜주</b> — 원문 §4가 든 편향 검사 예시. 7개 반문(선반영·경쟁·고객집중도·세대교체·CAPEX·공급과잉·과거사이클)이 그대로 편향 점수와 Red Team 논거가 됩니다.</li>
+      <li><b>9월 약세 → 8월 매도</b> — 앞선 계절성 분석에서 이어붙인 가설. 상관과 인과를 구분하는 ④ CAUSAL ENGINE의 시험대.</li>
+      <li><b>강한 해자는 10년 뒤에도 강하다</b> — 원문 §5의 Moat Decay 논점을 가설로 세운 것. ⑨ MOAT ENGINE에서 차단.</li>
+      <li><b>과거 유사 사이클은 반복된다</b> — 원문 §7의 Decision Memory 예시(“과거에도 비슷한 상황에서 이런 판단을 했지만 6개월 후 틀렸습니다”)를 ⑫에서 재현.</li>
+    </ol>
+
+    <h3>파생 규칙</h3>
+    <ol>
+      <li><b>신뢰도 궤적</b> — 가설별로 12개 게이트 값을 직접 배정했습니다. 차단 게이트 이후에는 폐기 상태로 낮게 고정됩니다.</li>
+      <li><b>Evidence Battle</b> — Analyst 강도는 해당 게이트의 신뢰도, Red Team 강도는 <span class="mono">96 − 신뢰도 (+플래그 시 12)</span>로 파생됩니다. 두 값은 합이 100이 되도록 정규화하지 않습니다. 서로 독립적인 논거 강도이기 때문입니다.</li>
+      <li><b>Kill Switch</b> — 원문이 HBM 예시로 든 5개 폐기 조건에 가중치를 배정하고, 발동 합이 50을 넘으면 폐기로 판정합니다. 임계치 50은 임의 설정값입니다.</li>
+      <li><b>Memory 축적</b> — 사이클 수 n에 대해 <span class="mono">깊이 = 100 × (1 − e^(−n/k))</span> 형태의 포화 곡선입니다. 메모리 종류별로 k가 다릅니다(실패 기억이 가장 빨리, 인과 기억이 가장 느리게 쌓임). 개념 모형이며 측정치가 아닙니다.</li>
+    </ol>
+
+    <h3>게이트 명세 전체</h3>
+    <div class="scroll-x"><table id="tGate"><thead><tr><th>#</th><th>Gate</th><th>역할</th><th>실패 시</th><th>산출물</th></tr></thead><tbody></tbody></table></div>
+
+    <h3>가설 × 게이트 신뢰도 전체 표</h3>
+    <div class="scroll-x"><table id="tConf"><thead></thead><tbody></tbody></table></div>
+
+    <h3>가설 × 편향 점수 전체 표</h3>
+    <div class="scroll-x"><table id="tBias"><thead></thead><tbody></tbody></table></div>
+  </div>
+</details>
+
+<footer>
+  원자료 · “AI Decision Integrity System” 아키텍처 설계 노트(게이트 12종, Analyst/Red Team, Bias Engine, Moat Engine, Kill Switch, Decision Memory, Level 1~5).
+  모든 수치는 그 구조를 시연하기 위한 <b>예시 인코딩</b>이며 실제 모델 성능·수익률·확률이 아닙니다. 특정 종목에 대한 투자 권유가 아닙니다.
+</footer>
+
+</div>
+<div id="tip" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+
+/* ===================== 원문 구조 → 데이터 ===================== */
+const GATES=[
+ {i:1, en:'QUESTION ENGINE', ko:'질문의 본질 분해', fail:null, failTxt:'—',
+  do:'표면 질문을 답할 수 있는 하위 질문으로 쪼갭니다. “좋은 투자인가”는 답할 수 없고, “무엇이 이익을 만드는가”는 답할 수 있습니다.',
+  pass:'하위 질문이 각각 검증 가능한 형태일 것', out:'분해된 하위 질문 목록'},
+ {i:2, en:'PREMISE GATE', ko:'전제 검증', fail:'STOP', failTxt:'STOP / REFRAME — 질문을 다시 세웁니다',
+  do:'주장이 딛고 선 전제를 하나씩 꺼내 검증합니다. 전제가 틀리면 이후 분석은 전부 무의미합니다.',
+  pass:'모든 전제가 개별적으로 참일 것', out:'검증된 전제 목록 + 미검증 전제'},
+ {i:3, en:'DATA GATE', ko:'데이터 · 출처 · 최신성', fail:'FLAG', failTxt:'UNCERTAINTY FLAG — 불확실 표시를 달고 통과',
+  do:'근거 데이터의 출처, 최신성, 표본을 점검합니다. 없는 데이터를 추정치로 메우지 않습니다.',
+  pass:'출처가 특정되고 기간이 명시될 것', out:'출처·신선도 라벨, 확인 불가 목록'},
+ {i:4, en:'CAUSAL ENGINE', ko:'상관 vs 인과 검증', fail:'STOP', failTxt:'STOP — 인과 사슬을 다시 그립니다',
+  do:'수요↑ → ASP↑ → 매출↑ → 영업이익↑ → 기업가치↑. 각 화살표가 실제로 성립하는지 단계별로 확인합니다.',
+  pass:'사슬의 모든 단계가 개별 검증될 것', out:'검증된 인과 사슬 + 끊어진 고리'},
+ {i:5, en:'RED TEAM ENGINE', ko:'반대논리 생성', fail:'FLAG', failTxt:'FLAG — 반박이 강하면 신뢰도를 깎습니다',
+  do:'같은 모델이 “왜 이 주장이 틀릴 수 있는가”를 전력으로 작성합니다. 자기검증보다 한 단계 강한 구조입니다.',
+  pass:'반대 논거가 찬성 논거보다 약할 것', out:'반대 논거 + Evidence Battle 결과'},
+ {i:6, en:'BIAS ENGINE', ko:'Munger 편향 검사', fail:'FLAG', failTxt:'FLAG — BIAS SCORE를 신뢰도에서 차감',
+  do:'확증·앵커링·최신성·생존자·과신·손실회피 6종을 채점합니다. 데이터 검증만으로는 인지 오류를 못 잡습니다.',
+  pass:'BIAS SCORE가 임계치 아래일 것', out:'BIAS SCORE + 반문 목록'},
+ {i:7, en:'STRESS TEST', ko:'핵심 변수 충격시험', fail:'STOP', failTxt:'STOP — 단일 변수로 결론이 뒤집히면 폐기',
+  do:'결론을 떠받치는 변수를 하나씩 극단으로 밀어 봅니다. 하나만 흔들려도 무너지면 결론이 아닙니다.',
+  pass:'단일 변수 충격에 결론이 유지될 것', out:'취약 변수 순위'},
+ {i:8, en:'SCENARIO ENGINE', ko:'Bull / Base / Bear', fail:'FLAG', failTxt:'FLAG — 시나리오 분산이 크면 표시',
+  do:'세 갈래 시나리오와 각각의 조건을 명시합니다. 하나의 미래만 그리는 것은 예측이 아니라 소망입니다.',
+  pass:'세 시나리오의 조건이 서로 배타적일 것', out:'Bull / Base / Bear + 전환 조건'},
+ {i:9, en:'MOAT ENGINE', ko:'경제적 해자 검증', fail:'STOP', failTxt:'STOP — 해자가 없으면 성장은 경쟁자 몫',
+  do:'원가우위·전환비용·네트워크효과·무형자산을 채점하고, 더 중요한 MOAT DECAY(10년 후 잔존)를 봅니다.',
+  pass:'미래 해자가 현재 해자의 일정 수준 이상 남을 것', out:'MOAT STRENGTH + MOAT DECAY'},
+ {i:10,en:'DECISION ENGINE', ko:'최종 판단', fail:null, failTxt:'—',
+  do:'앞의 아홉 게이트 결과를 하나의 판단과 신뢰도로 묶습니다. 신뢰도 없는 판단은 판단이 아닙니다.',
+  pass:'판단과 신뢰도가 함께 제시될 것', out:'판단 + 신뢰도 + 근거 요약'},
+ {i:11,en:'KILL SWITCH', ko:'판단 무효 조건', fail:'STOP', failTxt:'STOP — 조건 발동 시 즉시 가설 폐기',
+  do:'“어떤 조건이 발생하면 이 판단을 폐기할 것인가”를 미리 정의합니다. 이것이 기존 AI와의 가장 큰 차이입니다.',
+  pass:'폐기 조건이 관측 가능한 형태로 명시될 것', out:'폐기 조건 목록 + 가중치'},
+ {i:12,en:'POST-MORTEM', ko:'결과 → 학습 → 기억', fail:'STOP', failTxt:'STOP — 과거 기록이 반증하면 판단을 되돌립니다',
+  do:'가설·근거·예측을 실제 결과와 대조해 오차를 기록하고, 패턴 기억으로 넘깁니다.',
+  pass:'과거 유사 판단의 결과와 모순되지 않을 것', out:'PATTERN MEMORY 갱신'}
+];
+
+const CLAIMS=[
+ {id:'c1', n:'AI 수요↑ → A기업 이익↑', s:'수요→이익', ev:52, stop:2, flags:[],
+  conf:[58,22,18,16,15,14,14,13,13,12,12,12],
+  src:'원문 §2가 든 전제 오류 예시',
+  notes:{2:'❌ 전제 불충분. 수요 증가 ≠ 기업 이익 증가 ≠ 주가 상승. ASP·매출·영업이익·기업가치 각 단계가 미검증인 채로 하나의 화살표로 압축돼 있습니다.'},
+  verdict:'가설 폐기', vdesc:'② PREMISE GATE에서 차단. 전제가 검증되지 않아 이후 게이트로 넘기지 않습니다. 질문을 “수요 증가가 어느 단계에서 이익으로 전환되는가”로 다시 세워야 합니다.'},
+ {id:'c2', n:'삼성전자 = HBM 최대 수혜주', s:'HBM 수혜주', ev:78, stop:null, flags:[3,5,6,7],
+  conf:[70,72,64,66,58,46,44,52,58,55,52,56],
+  src:'원문 §4가 든 편향 검사 예시',
+  notes:{3:'⚠ 고객 집중도와 세대별 점유율 데이터가 최신 출처로 특정되지 않습니다. 불확실 플래그를 달고 통과.',
+         5:'⚠ Red Team: SK하이닉스 경쟁, 고객 CAPEX 의존, HBM 세대교체 위험. 반박이 만만치 않습니다.',
+         6:'⚠ 확증편향 82 / 최신성편향 74. “내가 삼성전자를 분석하고 있어서 관련 데이터만 고른 것은 아닌가”가 미해소.',
+         7:'⚠ AI CAPEX 둔화 단일 변수만으로 결론이 크게 흔들립니다. 취약 변수 1순위.',
+         9:'현재 해자는 무형자산(브랜드·공정)에서 강하나 네트워크 효과는 약합니다. 10년 후 잔존은 −13.',
+         11:'폐기 조건 5종이 명시됨. 옆 패널에서 직접 발동시켜 볼 수 있습니다.'},
+  verdict:'조건부 채택', vdesc:'12개 게이트를 모두 통과했지만 신뢰도 56, 플래그 4건입니다. 결론이 아니라 “폐기 조건이 달린 잠정 판단”으로만 성립합니다.'},
+ {id:'c3', n:'9월 약세 → 8월 선제 매도', s:'계절성 매도', ev:38, stop:4, flags:[3],
+  conf:[52,48,34,16,15,14,14,13,13,12,12,12],
+  src:'계절성 분석에서 이어붙인 가설',
+  notes:{3:'⚠ 9월 약세의 실측 승률·평균 수익률이 원자료에 없습니다. 방향 표기만 있고 통계가 없습니다.',
+         4:'❌ 상관은 관찰되나 인과가 확인되지 않습니다. 리밸런싱·세금·심리는 서로 다른 메커니즘이고, 알려진 패턴은 이미 선반영됐을 수 있습니다.'},
+  verdict:'가설 폐기', vdesc:'④ CAUSAL ENGINE에서 차단. 계절성은 상관 관찰이며 매매 규칙을 정당화할 인과가 아닙니다. 진입·분할매수 시점을 조정하는 보조 지표까지가 한계입니다.'},
+ {id:'c4', n:'강한 해자는 10년 뒤에도 강하다', s:'해자 영속', ev:60, stop:9, flags:[5,6],
+  conf:[64,66,62,60,56,50,52,54,22,20,19,19],
+  src:'원문 §5의 Moat Decay 논점',
+  notes:{6:'⚠ 생존자 편향 84. 지금 해자가 강한 기업만 표본에 남아 있습니다. 사라진 기업은 관측되지 않습니다.',
+         9:'❌ MOAT DECAY 미검증. 네 기둥 모두 10년 구간에서 감쇠가 측정됩니다. “현재 해자가 강한가”가 아니라 “10년 후에도 존재하는가”가 질문이어야 합니다.'},
+  verdict:'가설 폐기', vdesc:'⑨ MOAT ENGINE에서 차단. 해자의 존재가 아니라 해자의 지속성이 검증 대상입니다.'},
+ {id:'c5', n:'과거 유사 사이클은 반복된다', s:'사이클 반복', ev:45, stop:12, flags:[6,9,11],
+  conf:[55,54,48,44,40,36,38,42,44,46,44,18],
+  src:'원문 §7의 Decision Memory 예시',
+  notes:{6:'⚠ 최신성·생존자 편향이 동시에 높습니다. 기억나는 사이클만 표본이 됩니다.',
+         11:'⚠ 폐기 조건이 “사이클이 달라 보이면”처럼 관측 불가능한 형태로 적혀 있습니다.',
+         12:'❌ Decision Log 조회: 과거에도 비슷한 상황에서 같은 판단을 했으나 6개월 후 틀렸습니다. 패턴 기억이 이 판단을 되돌립니다.'},
+  verdict:'사후검증 반증', vdesc:'⑫ POST-MORTEM에서 폐기. 앞의 11개 게이트를 통과해도 과거 기록이 반증하면 판단은 되돌아갑니다. 이것이 단순 RAG와 다른 Decision Memory의 역할입니다.'}
+];
+
+const BIAS=['Confirmation\n확증','Anchoring\n앵커링','Recency\n최신성','Survivorship\n생존자','Overconfidence\n과신','Loss Aversion\n손실회피'];
+const BIASV={c1:[78,52,60,40,72,30], c2:[82,64,74,58,70,36], c3:[66,48,80,62,55,42], c4:[70,60,45,84,66,38], c5:[74,56,68,76,62,44]};
+const MOAT={
+ c2:{label:'삼성전자 · HBM', v:[['원가우위','Cost Advantage',72,58],['전환비용','Switching Cost',55,42],['네트워크효과','Network Effect',40,34],['무형자산','Intangible Asset',78,66]]},
+ c4:{label:'해자 영속 가설',   v:[['원가우위','Cost Advantage',80,61],['전환비용','Switching Cost',76,55],['네트워크효과','Network Effect',68,44],['무형자산','Intangible Asset',82,60]]},
+ c5:{label:'사이클 반복 가설', v:[['원가우위','Cost Advantage',58,46],['전환비용','Switching Cost',50,38],['네트워크효과','Network Effect',44,30],['무형자산','Intangible Asset',62,48]]}
+};
+const KILL=[
+ {n:'HBM ASP 하락', w:35}, {n:'경쟁사 점유율 상승', w:25}, {n:'고객 CAPEX 감소', w:30},
+ {n:'AI 투자 ROI 악화', w:28}, {n:'공급과잉 발생', w:40}
+];
+const STORES=[['Decision Memory',6],['Pattern Memory',14],['Failure Memory',4],['Causal Memory',22],['Moat Memory',18]];
+const LEVELS=[
+ ['Level 1','일반 AI','질문 → 답변'],
+ ['Level 2','분석 AI','질문 → 데이터 → 분석 → 답변'],
+ ['Level 3','검증 AI','질문 → 전제 → 데이터 → 인과 → 반증 → 편향 → 답변'],
+ ['Level 4','의사결정 AI','질문 → 검증 → 스트레스 테스트 → 시나리오 → 의사결정 → Kill Switch'],
+ ['Level 5','자기학습형 투자 AI','질문 → 검증 → 의사결정 → 결과 → 사후검증 → 기억 → 패턴 → 다음 판단']
+];
+const PHIL=[
+ ['01','무엇을 모르는지 안다'],['02','자신의 전제를 의심한다'],['03','반대 증거를 찾는다'],['04','인과관계를 검증한다'],
+ ['05','자신의 편향을 탐지한다'],['06','틀릴 조건을 정의한다'],['07','틀린 결과를 기억한다'],['08','다음 의사결정에 반영한다']
+];
+
+/* ===================== 상태 · 헬퍼 ===================== */
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let p=1, playing=false, speed=1, ghost=true, sel='c2', killOn=[false,false,false,false,false], cycles=8, last=0;
+const $=s=>document.querySelector(s);
+const NS='http://www.w3.org/2000/svg';
+const el=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); return e;};
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const claim=id=>CLAIMS.find(c=>c.id===id);
+const ROMAN=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫'];
+
+function status(c,g){
+  if(c.stop!==null && g>c.stop) return 'dead';
+  if(c.stop===g) return 'stop';
+  if(c.flags.indexOf(g)>=0) return 'flag';
+  return 'pass';
+}
+const SW={pass:'통과',flag:'플래그',stop:'차단',dead:'폐기됨'};
+const SC={pass:'var(--pass)',flag:'var(--flag)',stop:'var(--stop)',dead:'var(--muted)'};
+const confAt=(c,x)=>{const a=Math.floor(cl(x,1,12)), b=Math.min(12,a+1), f=cl(x,1,12)-a;
+  return c.conf[a-1]+(c.conf[b-1]-c.conf[a-1])*f;};
+const biasScore=id=>Math.round(BIASV[id].reduce((a,b)=>a+b,0)/6);
+
+const tip=$('#tip');
+function showTip(ev,html){
+  tip.innerHTML=html; tip.dataset.on='1';
+  const r=tip.getBoundingClientRect();
+  let x=ev.clientX+15, y=ev.clientY+15;
+  if(x+r.width>innerWidth-10) x=ev.clientX-r.width-15;
+  if(y+r.height>innerHeight-10) y=ev.clientY-r.height-15;
+  tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+}
+const hideTip=()=>{tip.dataset.on='0';};
+
+/* ===================== 스파인 ===================== */
+const spine=$('#spine'), gateEls=[];
+GATES.forEach(g=>{
+  const d=document.createElement('div');
+  d.className='gate'; d.setAttribute('role','option');
+  d.innerHTML='<div class="num">'+g.i+'</div><div class="gt"><div class="ge">'+g.en+'</div><div class="gk">'+g.ko+'</div></div>';
+  d.addEventListener('click',()=>{pause(); p=g.i; draw();});
+  spine.appendChild(d); gateEls.push(d);
+});
+
+/* ===================== 생존 궤도 ===================== */
+const surv=$('#surv');
+const SX0=54,SX1=676,SY0=18,SY1=316;
+const gx=g=>SX0+(cl(g,1,12)-1)/11*(SX1-SX0);
+const cy=v=>SY1-cl(v,0,100)/100*(SY1-SY0);
+const trails={}, gtrails={}, nodes={}, nlabs={}, marks={};
+(function buildSurv(){
+  const g=el('g',{}); surv.appendChild(g);
+  [0,25,50,75,100].forEach(v=>{
+    g.appendChild(el('line',{x1:SX0,y1:cy(v),x2:SX1,y2:cy(v),class:'ax'}));
+    const t=el('text',{x:SX0-9,y:cy(v)+3.5,class:'ax-t','text-anchor':'end'}); t.textContent=v; g.appendChild(t);
+  });
+  GATES.forEach(gt=>{
+    g.appendChild(el('line',{x1:gx(gt.i),y1:SY0,x2:gx(gt.i),y2:SY1,class:'ax'}));
+    const t=el('text',{x:gx(gt.i),y:SY1+18,class:'ax-t','text-anchor':'middle'}); t.textContent=gt.i; g.appendChild(t);
+  });
+  g.appendChild(el('line',{x1:SX0,y1:SY1,x2:SX1,y2:SY1,class:'ax-base'}));
+  g.appendChild(el('line',{x1:SX0,y1:SY0,x2:SX0,y2:SY1,class:'ax-base'}));
+  const yt=el('text',{class:'ax-title','text-anchor':'middle',transform:'translate(16,'+((SY0+SY1)/2)+') rotate(-90)'});
+  yt.textContent='신뢰도'; g.appendChild(yt);
+  const xt=el('text',{x:(SX0+SX1)/2,y:SY1+40,class:'ax-title','text-anchor':'middle'}); xt.textContent='게이트 →'; g.appendChild(xt);
+  const zt=el('text',{x:SX1-6,y:cy(85),class:'zone','text-anchor':'end'}); zt.textContent='근거가 버티는 구간'; g.appendChild(zt);
+  const zb=el('text',{x:SX1-6,y:cy(10),class:'zone','text-anchor':'end'}); zb.textContent='폐기 구간'; g.appendChild(zb);
+
+  const gl=el('line',{id:'gline',class:'gateline',y1:SY0-4,y2:SY1+4}); surv.appendChild(gl);
+  const gg=el('g',{}); surv.appendChild(gg);
+  const gn=el('g',{}); surv.appendChild(gn);
+  const gt2=el('g',{}); surv.appendChild(gt2);
+  CLAIMS.forEach(c=>{
+    const endG=c.stop===null?12:c.stop;
+    let d='';
+    for(let i=1;i<=endG;i++) d+=(i===1?'M':'L')+gx(i).toFixed(1)+' '+cy(c.conf[i-1]).toFixed(1);
+    gg.appendChild(Object.assign(el('path',{d:d,class:'trail ghost',stroke:'var(--muted)'}),{}));
+    gtrails[c.id]=gg.lastChild;
+    gg.appendChild(el('path',{d:'',class:'trail',stroke:'var(--muted)'}));
+    trails[c.id]=gg.lastChild;
+    if(c.stop!==null){
+      const m=el('g',{});
+      const x=gx(c.stop), y=cy(c.conf[c.stop-1]);
+      m.appendChild(el('line',{x1:x-5,y1:y-5,x2:x+5,y2:y+5,stroke:'var(--stop)','stroke-width':2}));
+      m.appendChild(el('line',{x1:x-5,y1:y+5,x2:x+5,y2:y-5,stroke:'var(--stop)','stroke-width':2}));
+      m.setAttribute('visibility','hidden'); gn.appendChild(m); marks[c.id]=m;
+    }
+    const nd=el('circle',{r:5+c.ev/100*7,class:'node'});
+    const tf=e=>showTip(e,'<b>'+c.n+'</b><dl><dt>신뢰도</dt><dd>'+confAt(c,p).toFixed(0)+
+      '</dd><dt>근거 강도</dt><dd>'+c.ev+'</dd><dt>판정</dt><dd>'+SW[status(c,Math.floor(p))]+
+      '</dd></dl><div class="tn">'+c.src+'</div>');
+    nd.addEventListener('pointerenter',tf); nd.addEventListener('pointermove',tf); nd.addEventListener('pointerleave',hideTip);
+    nd.addEventListener('click',()=>selectClaim(c.id));
+    gn.appendChild(nd); nodes[c.id]=nd;
+    const lb=el('text',{class:'nlabel','text-anchor':'middle'}); lb.textContent=c.s; gt2.appendChild(lb); nlabs[c.id]=lb;
+  });
+})();
+
+/* ===================== 가설 칩 ===================== */
+(function buildChips(){
+  const box=$('#claims');
+  CLAIMS.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='cchip'; b.type='button'; b.dataset.id=c.id;
+    b.innerHTML='<i></i>'+c.n;
+    b.addEventListener('click',()=>selectClaim(c.id));
+    box.appendChild(b);
+  });
+})();
+
+/* ===================== Evidence Battle ===================== */
+const brows=[];
+(function buildBattle(){
+  const box=$('#battle');
+  GATES.forEach(g=>{
+    const r=document.createElement('div'); r.className='brow';
+    r.innerHTML='<div class="bside a"><i></i></div><div class="blabel">'+ROMAN[g.i-1]+' '+g.en.split(' ')[0]+'</div><div class="bside r"><i></i></div>';
+    r.addEventListener('click',()=>{pause(); p=g.i; draw();});
+    r.style.cursor='pointer';
+    box.appendChild(r);
+    brows.push({el:r,a:r.querySelector('.a i'),rr:r.querySelector('.r i')});
+  });
+})();
+
+/* ===================== Bias 격자 ===================== */
+const bcells={}, browEls={};
+(function buildBias(){
+  const box=$('#bgrid');
+  box.appendChild(document.createElement('div'));
+  BIAS.forEach(b=>{
+    const d=document.createElement('div'); d.className='bh';
+    d.innerHTML=b.split('\n')[1]+'<em>'+b.split('\n')[0]+'</em>';
+    box.appendChild(d);
+  });
+  CLAIMS.forEach(c=>{
+    const n=document.createElement('div'); n.className='br'; n.textContent=c.s;
+    n.style.cursor='pointer'; n.addEventListener('click',()=>selectClaim(c.id));
+    box.appendChild(n); browEls[c.id]=n;
+    BIASV[c.id].forEach((v,i)=>{
+      const cell=document.createElement('div'); cell.className='bcell'; cell.textContent=v;
+      cell.style.background='color-mix(in oklab, var(--stop) '+(10+v*0.6).toFixed(0)+'%, var(--surface-2))';
+      cell.style.color='var(--ink)';
+      const tf=e=>showTip(e,'<b>'+BIAS[i].replace('\n',' · ')+'</b><dl><dt>가설</dt><dd style="text-align:left">'+c.s+
+        '</dd><dt>편향 위험</dt><dd>'+v+'</dd></dl><div class="tn">높을수록 이 편향이 판단을 오염시켰을 가능성이 큽니다.</div>');
+      cell.addEventListener('pointerenter',tf); cell.addEventListener('pointermove',tf); cell.addEventListener('pointerleave',hideTip);
+      box.appendChild(cell); bcells[c.id+'-'+i]=cell;
+    });
+  });
+})();
+
+/* ===================== Kill Switch ===================== */
+(function buildKill(){
+  const box=$('#kcond');
+  KILL.forEach((k,i)=>{
+    const b=document.createElement('button');
+    b.className='kbtn'; b.type='button'; b.setAttribute('aria-pressed','false');
+    b.innerHTML='<span class="box">✕</span><span>'+k.n+'</span><span class="w">'+k.w+'</span>';
+    b.addEventListener('click',()=>{killOn[i]=!killOn[i]; b.setAttribute('aria-pressed',String(killOn[i])); drawVerdict();});
+    box.appendChild(b);
+  });
+})();
+
+/* ===================== Memory ===================== */
+const storeBars=[];
+(function buildStores(){
+  const box=$('#stores');
+  STORES.forEach(s=>{
+    const d=document.createElement('div'); d.className='store';
+    d.innerHTML='<div class="sn">'+s[0]+'</div><div class="st"><i></i></div><div class="sv">0</div>';
+    box.appendChild(d);
+    storeBars.push({bar:d.querySelector('i'),val:d.querySelector('.sv'),k:s[1]});
+  });
+  const mc=$('#memcycle'), R=104, CXY=[200,150];
+  const NODES=['Decision Log','Hypothesis','Evidence','Prediction','Result / Error','Post-Mortem','Pattern Memory','Next Decision'];
+  mc.appendChild(el('circle',{cx:CXY[0],cy:CXY[1],r:R,class:'mc-ring'}));
+  mc.appendChild(el('path',{id:'mcArc',class:'mc-arc',d:''}));
+  NODES.forEach((n,i)=>{
+    const a=(i/NODES.length*360-90)*Math.PI/180;
+    const x=CXY[0]+R*Math.cos(a), y=CXY[1]+R*Math.sin(a);
+    mc.appendChild(el('circle',{cx:x,cy:y,r:4.5,fill:'var(--accent)'}));
+    const lx=CXY[0]+(R+20)*Math.cos(a), ly=CXY[1]+(R+20)*Math.sin(a);
+    const t=el('text',{x:lx,y:ly+3.5,class:'mc-node','text-anchor':Math.abs(Math.cos(a))<0.3?'middle':(Math.cos(a)>0?'start':'end')});
+    t.textContent=n; mc.appendChild(t);
+  });
+  const c1=el('text',{x:CXY[0],y:CXY[1]-4,class:'mc-node','text-anchor':'middle'}); c1.textContent='DECISION'; mc.appendChild(c1);
+  const c2=el('text',{x:CXY[0],y:CXY[1]+12,class:'mc-node','text-anchor':'middle'}); c2.textContent='MEMORY LOOP'; mc.appendChild(c2);
+})();
+
+/* ===================== 레벨 · 철학 · 표 ===================== */
+(function buildStatic(){
+  const lv=$('#levels');
+  LEVELS.forEach((l,i)=>{
+    const d=document.createElement('div'); d.className='lv'+(i===4?' top':'');
+    d.innerHTML='<div class="ln">'+l[0].replace('Level ','L')+'</div><div><div class="lt">'+l[1]+'</div><div class="lf">'+l[2]+'</div></div>';
+    lv.appendChild(d);
+  });
+  const ph=$('#phil');
+  PHIL.forEach(x=>{const d=document.createElement('div'); d.innerHTML='<b>'+x[0]+'</b><span>'+x[1]+'</span>'; ph.appendChild(d);});
+
+  const tg=document.querySelector('#tGate tbody');
+  GATES.forEach(g=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="num">'+ROMAN[g.i-1]+'</td><td>'+g.en+'</td><td>'+g.ko+'</td>'+
+      '<td>'+(g.fail?'<span class="v '+(g.fail==='STOP'?'stop':'flag')+'">'+g.fail+'</span>':'—')+'</td><td class="wrap">'+g.out+'</td>';
+    tg.appendChild(tr);
+  });
+  let h='<tr><th>가설</th>'; for(let i=1;i<=12;i++) h+='<th style="text-align:right">'+i+'</th>'; h+='<th>차단</th></tr>';
+  document.querySelector('#tConf thead').innerHTML=h;
+  const tc=document.querySelector('#tConf tbody');
+  CLAIMS.forEach(c=>{
+    let r='<td>'+c.s+'</td>';
+    c.conf.forEach((v,i)=>{const st=status(c,i+1);
+      r+='<td class="num" style="color:'+(st==='dead'?'var(--muted)':st==='stop'?'var(--stop)':st==='flag'?'var(--flag)':'var(--ink-2)')+'">'+v+'</td>';});
+    r+='<td>'+(c.stop===null?'—':ROMAN[c.stop-1]+' '+GATES[c.stop-1].en)+'</td>';
+    const tr=document.createElement('tr'); tr.innerHTML=r; tc.appendChild(tr);
+  });
+  let hb='<tr><th>가설</th>'; BIAS.forEach(b=>hb+='<th style="text-align:right">'+b.split('\n')[1]+'</th>'); hb+='<th style="text-align:right">평균</th></tr>';
+  document.querySelector('#tBias thead').innerHTML=hb;
+  const tb=document.querySelector('#tBias tbody');
+  CLAIMS.forEach(c=>{
+    let r='<td>'+c.s+'</td>';
+    BIASV[c.id].forEach(v=>r+='<td class="num">'+v+'</td>');
+    r+='<td class="num"><b>'+biasScore(c.id)+'</b></td>';
+    const tr=document.createElement('tr'); tr.innerHTML=r; tb.appendChild(tr);
+  });
+})();
+
+/* ===================== 그리기 ===================== */
+function selectClaim(id){ sel=id; draw(); }
+
+function drawVerdict(){
+  const c=claim(sel);
+  const sum=KILL.reduce((a,k,i)=>a+(killOn[i]?k.w:0),0);
+  $('#vSum').textContent=sum;
+  $('#vMeter').style.width=cl(sum/100*100,0,100)+'%';
+  let head, desc;
+  if(c.stop!==null && c.stop<11){
+    head='가설 폐기'; desc=c.vdesc+' Kill Switch는 ⑪에 도달한 판단에만 적용됩니다.';
+  } else if(sum>=50){
+    head='가설 폐기 · Kill Switch 발동';
+    desc='발동 가중치 '+sum+' ≥ 임계치 50. 사전에 정의한 폐기 조건이 충족됐으므로 판단을 유지하지 않습니다. 조건을 미리 못 박아 두었기에 사후 합리화 없이 즉시 폐기할 수 있습니다.';
+  } else if(c.stop===12){
+    head='사후검증 반증'; desc=c.vdesc;
+  } else {
+    head=c.verdict; desc=c.vdesc+(sum>0?' 현재 발동 가중치 '+sum+' — 임계치 미만이므로 판단은 유지되지만 감시 대상입니다.':'');
+  }
+  $('#vHead').textContent=head;
+  $('#vHead').style.color=(head.indexOf('폐기')>=0||head.indexOf('반증')>=0)?'var(--stop)':'var(--ink)';
+  $('#vDesc').textContent=desc;
+}
+
+function drawMoat(){
+  const box=$('#moatBox'), c=claim(sel), m=MOAT[sel];
+  if(!m){
+    box.innerHTML='<div class="blocked">이 가설은 '+ROMAN[c.stop-1]+' '+GATES[c.stop-1].en+
+      '에서 차단되어 ⑨ MOAT ENGINE까지 도달하지 못했습니다.<br><span style="font-size:12px">해자 검증은 앞선 게이트를 통과한 판단에만 적용됩니다.</span></div>';
+    return;
+  }
+  let h='<div class="moat">';
+  m.v.forEach(row=>{
+    const now=row[2], fut=row[3], d=fut-now;
+    h+='<div class="mrow"><div class="mname">'+row[0]+'<br><span style="font-family:var(--fm);font-size:10px;color:var(--muted)">'+row[1]+'</span></div>'+
+       '<div class="mtrack"><div class="base"></div>'+
+       '<div class="seg" style="left:'+Math.min(now,fut)+'%;width:'+Math.abs(d)+'%"></div>'+
+       '<div class="dot fut" style="left:'+fut+'%"></div><div class="dot now" style="left:'+now+'%"></div></div>'+
+       '<div class="mdelta'+(d<0?' neg':'')+'">'+(d>0?'+':'')+d+'</div></div>';
+  });
+  h+='</div><div class="mnote">MOAT DECAY 평균 <b class="mono">'+
+     (m.v.reduce((a,r)=>a+(r[3]-r[2]),0)/m.v.length).toFixed(1)+'</b> · '+m.label+
+     ' — 현재 강도(●)보다 10년 후 잔존(●)이 판단을 좌우합니다.</div>';
+  box.innerHTML=h;
+}
+
+function drawMemory(){
+  const n=cycles;
+  $('#cycOut').textContent=n+' 사이클';
+  let sum=0;
+  storeBars.forEach(s=>{
+    const v=100*(1-Math.exp(-n/s.k));
+    s.bar.style.width=v.toFixed(1)+'%'; s.val.textContent=v.toFixed(0); sum+=v;
+  });
+  const avg=sum/storeBars.length;
+  const arc=document.getElementById('mcArc'), R=104, C=[200,150];
+  const sweep=cl(n/60,0,1)*359.9;
+  if(sweep<0.5){ arc.setAttribute('d',''); }
+  else{
+    const a0=-90*Math.PI/180, a1=(sweep-90)*Math.PI/180;
+    const large=sweep>180?1:0;
+    arc.setAttribute('d','M'+(C[0]+R*Math.cos(a0))+' '+(C[1]+R*Math.sin(a0))+
+      'A'+R+' '+R+' 0 '+large+' 1 '+(C[0]+R*Math.cos(a1))+' '+(C[1]+R*Math.sin(a1)));
+  }
+  $('#memFoot').innerHTML='누적 메모리 깊이 <b class="mono">'+avg.toFixed(0)+'/100</b>. 실패 기억은 빨리 쌓이고(k=4) 인과 기억은 가장 느리게 쌓입니다(k=22). '+
+    (n<10?'초기에는 축적이 얕아 시스템이 아직 해자를 갖지 못합니다.':n<30?'축적이 진행되며 같은 실수를 반복하지 않기 시작합니다.':'인과 기억까지 포화에 가까워지면 모델 교체로도 복제하기 어려운 자산이 됩니다.');
+}
+
+let lastGate=0;
+function draw(){
+  const g=Math.min(12,Math.max(1,Math.floor(p))), G=GATES[g-1], c=claim(sel);
+
+  gateEls.forEach((e,i)=>{ e.classList.toggle('on',i===g-1); e.classList.toggle('done',i<g-1); });
+  $('#spineFill').style.height=((p-1)/11*100).toFixed(1)+'%';
+
+  document.getElementById('gline').setAttribute('x1',gx(p)); document.getElementById('gline').setAttribute('x2',gx(p));
+  const placed=[];
+  CLAIMS.forEach(cc=>{
+    const endG=cc.stop===null?12:cc.stop;
+    const upto=Math.min(p,endG);
+    let d='';
+    for(let i=1;i<=Math.floor(upto);i++) d+=(i===1?'M':'L')+gx(i).toFixed(1)+' '+cy(cc.conf[i-1]).toFixed(1);
+    if(upto>Math.floor(upto)) d+='L'+gx(upto).toFixed(1)+' '+cy(confAt(cc,upto)).toFixed(1);
+    const st=status(cc,g);
+    trails[cc.id].setAttribute('d',d);
+    trails[cc.id].setAttribute('stroke', cc.id===sel?'var(--accent)':'var(--muted)');
+    trails[cc.id].setAttribute('opacity', cc.id===sel?0.95:(st==='dead'?0.2:0.5));
+    gtrails[cc.id].setAttribute('visibility', ghost?'visible':'hidden');
+    if(marks[cc.id]) marks[cc.id].setAttribute('visibility', p>=cc.stop?'visible':'hidden');
+    const alive = p<=endG;
+    const nx=gx(Math.min(p,endG)), ny=cy(confAt(cc,Math.min(p,endG)));
+    nodes[cc.id].setAttribute('cx',nx.toFixed(1)); nodes[cc.id].setAttribute('cy',ny.toFixed(1));
+    nodes[cc.id].setAttribute('fill',SC[st]);
+    nodes[cc.id].setAttribute('opacity', alive?1:0.22);
+    nlabs[cc.id].setAttribute('opacity', alive?1:0.3);
+    placed.push({id:cc.id,x:nx,y:ny,ly:ny-(5+cc.ev/100*7)-7,w:cc.s.length*11.5});
+  });
+  placed.sort((a,b)=>a.ly-b.ly);
+  for(let i=1;i<placed.length;i++)
+    for(let j=0;j<i;j++){
+      const a=placed[j],b=placed[i];
+      if(Math.abs(a.x-b.x)<(a.w+b.w)/2 && b.ly-a.ly<14) b.ly=a.ly+14;
+    }
+  placed.forEach(o=>{
+    const lx=cl(o.x, SX0+o.w/2-6, SX1-o.w/2+6);
+    nlabs[o.id].setAttribute('x',lx.toFixed(1)); nlabs[o.id].setAttribute('y',o.ly.toFixed(1));
+  });
+
+  document.querySelectorAll('.cchip').forEach(b=>{
+    const cc=claim(b.dataset.id);
+    b.setAttribute('aria-pressed',String(b.dataset.id===sel));
+    b.querySelector('i').style.background=SC[status(cc,g)];
+  });
+
+  const st=status(c,g);
+  $('#gcName').textContent=ROMAN[g-1]+' '+G.en;
+  $('#gcKo').textContent=G.ko;
+  const v=$('#gcV'); v.className='v '+st; v.textContent=SW[st];
+  $('#gcDo').textContent=G.do;
+  $('#gcPass').textContent=G.pass;
+  $('#gcFail').textContent=G.failTxt;
+  $('#gcOut').textContent=G.out;
+  $('#gcCase').textContent=c.s;
+  $('#gcCaseNote').textContent = c.notes[g] || (st==='dead'
+    ? ROMAN[c.stop-1]+' '+GATES[c.stop-1].en+'에서 이미 차단되어 이 게이트에 도달하지 않습니다.'
+    : '특이사항 없이 통과. 신뢰도 '+c.conf[g-1]+'.');
+
+  brows.forEach((r,i)=>{
+    const cf=c.conf[i], fl=c.flags.indexOf(i+1)>=0, dead=c.stop!==null&&i+1>c.stop;
+    const A=dead?0:cl(cf+4,5,95), R2=dead?0:cl(96-cf+(fl?12:0),5,95);
+    r.a.style.width=A+'%'; r.rr.style.width=R2+'%';
+    r.el.classList.toggle('on',i===g-1);
+    r.el.style.opacity=dead?0.28:1;
+  });
+  $('#battleFoot').innerHTML='<b>'+c.n+'</b> — '+ROMAN[g-1]+' 시점 Analyst <b class="mono" style="color:var(--analyst)">'+
+    cl(c.conf[g-1]+4,5,95)+'</b> vs Red Team <b class="mono" style="color:var(--red)">'+
+    cl(96-c.conf[g-1]+(c.flags.indexOf(g)>=0?12:0),5,95)+'</b>. 두 값은 합이 100이 되도록 맞추지 않습니다 — 서로 독립적인 논거 강도이기 때문입니다.';
+
+  CLAIMS.forEach(cc=>{
+    browEls[cc.id].classList.toggle('on',cc.id===sel);
+    for(let i=0;i<6;i++) bcells[cc.id+'-'+i].classList.toggle('on',cc.id===sel);
+  });
+  $('#biasFoot').innerHTML='<b>'+c.s+'</b> BIAS SCORE <b class="mono">'+biasScore(sel)+'</b> / 100 · 최대 위험 <b>'+
+    BIAS[BIASV[sel].indexOf(Math.max.apply(null,BIASV[sel]))].replace('\n',' ')+'</b>';
+
+  drawMoat(); drawVerdict();
+
+  const alive=CLAIMS.filter(cc=>cc.stop===null||g<=cc.stop);
+  const stops=CLAIMS.filter(cc=>cc.stop!==null&&g>=cc.stop).length;
+  const flags=CLAIMS.reduce((a,cc)=>a+cc.flags.filter(f=>f<=g&&(cc.stop===null||f<=cc.stop)).length,0);
+  $('#kGate').textContent=ROMAN[g-1]+' '+G.en.split(' ')[0];
+  $('#kGateKo').textContent=G.ko;
+  $('#kAlive').textContent=alive.length+' / 5';
+  $('#kAliveSub').textContent=stops?stops+'건 차단됨':'아직 차단 없음';
+  $('#kConf').textContent=alive.length?Math.round(alive.reduce((a,cc)=>a+confAt(cc,p),0)/alive.length):0;
+  $('#kBias').textContent=biasScore(sel);
+  $('#kBiasSub').textContent=c.s+' 기준';
+  $('#kStop').textContent=stops+' / '+flags;
+  lastGate=g;
+}
+
+/* ===================== 재생 · 입력 ===================== */
+function play(){playing=true; last=0; $('#btnPlay').textContent='❚❚ 일시정지'; $('#btnPlay').setAttribute('aria-pressed','true'); requestAnimationFrame(tick);}
+function pause(){playing=false; $('#btnPlay').textContent='▶ 재생'; $('#btnPlay').setAttribute('aria-pressed','false');}
+function tick(ts){
+  if(!playing) return;
+  if(!last) last=ts;
+  const dt=Math.min(120,ts-last); last=ts;
+  p+=dt/1400*speed;
+  if(p>=12.999) p=1;
+  draw(); requestAnimationFrame(tick);
+}
+$('#btnPlay').addEventListener('click',()=>playing?pause():play());
+$('#btnGhost').addEventListener('click',e=>{ghost=!ghost; e.currentTarget.setAttribute('aria-pressed',String(ghost)); draw();});
+document.querySelectorAll('.speed button').forEach(b=>b.addEventListener('click',()=>{
+  speed=parseFloat(b.dataset.sp);
+  document.querySelectorAll('.speed button').forEach(o=>o.setAttribute('aria-pressed',String(o===b)));
+}));
+spine.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'||e.key==='ArrowRight'){pause(); p=Math.min(12,Math.floor(p)+1); draw(); e.preventDefault();}
+  else if(e.key==='ArrowUp'||e.key==='ArrowLeft'){pause(); p=Math.max(1,Math.floor(p)-1); draw(); e.preventDefault();}
+  else if(e.key===' '||e.key==='Enter'){playing?pause():play(); e.preventDefault();}
+});
+$('#cyc').addEventListener('input',e=>{cycles=+e.target.value; drawMemory();});
+$('#tabs').addEventListener('click',e=>{
+  const b=e.target.closest('.tab'); if(!b) return;
+  document.querySelectorAll('#tabs .tab').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  document.querySelectorAll('.pane').forEach(pn=>{ if(pn.dataset.p===b.dataset.p) pn.dataset.on='1'; else delete pn.dataset.on; });
+});
+addEventListener('scroll',hideTip,{passive:true});
+
+draw(); drawMemory();
+if(!RM) setTimeout(play,800);
+})();
+</script>
+<!-- ARTIFACT:END -->
+</body>
+</html>
