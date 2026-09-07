@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>PRD 전쟁-금리 대응 운용 규칙</title>
+<style>
+:root{
+  --ink:#14161a; --ink2:#3d434d; --muted:#6b7280; --line:#d7dbe0; --line2:#eceef1;
+  --navy:#1c3a5e; --accent:#8c2f24; --ok:#1f6b45; --bg-soft:#f6f7f9; --bg-warn:#fdf4f2;
+}
+@page{ size:A4; margin:16mm 14mm 18mm 14mm; }
+*{box-sizing:border-box;}
+body{ orphans:3; widows:3;
+  font-family:"DejaVu Sans","WenQuanYi Zen Hei",sans-serif;
+  color:var(--ink); font-size:9.4pt; line-height:1.62; margin:0;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ line-height:1.3; margin:0; font-weight:700; }
+p{margin:0 0 7px;}
+strong{font-weight:700;}
+small{font-size:8pt;}
+
+/* ---------- COVER ---------- */
+.cover{ height:238mm; display:flex; flex-direction:column; page-break-after:always; }
+.cover .rule{ height:5px; background:var(--navy); width:64px; margin-bottom:26px;}
+.cover .kicker{ font-size:8.6pt; letter-spacing:.16em; color:var(--muted); text-transform:uppercase; margin-bottom:16px;}
+.cover h1{ font-size:26pt; letter-spacing:-.01em; color:var(--navy); margin-bottom:10px;}
+.cover .sub{ font-size:12pt; color:var(--ink2); font-weight:400; margin-bottom:30px; line-height:1.5;}
+.cover .spacer{flex:1;}
+.badge-fail{
+  display:inline-block; border:1.6px solid var(--accent); color:var(--accent);
+  padding:9px 16px; font-size:11pt; font-weight:700; letter-spacing:.02em; margin-bottom:26px;
+}
+.meta{ border-top:1.5px solid var(--ink); padding-top:14px; }
+.meta table{width:100%; border-collapse:collapse; font-size:9pt;}
+.meta td{padding:4px 0; vertical-align:top;}
+.meta td:first-child{ width:120px; color:var(--muted); }
+.disclaim{ margin-top:20px; padding:12px 14px; background:var(--bg-soft);
+  border-left:3px solid var(--muted); font-size:8.4pt; color:var(--ink2); line-height:1.55;}
+
+/* ---------- SECTIONS ---------- */
+section{ page-break-inside:auto; }
+h2{ font-size:13pt; color:var(--navy); margin:22px 0 4px; padding-bottom:5px;
+    border-bottom:2px solid var(--navy); page-break-after:avoid;}
+h2 .num{ color:var(--muted); font-weight:400; font-size:10pt; margin-right:8px;}
+h3{ font-size:10.2pt; margin:15px 0 5px; color:var(--ink); page-break-after:avoid;}
+.lead{ color:var(--ink2); font-size:9pt; margin-bottom:10px;}
+
+/* ---------- TABLES ---------- */
+table.d{ width:100%; border-collapse:collapse; margin:9px 0 12px; font-size:8.5pt;
+  page-break-inside:avoid; }
+table.d th{ background:var(--navy); color:#fff; font-weight:700; text-align:left;
+  padding:6px 8px; border:1px solid var(--navy); font-size:8.3pt; }
+table.d td{ padding:6px 8px; border:1px solid var(--line); vertical-align:top; line-height:1.5;}
+table.d tbody tr:nth-child(even){ background:var(--bg-soft); }
+table.d td.c{text-align:center;}
+
+/* 2x2 matrix */
+table.q{width:100%; border-collapse:collapse; margin:10px 0 14px; font-size:8.6pt; page-break-inside:avoid;}
+table.q th{background:var(--bg-soft); padding:8px; border:1px solid var(--line); font-size:8.4pt; text-align:center;}
+table.q th.row{text-align:left; width:70px;}
+table.q td{padding:11px 10px; border:1px solid var(--line); vertical-align:top; line-height:1.5;}
+table.q td.here{ background:var(--bg-warn); border:1.8px solid var(--accent); }
+table.q .qname{display:block; font-weight:700; margin-bottom:3px;}
+table.q .now{display:inline-block; background:var(--accent); color:#fff; font-size:7pt;
+  padding:1px 6px; margin-left:5px; vertical-align:1px;}
+
+/* ---------- CALLOUTS ---------- */
+.box{ border:1px solid var(--line); border-left:3px solid var(--navy);
+  background:var(--bg-soft); padding:11px 14px; margin:10px 0 13px; page-break-inside:avoid;}
+.box.warn{ border-left-color:var(--accent); background:var(--bg-warn); }
+.box .bt{ font-weight:700; font-size:9pt; margin-bottom:5px; color:var(--navy);}
+.box.warn .bt{ color:var(--accent);}
+.box p:last-child{margin-bottom:0;}
+
+.onelinerbox{ border:1.5px solid var(--navy); padding:13px 16px; margin:10px 0 14px;
+  background:#fff; page-break-inside:avoid;}
+.onelinerbox .lbl{font-size:7.8pt; letter-spacing:.12em; color:var(--muted);
+  text-transform:uppercase; margin-bottom:6px;}
+.onelinerbox .txt{font-size:10pt; line-height:1.65;}
+
+/* labels */
+.lab{ display:inline-block; font-size:7.2pt; padding:1px 5px; border-radius:2px;
+  vertical-align:1px; white-space:nowrap; font-weight:700;}
+.l-ok{background:#e4efe8; color:var(--ok); border:1px solid #b9d6c6;}
+.l-est{background:#fdf5e3; color:#8a6414; border:1px solid #e8d6a8;}
+.l-unv{background:#eceef1; color:#4b5563; border:1px solid #cfd4da;}
+.l-na{background:#f7e3e1; color:var(--accent); border:1px solid #e0b8b2;}
+
+ul,ol{margin:6px 0 10px; padding-left:19px;}
+li{margin-bottom:4px; line-height:1.6;}
+.ng li{margin-bottom:6px;}
+.ng b{color:var(--accent);}
+
+.ac{ margin:9px 0 12px; }
+.ac .item{ border-left:2px solid var(--line); padding:0 0 0 11px; margin-bottom:10px;
+  page-break-inside:avoid;}
+.ac .id{ font-weight:700; font-size:8.6pt; color:var(--navy); display:block; margin-bottom:2px;}
+.ac .gwt{ font-size:8.5pt; line-height:1.6;}
+.ac .gwt b{ color:var(--accent); font-weight:700;}
+
+.gate{ border:1.5px solid var(--ink); padding:0; margin:12px 0; page-break-inside:avoid;}
+.gate .ghead{ background:var(--ink); color:#fff; padding:7px 13px; font-weight:700; font-size:9.4pt;}
+.gate ul{ list-style:none; padding:12px 15px; margin:0;}
+.gate li{ padding-left:22px; position:relative; margin-bottom:6px; font-size:8.8pt;}
+.gate li .mk{ position:absolute; left:0; font-weight:700;}
+.gate li.pass .mk{ color:var(--ok);}
+.gate li.fail{ color:var(--accent); font-weight:700;}
+.gate li.fail .mk{ color:var(--accent);}
+.verdict{ background:var(--bg-warn); border-top:1.5px solid var(--accent);
+  padding:11px 15px; color:var(--accent); font-weight:700; font-size:10.5pt;}
+
+.src{font-size:7.6pt; color:var(--muted); line-height:1.6;}
+.src li{margin-bottom:3px;}
+.pb{page-break-before:always;}
+.avoid{page-break-inside:avoid;}
+</style></head><body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="rule"></div>
+  <div class="kicker">Product Requirements Document · v1.0</div>
+  <h1>전쟁-금리 이중 불확실성 대응<br>포트폴리오 운용 규칙</h1>
+  <div class="sub">코드네임 HORMUZ-RATE<br>
+  이란 전쟁 지속 국면에서의 금리 시나리오별 조건반사 규칙집</div>
+
+  <div class="box warn" style="margin-top:4px;">
+    <div class="bt">이 문서가 만드는 것</div>
+    <p>“금리가 오를지 내릴지 맞히는 예측 모델”이 아니라, <b>“어떤 조건이 관측되면 무엇을 하는가”를
+    사전 확정한 조건반사 규칙집</b>이다. 예측은 빗나가지만 규칙은 실행된다.</p>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="badge-fail">상태 : Draft — G2 게이트 미통과 (실행 착수 금지)</div>
+
+  <div class="meta">
+    <table>
+      <tr><td>작성일</td><td>2026년 9월 7일</td></tr>
+      <tr><td>분석기준시점</td><td>2026-09-07 17:20 (KST)</td></tr>
+      <tr><td>데이터 최종 갱신</td><td>2026-09-07 (환율·금리 당일 / 유가 09-01~09-07 보도 기준)</td></tr>
+      <tr><td>작성자 · 승인자</td><td>shk5005 (본인)</td></tr>
+      <tr><td>적용 절차</td><td>PRD-QA-PROCESS.md — S1~S7 단계 + G1/G2 게이트</td></tr>
+      <tr><td>데이터 라벨</td><td>
+        <span class="lab l-ok">확인</span>
+        <span class="lab l-est">추정</span>
+        <span class="lab l-unv">미검증</span>
+        <span class="lab l-na">확인 불가</span>
+      </td></tr>
+    </table>
+  </div>
+
+  <div class="disclaim">
+    <b>고지.</b> 본 문서는 공개 데이터에 기반한 의사결정 프레임이며 투자 자문이 아니다.
+    작성자의 보유자산·LTV·투자기간·현금비중이 확인되지 않은 상태에서 작성되었으므로,
+    구체적 배분 비율은 의도적으로 공란으로 두었다. 확인되지 않은 항목을 추정치로 채우지 않는 것이
+    이 문서의 작성 원칙이다.
+  </div>
+</div>
+
+<!-- ============ S1 ============ -->
+<section>
+<h2><span class="num">S1</span>문제 정의</h2>
+
+<div class="onelinerbox">
+  <div class="lbl">한 문장 문제 정의</div>
+  <div class="txt">레버리지를 보유한 개인 투자자가 <span class="lab l-est">추정</span>,
+  전쟁발 공급충격으로 금리 방향이 불확실한 국면에서, 상승·하락 어느 쪽에도 사전 정의된 행동규칙이 없어,
+  뉴스에 사후 반응하다가 <b>최악의 사분면(스태그플레이션·침체)에서 대응 시점을 놓친다.</b></div>
+</div>
+
+<table class="d">
+<tr><th style="width:120px">항목</th><th>내용</th></tr>
+<tr><td>현행 대체 수단</td><td>뉴스 모니터링 + 직관적 판단 <span class="lab l-est">추정</span> — 가용성 휴리스틱에 구조적으로 취약</td></tr>
+<tr><td>1차 사용자</td><td>본인 1인 (부동산 중심 자산 보유) <span class="lab l-unv">미검증</span> — 자산 구성 미확인</td></tr>
+<tr><td>사용 빈도</td><td>주 1회 정기 점검 + 이벤트 트리거(FOMC·금통위·CPI·유가 임계)</td></tr>
+<tr><td>실패 허용도</td><td><b>치명적</b> — 레버리지 자산은 되돌리기 비용이 크고 유동성이 낮음</td></tr>
+</table>
+
+<div class="box">
+  <div class="bt">근본 원인 (5 Why 축약)</div>
+  <p>금리 방향을 모른다 → 방향을 맞히려 한다 → 맞히지 못한다 → 판단을 유보한다 →
+  조건이 바뀌어도 행동이 없다 → <b>무행동이 곧 최대 리스크 포지션이 된다.</b></p>
+</div>
+</section>
+
+<!-- ============ S2 ============ -->
+<section>
+<h2><span class="num">S2</span>성공 기준</h2>
+<table class="d">
+<tr><th>지표</th><th style="width:130px">현재 기준선</th><th style="width:110px">목표</th><th style="width:95px">측정 방법</th><th style="width:75px">측정 시점</th></tr>
+<tr><td>사분면 전환 인지 → 규칙 발동 시차</td><td><b>없음 (무규칙 상태)</b> <span class="lab l-ok">확인</span></td><td>5영업일 이내</td><td>트리거 로그</td><td>이벤트 시</td></tr>
+<tr><td>최대낙폭(MDD) 한도</td><td><b>확인 불가</b> (포트폴리오 미상) → OQ-01</td><td>사용자 지정 필요</td><td>월말 평가액</td><td>월 1회</td></tr>
+<tr><td>강제청산 · 연체 발생</td><td>0건</td><td>0건 유지</td><td>대출 계좌</td><td>상시</td></tr>
+<tr><td>규칙 준수율</td><td>없음</td><td>100%</td><td>의사결정 로그</td><td>분기</td></tr>
+</table>
+
+<div class="box warn">
+  <div class="bt">Kill Switch — 이 PRD를 폐기할 조건</div>
+  <p>규칙을 <b>3회 연속 자의적으로 무시</b>할 경우. 규칙집이 작동하지 않는다는 뜻이므로 폐기하고
+  “레버리지 축소” 단일 규칙으로 단순화한다.</p>
+</div>
+
+<div class="box">
+  <div class="bt">비판 — 기준선 없는 목표치는 검증 불가능한 희망이다</div>
+  <p>MDD 목표는 OQ-01 해소 전까지 <b>공란으로 둔다.</b> 추정치로 채우는 순간 이 표는
+  근거 없는 숫자를 사실처럼 보이게 만드는 도구가 된다.</p>
+</div>
+</section>
+
+<!-- ============ S3 ============ -->
+<section>
+<h2><span class="num">S3</span>범위</h2>
+
+<h3>In scope (Must)</h3>
+<p>사분면 판정 규칙 · 자산군별 노출 조정 규칙 · 트리거 임계값 정의 · 모니터링 항목 정의</p>
+
+<h3>Out of scope (이번엔 제외)</h3>
+<p>개별 종목·단지 선정 · 세무 최적화 · 매물 현장 실사 · 대출 상품 비교</p>
+
+<h3>Non-goals — 명시적으로 하지 않을 것 (범위 팽창 방지의 핵심)</h3>
+<ul class="ng">
+  <li><b>NG-1</b> 유가·전쟁 종결 시점을 예측하지 않는다.</li>
+  <li><b>NG-2</b> 금리 방향 자체를 맞히려 하지 않는다.</li>
+  <li><b>NG-3</b> 시나리오별 수익 극대화를 추구하지 않는다. <b>목적함수는 생존과 선택권 유지다.</b></li>
+  <li><b>NG-4</b> 전쟁 종결(B-1) 시나리오에 대규모 선제 베팅을 하지 않는다. 손실이 한정된 방식만 허용한다.</li>
+  <li><b>NG-5</b> 2022~23년 인상기 대응을 그대로 복제하지 않는다 (앵커링 차단).</li>
+</ul>
+
+<div class="box">
+  <div class="bt">마감 제약</div>
+  <p>2026-09-16 FOMC, 10월 한은 금통위 <span class="lab l-ok">확인</span>.
+  이 두 이벤트 이전에 F-01·F-02 규칙을 확정해야 한다.</p>
+</div>
+</section>
+
+<!-- ============ S4 ============ -->
+<section>
+<h2><span class="num">S4</span>기능 목록</h2>
+<table class="d">
+<tr><th style="width:52px">ID</th><th>기능</th><th style="width:80px">MoSCoW</th></tr>
+<tr><td>F-01</td><td>사분면 판정 규칙 (금리 방향 × 원인)</td><td><b>Must</b></td></tr>
+<tr><td>F-02</td><td>레버리지 상한 규칙</td><td><b>Must</b></td></tr>
+<tr><td>F-03</td><td>통화(달러) 헤지 규칙</td><td><b>Must</b></td></tr>
+<tr><td>F-04</td><td>부동산 보유·매도 우선순위 규칙</td><td><b>Must</b></td></tr>
+<tr><td>F-05</td><td>채권 듀레이션 규칙</td><td>Should</td></tr>
+<tr><td>F-06</td><td>경매 진입 준비 규칙 (2027~28 겨냥)</td><td>Could</td></tr>
+<tr><td>F-07</td><td>편향 체크리스트 강제 실행</td><td>Should</td></tr>
+<tr><td>F-08</td><td>개별 종목 추천</td><td><b>Won&#39;t</b></td></tr>
+</table>
+
+<h3>F-01 사분면 판정 로직 — 금리 2분법을 2×2로 대체</h3>
+<table class="q">
+<tr><th class="row"></th>
+    <th>원인 = 인플레이션 (공급충격)</th>
+    <th>원인 = 성장 (수요)</th></tr>
+<tr><th class="row">금리 ↑</th>
+    <td class="here"><span class="qname">A. 스태그플레이션형 긴축<span class="now">현재 위치</span></span>
+        유가↑ → CPI↑ → Fed·한은 인상. 주식·채권·부동산 <b>동반</b> 압박.</td>
+    <td><span class="qname">A′. 골디락스형 인상</span>
+        성장이 좋아 금리↑. 주식 우호, 부동산 중립. 현재 확률 낮음.</td></tr>
+<tr><th class="row">금리 ↓</th>
+    <td><span class="qname">B′. 인플레 하 정치적 인하</span>
+        연준 독립성 훼손 시. 인플레 기대 이탈 → 금·달러 외 전 자산 위험.</td>
+    <td><span class="qname">B. 침체형 인하</span>
+        고유가 → 실질소득 감소 → 침체. 장기채·현금만 승리. <b>부동산 최악 구간.</b></td></tr>
+</table>
+
+<div class="box warn">
+  <div class="bt">핵심 판정 원칙</div>
+  <p>사분면 4개 중 <b>3개가 위험자산에 불리하다.</b> 따라서 <b>금리 하락을 단일 신호로 호재 판정하지 않는다.</b>
+  판정 입력은 유가 방향 × CPI 방향 × 고용·신용스프레드 방향의 조합이다.</p>
+</div>
+</section>
+
+<!-- ============ S5 ============ -->
+<section>
+<h2><span class="num">S5</span>데이터 · 기술 제약</h2>
+<p class="lead">이 절이 이 PRD에서 가장 중요하다. 이 단계를 건너뛰면 실행 후반에
+“데이터가 없어 규칙 자체가 성립 불가”한 상황이 발생하며, 재작업 비용이 가장 큰 구간이다.</p>
+
+<table class="d">
+<tr><th style="width:105px">데이터</th><th style="width:112px">값 / 출처</th><th style="width:52px">주기</th>
+    <th style="width:88px">시차(lag)</th><th>제약</th></tr>
+<tr><td>한은 기준금리</td><td><b>3.00%</b> / ECOS</td><td>금통위</td><td>1일</td>
+    <td>7·8월 연속 인상, 1년 9개월 만에 3%대. <b>9월은 금리결정 없음</b>(금융안정회의), 다음 10월 <span class="lab l-ok">확인</span></td></tr>
+<tr><td>원/달러 환율</td><td><b>1,340.5원</b> / ECOS</td><td>일</td><td>1일</td><td>—</td></tr>
+<tr><td>예금은행 대출금리</td><td><b>4.27%</b> (7월) / ECOS</td><td>월</td><td>1~2개월</td><td>내 대출 실제 금리와 다름 — 개인 리스크 판단에 직접 사용 금지</td></tr>
+<tr><td>국제 유가</td><td>Brent $92~94.5 / WTI ~$90 / <b>두바이 $100</b></td><td>실시간</td><td>0</td><td>—</td></tr>
+<tr><td>미 10년물 국채</td><td><b>4.705%</b> / Fed H.15</td><td>일</td><td>1일</td><td>국채입찰 낙찰금리 2007년 이후 최고</td></tr>
+<tr><td>미 CPI</td><td>BLS</td><td>월</td><td>약 2주</td><td>8월치 발표 임박 — 발표 전 추정 금지</td></tr>
+<tr><td><b>국토부 실거래</b></td><td>국토부</td><td>일</td><td><b>계약→신고 최대 30일</b></td><td><b>실시간 판단에 사용 금지</b></td></tr>
+<tr><td>네이버 호가</td><td>포털</td><td>실시간</td><td>0</td><td><b>매도자 희망가 편향</b> — 체결가 아님</td></tr>
+<tr><td>법원경매 낙찰가율</td><td>법원</td><td>월</td><td>약 1개월</td><td>지역 표본 편차 큼</td></tr>
+<tr><td>호르무즈 통항량</td><td>—</td><td>—</td><td>—</td><td><span class="lab l-na">확인 불가</span> 공개 무료 소스 없음 → OQ-05</td></tr>
+</table>
+
+<div class="box warn">
+  <div class="bt">결측 표기 규칙 &amp; 트리거 설계 원칙</div>
+  <p>① 값이 없으면 0이 아니라 <b>“확인 불가”</b>로 표기한다. 0 표기는 하락으로 오독된다.</p>
+  <p>② <b>실거래 신고 lag 30일이 이 규칙집 전체의 최대 기술적 제약</b>이다. 부동산 지표는 전부 후행하므로,
+  <b>트리거는 실시간·선행 지표(금리·유가·환율)로 걸고, 부동산 지표는 사후 확인용으로만 쓴다.</b></p>
+</div>
+</section>
+
+<!-- ============ S6 ============ -->
+<section>
+<h2><span class="num">S6</span>리스크 &amp; Red Team</h2>
+<table class="d">
+<tr><th style="width:44px">ID</th><th style="width:132px">리스크</th><th style="width:130px">발생 조건</th>
+    <th style="width:105px">선행지표</th><th>대응</th></tr>
+<tr><td>R-01</td><td>7개월 전쟁이 이미 가격에 반영</td><td>유가 $90이 뉴스가 아닌 기준선</td><td>유가↑에도 주가 무반응</td><td>NG-3에 따라 기회비용 수용</td></tr>
+<tr><td>R-02</td><td>금리→부동산 인과가 약함</td><td>분당 1년 +29.5% 같은 공급·정비 변수가 압도 <span class="lab l-ok">확인</span></td><td>인상 중 상승 지속</td><td>지역별 규칙 분리</td></tr>
+<tr><td>R-03</td><td>연준 독립성 훼손 → B′ 진입</td><td>인플레 하락 없이 인하</td><td>인사·정치 이벤트</td><td>금·달러·실물 외 전면 방어</td></tr>
+<tr><td>R-04</td><td>규제가 금리보다 큰 변수</td><td>부동산 금융 종합대책 강도 <span class="lab l-ok">확인</span></td><td>대책 발표문</td><td>규제를 F-04의 1순위 입력으로</td></tr>
+<tr><td>R-05</td><td><b>Black Swan</b></td><td>호르무즈 완전 봉쇄 → 유가 $150+</td><td>통항량 (확인 불가)</td><td>현금·달러 최저선 사전 확보</td></tr>
+</table>
+
+<div class="box warn">
+  <div class="bt">내가 틀릴 가장 큰 이유</div>
+  <p>사분면 판정은 <b>사후적으로만 명확</b>해질 수 있다. 실시간에서 A와 B의 경계는 모호하며,
+  그 모호 구간에서 규칙이 진동(whipsaw)해 잦은 매매만 유발할 수 있다.</p>
+</div>
+
+<h3>편향 점검 — Munger, Psychology of Misjudgment 관점</h3>
+<table class="d">
+<tr><th style="width:118px">편향</th><th>현 국면에서의 발현</th></tr>
+<tr><td>가용성 휴리스틱</td><td>분당 +29.5% 헤드라인 → “부동산은 금리와 무관”으로 일반화</td></tr>
+<tr><td>생존자 편향</td><td>오른 지역만 표본에 남고 관망·하락 지역은 탈락</td></tr>
+<tr><td>앵커링</td><td>2022~23 인상기(제로→5.5%)를 3.0%대 재인상에 그대로 대입 — 충격의 크기와 성격이 다름</td></tr>
+<tr><td>확증편향</td><td>부동산 보유자는 금리 인하 근거만 수집</td></tr>
+<tr><td>기저율 무시</td><td>“전쟁은 결국 끝난다”는 기저율 vs 7개월 교착이라는 개별 증거</td></tr>
+<tr><td>손실회피 · 매몰비용</td><td>고점 대비 하락분 미실현 상태의 보유 지속을 정당화</td></tr>
+</table>
+</section>
+
+<!-- ============ S7 ============ -->
+<section>
+<h2><span class="num">S7</span>수용 기준 (AC) &amp; 마일스톤</h2>
+<p class="lead">Given(주어진 상태) / When(관측) / Then(행동). 규칙이 실행 가능한 문장으로 쓰이지 않으면 규칙이 아니다.</p>
+
+<div class="ac">
+<div class="item"><span class="id">AC-F01 · 사분면 판정</span><span class="gwt">
+  <b>Given</b> 주간 점검일, <b>When</b> 유가·CPI·고용·신용스프레드 4개 입력이 모두 갱신됨,
+  <b>Then</b> 사분면 판정을 기록하고 전주 대비 변화 여부를 로그에 남긴다. <b>무변화도 기록한다.</b></span></div>
+
+<div class="item"><span class="id">AC-F02 · 레버리지 상한</span><span class="gwt">
+  <b>Given</b> 브렌트 3거래일 연속 $100 이상, <b>When</b> 미 10년물 4.9% 초과,
+  <b>Then</b> 5영업일 내 신규 레버리지를 0으로 동결하고 기존 LTV 축소에 착수한다.
+  <small>(임계값은 ASM-02 — 사용자 확정 필요)</small></span></div>
+
+<div class="item"><span class="id">AC-F03 · 통화 헤지</span><span class="gwt">
+  <b>Given</b> 원/달러 1,400원 상향 돌파, <b>Then</b> 달러 자산을 목표비중까지 <b>3회 분할</b> 매수한다.
+  1회차는 돌파 확인 후 D+3 이내.</span></div>
+
+<div class="item"><span class="id">AC-F04 · 부동산 매도 우선순위</span><span class="gwt">
+  <b>Given</b> 침체 신호 3종(미 고용 악화 / 신용스프레드 확대 / 유가 고공 유지) 중 <b>2개 이상 동시 관측</b>,
+  <b>Then</b> 현금흐름이 발생하지 않는 부동산부터 매도 우선순위 리스트를 실행한다.
+  <b>이 구간에서 금리 하락을 매수 신호로 해석하지 않는다.</b></span></div>
+
+<div class="item"><span class="id">AC-F05 · 듀레이션</span><span class="gwt">
+  <b>Given</b> 미 10년물 5.0% 돌파, <b>Then</b> 장기채 분할 진입 1차를 실행한다(총 목표의 1/3 이하). 몰빵 금지.</span></div>
+
+<div class="item"><span class="id">AC-F06 · 경매 준비</span><span class="gwt">
+  <b>Given</b> 경매 낙찰가율이 3개월 연속 하락, <b>Then</b> 자금 준비 단계로 전환한다(입찰 아님).
+  실제 진입은 2027년 이후 별도 판정.</span></div>
+
+<div class="item"><span class="id">AC-F07 · 편향 게이트</span><span class="gwt">
+  <b>Given</b> 어떤 규칙이든 발동 직전, <b>When</b> 실행 전,
+  <b>Then</b> S6의 편향 6종 체크리스트를 통과해야만 실행한다.</span></div>
+</div>
+
+<h3>마일스톤 — 동작하는 산출물 기준 (문서·설계는 마일스톤이 아니다)</h3>
+<table class="d">
+<tr><th style="width:44px">M</th><th style="width:250px">산출물</th><th>완료 판정</th></tr>
+<tr><td>M1</td><td>자산 인벤토리 (자산·LTV·금리 리셋일·현금비중)</td><td>표 1장 완성</td></tr>
+<tr><td>M2</td><td>트리거 임계값 확정 (ASM-01~04 해소)</td><td>숫자 확정</td></tr>
+<tr><td>M3</td><td>모니터링 시트 (관찰 5종 갱신)</td><td>주간 1회 실제 갱신 성공</td></tr>
+<tr><td>M4</td><td>리허설 1회 (과거 이벤트로 규칙 역적용)</td><td>규칙이 실제로 발동됐는지 확인</td></tr>
+</table>
+</section>
+
+<!-- ============ S8 ============ -->
+<section>
+<h2><span class="num">S8</span>관리 대장</h2>
+
+<h3>미결 사항 (Open Questions) — Must 기능을 막는 항목 4건</h3>
+<table class="d">
+<tr><th style="width:52px">ID</th><th>질문</th><th style="width:118px">막는 기능</th><th style="width:92px">상태</th></tr>
+<tr><td>OQ-01</td><td>총 자산 구성과 부동산 비중은?</td><td>F-02·F-04, S2 기준선</td><td><b style="color:#8c2f24">Blocking</b></td></tr>
+<tr><td>OQ-02</td><td>현재 LTV와 대출 잔액은?</td><td>F-02</td><td><b style="color:#8c2f24">Blocking</b></td></tr>
+<tr><td>OQ-03</td><td>대출 <b>금리 재산정(리셋) 일정</b>은?</td><td>F-02</td><td><b style="color:#8c2f24">Blocking</b></td></tr>
+<tr><td>OQ-04</td><td>투자기간은? (단기 0~1y / 중기 1~3y / 장기 3~10y)</td><td>F-04·F-05</td><td><b style="color:#8c2f24">Blocking</b></td></tr>
+<tr><td>OQ-05</td><td>호르무즈 통항량 유료 데이터 접근 가능?</td><td>F-01 정확도</td><td>Non-blocking</td></tr>
+</table>
+
+<h3>가정 (Assumptions)</h3>
+<table class="d">
+<tr><th style="width:56px">ID</th><th style="width:190px">가정</th><th style="width:110px">근거</th><th style="width:95px">틀렸을 때 영향</th><th>검증 방법</th></tr>
+<tr><td>ASM-01</td><td>사분면 확률 A 45~55% / B 20~30% / B′ 10~15% / A′ &lt;10%</td><td>주관적 사전확률 <span class="lab l-est">추정</span></td><td>배분 왜곡</td><td>분기별 사후 검증</td></tr>
+<tr><td>ASM-02</td><td>유가 $100 · 10년물 4.9% · 환율 1,400원이 유효 임계</td><td>관측 구간 기준 <span class="lab l-est">추정</span></td><td>조기·지연 발동</td><td>백테스트 (미실시)</td></tr>
+<tr><td>ASM-03</td><td>전쟁 교착이 2027년까지 지속</td><td>보도 전망 <span class="lab l-est">추정</span></td><td>전면 재작성</td><td>월 1회</td></tr>
+<tr><td>ASM-04</td><td>국내 규제가 금리보다 단기 설명력 우위</td><td>보도 기반 <span class="lab l-unv">미검증</span></td><td>F-04 우선순위 오류</td><td>대책 발표 후 검증</td></tr>
+</table>
+
+<h3>결정 로그 (Decisions)</h3>
+<table class="d">
+<tr><th style="width:56px">ID</th><th style="width:210px">결정</th><th style="width:130px">기각한 대안</th><th>이유</th></tr>
+<tr><td>DEC-01</td><td>금리 2분법 대신 2×2 사분면 채택</td><td>상승/하락 이분법</td><td>같은 하락이라도 원인에 따라 자산 반응이 정반대</td></tr>
+<tr><td>DEC-02</td><td>예측 모델이 아닌 조건반사 규칙집으로 설계</td><td>유가·금리 예측 모델</td><td>예측 정확도는 스스로 통제할 수 없음</td></tr>
+<tr><td>DEC-03</td><td>트리거는 실시간 지표(금리·유가·환율)로만</td><td>실거래가 기반 트리거</td><td>실거래 신고 lag 최대 30일</td></tr>
+</table>
+</section>
+
+<!-- ============ S9 ============ -->
+<section>
+<h2><span class="num">S9</span>실행 착수 게이트 (G2)</h2>
+
+<div class="gate">
+  <div class="ghead">G2 통과 조건 — 하나라도 미충족 시 착수 금지</div>
+  <ul>
+    <li class="pass"><span class="mk">✔</span> Must 기능 전부에 수용 기준(AC)이 존재한다</li>
+    <li class="fail"><span class="mk">✘</span> Must를 막는 Open Question 0건 → <b>현재 4건 (OQ-01~04)</b></li>
+    <li class="pass"><span class="mk">✔</span> 데이터 출처 접근성 1건 이상 실증 (ECOS·유가·Fed H.15 당일 조회 성공)</li>
+    <li class="pass"><span class="mk">✔</span> Non-goals 명시 (NG-1~5)</li>
+    <li class="fail"><span class="mk">✘</span> 성공 지표 기준선 확보 → <b>MDD 기준선 미확보</b></li>
+  </ul>
+  <div class="verdict">판정 : 미통과 — 실행 착수 금지</div>
+</div>
+
+<div class="box warn">
+  <div class="bt">남은 단계는 하나다</div>
+  <p><b>OQ-01~04 — 자산 구성 · LTV · 금리 리셋일 · 투자기간, 네 개의 답변.</b></p>
+  <p>이 4개가 없는 상태에서 나오는 배분 비율은 전부 추측이며, 그 추측을 문서에 적는 순간
+  이 PRD는 근거 없는 숫자를 사실처럼 보이게 만드는 도구가 된다. 그래서 채우지 않았다.</p>
+</div>
+
+<h3>판단 신뢰도 : Medium</h3>
+<p>사실 데이터(S5)는 당일 원출처에서 검증되었고 규칙 구조는 견고하다. 그러나
+① 임계값(ASM-02)이 백테스트되지 않았고, ② 사용자 포지션이 미상이며,
+③ 유가·전쟁 경로는 본질적으로 예측 불가능하다.</p>
+
+
+<h2 style="page-break-before:always;"><span class="num">부록 A</span>주간 모니터링 체크시트</h2>
+<p class="lead">마일스톤 M3의 산출물. 매주 같은 요일에 아래 5개 항목만 갱신하고 사분면 판정을 기록한다.
+값이 확인되지 않으면 0이 아니라 “확인 불가”로 적는다. 무변화도 기록한다.</p>
+
+<table class="d">
+<tr><th style="width:26px">#</th><th style="width:118px">관찰 항목</th>
+    <th style="width:96px">기준값 (09-07)</th><th style="width:88px">발동 임계</th>
+    <th style="width:74px">금주 값</th><th>발동 시 연결 규칙</th></tr>
+<tr><td class="c">1</td><td>브렌트 / 두바이유</td><td>$92~94.5 / $100</td><td>$100 3일 연속<br>또는 $75 하회</td><td></td><td>AC-F02 발동 / $75 하회 시 B-1 전환 검토</td></tr>
+<tr><td class="c">2</td><td>미 10년물 국채</td><td>4.705%</td><td>4.9% 초과<br>5.0% 돌파</td><td></td><td>4.9%: AC-F02 / 5.0%: AC-F05 1차 진입</td></tr>
+<tr><td class="c">3</td><td>원/달러 환율</td><td>1,340.5원</td><td>1,400원 돌파</td><td></td><td>AC-F03 달러 3회 분할 매수 개시</td></tr>
+<tr><td class="c">4</td><td>미 CPI · 고용 · 신용스프레드</td><td>CPI 8월치 발표 대기</td><td>침체 신호 3종 중 2개</td><td></td><td>AC-F04 부동산 매도 우선순위 실행</td></tr>
+<tr><td class="c">5</td><td>한은 기준금리 · 국내 대출금리</td><td>3.00% / 4.27%</td><td>10월 금통위 추가 인상</td><td></td><td>F-02 재산정 · 본인 대출 리셋일 대조</td></tr>
+</table>
+
+<table class="d">
+<tr><th style="width:150px">주간 판정</th><th>기록란</th></tr>
+<tr><td>점검일</td><td style="height:22px"></td></tr>
+<tr><td>사분면 판정 (A / A′ / B / B′)</td><td style="height:22px"></td></tr>
+<tr><td>전주 대비 변화</td><td style="height:22px"></td></tr>
+<tr><td>발동된 규칙 / 없으면 “없음”</td><td style="height:22px"></td></tr>
+<tr><td>편향 체크(S6) 통과 여부</td><td style="height:22px"></td></tr>
+</table>
+
+<div class="box warn">
+<div class="bt">이 시트를 쓰는 이유</div>
+<p>거시 예측보다 확실한 개인 리스크 관리는 <b>본인 대출의 금리 재산정 일정</b>이다(OQ-03).
+5번 항목에 그 날짜를 함께 적어 두면, 기준금리가 아니라 실제로 내 이자가 바뀌는 시점을 기준으로
+규칙이 작동한다.</p>
+</div>
+
+<h3>출처</h3>
+<ul class="src">
+<li>한국은행 ECOS 100대 주요 경제지표 — 기준금리·콜금리·대출금리·환율 (2026-09-07 조회)</li>
+<li>Federal Reserve H.15 Selected Interest Rates (2026-09-04)</li>
+<li>Al Jazeera, “Oil prices jump as US, Iranian attacks stoke fears of escalation” (2026-09-01)</li>
+<li>CNBC, “U.S. crude oil hits $90 per barrel following latest U.S. attacks against Iran” (2026-09-01)</li>
+<li>CNBC, “10-year Treasury yield rises as oil prices gain ahead of key inflation data” (2026-08-10)</li>
+<li>Charles Schwab, “Divided Fed Leaves Interest Rates Unchanged” (2026-07-29 FOMC)</li>
+<li>뉴스1, “1년새 29.5% 오른 분당 아파트값…서울 제치고 전국 상승률 1위” (2026-09-07)</li>
+<li>SBS Biz, “미 국채금리 5% 가면 답 없다” (2026-09-07)</li>
+</ul>
+</section>
+
+</body></html>
