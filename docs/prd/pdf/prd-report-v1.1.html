@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>PRD v1.1 전쟁-금리 운용 규칙</title>
+<style>
+:root{
+  --ink:#14161a; --ink2:#3d434d; --muted:#6b7280; --line:#d7dbe0; --line2:#eceef1;
+  --navy:#1c3a5e; --accent:#8c2f24; --ok:#1f6b45; --bg-soft:#f6f7f9; --bg-warn:#fdf4f2;
+}
+@page{ size:A4; margin:16mm 14mm 18mm 14mm; }
+*{box-sizing:border-box;}
+body{ orphans:3; widows:3;
+  font-family:"DejaVu Sans","WenQuanYi Zen Hei",sans-serif;
+  color:var(--ink); font-size:9.4pt; line-height:1.62; margin:0;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ line-height:1.3; margin:0; font-weight:700; }
+p{margin:0 0 7px;}
+strong{font-weight:700;}
+small{font-size:8pt;}
+
+/* ---------- COVER ---------- */
+.cover{ height:238mm; display:flex; flex-direction:column; page-break-after:always; }
+.cover .rule{ height:5px; background:var(--navy); width:64px; margin-bottom:26px;}
+.cover .kicker{ font-size:8.6pt; letter-spacing:.16em; color:var(--muted); text-transform:uppercase; margin-bottom:16px;}
+.cover h1{ font-size:26pt; letter-spacing:-.01em; color:var(--navy); margin-bottom:10px;}
+.cover .sub{ font-size:12pt; color:var(--ink2); font-weight:400; margin-bottom:30px; line-height:1.5;}
+.cover .spacer{flex:1;}
+.badge-fail{
+  display:inline-block; border:1.6px solid var(--accent); color:var(--accent);
+  padding:9px 16px; font-size:11pt; font-weight:700; letter-spacing:.02em; margin-bottom:26px;
+}
+.meta{ border-top:1.5px solid var(--ink); padding-top:14px; }
+.meta table{width:100%; border-collapse:collapse; font-size:9pt;}
+.meta td{padding:4px 0; vertical-align:top;}
+.meta td:first-child{ width:120px; color:var(--muted); }
+.disclaim{ margin-top:20px; padding:12px 14px; background:var(--bg-soft);
+  border-left:3px solid var(--muted); font-size:8.4pt; color:var(--ink2); line-height:1.55;}
+
+/* ---------- SECTIONS ---------- */
+section{ page-break-inside:auto; }
+h2{ font-size:13pt; color:var(--navy); margin:22px 0 4px; padding-bottom:5px;
+    border-bottom:2px solid var(--navy); page-break-after:avoid;}
+h2 .num{ color:var(--muted); font-weight:400; font-size:10pt; margin-right:8px;}
+h3{ font-size:10.2pt; margin:15px 0 5px; color:var(--ink); page-break-after:avoid;}
+.lead{ color:var(--ink2); font-size:9pt; margin-bottom:10px;}
+
+/* ---------- TABLES ---------- */
+table.d{ width:100%; border-collapse:collapse; margin:9px 0 12px; font-size:8.5pt;
+  page-break-inside:avoid; }
+table.d th{ background:var(--navy); color:#fff; font-weight:700; text-align:left;
+  padding:6px 8px; border:1px solid var(--navy); font-size:8.3pt; }
+table.d td{ padding:6px 8px; border:1px solid var(--line); vertical-align:top; line-height:1.5;}
+table.d tbody tr:nth-child(even){ background:var(--bg-soft); }
+table.d td.c{text-align:center;}
+
+/* 2x2 matrix */
+table.q{width:100%; border-collapse:collapse; margin:10px 0 14px; font-size:8.6pt; page-break-inside:avoid;}
+table.q th{background:var(--bg-soft); padding:8px; border:1px solid var(--line); font-size:8.4pt; text-align:center;}
+table.q th.row{text-align:left; width:70px;}
+table.q td{padding:11px 10px; border:1px solid var(--line); vertical-align:top; line-height:1.5;}
+table.q td.here{ background:var(--bg-warn); border:1.8px solid var(--accent); }
+table.q .qname{display:block; font-weight:700; margin-bottom:3px;}
+table.q .now{display:inline-block; background:var(--accent); color:#fff; font-size:7pt;
+  padding:1px 6px; margin-left:5px; vertical-align:1px;}
+
+/* ---------- CALLOUTS ---------- */
+.box{ border:1px solid var(--line); border-left:3px solid var(--navy);
+  background:var(--bg-soft); padding:11px 14px; margin:10px 0 13px; page-break-inside:avoid;}
+.box.warn{ border-left-color:var(--accent); background:var(--bg-warn); }
+.box .bt{ font-weight:700; font-size:9pt; margin-bottom:5px; color:var(--navy);}
+.box.warn .bt{ color:var(--accent);}
+.box p:last-child{margin-bottom:0;}
+
+.onelinerbox{ border:1.5px solid var(--navy); padding:13px 16px; margin:10px 0 14px;
+  background:#fff; page-break-inside:avoid;}
+.onelinerbox .lbl{font-size:7.8pt; letter-spacing:.12em; color:var(--muted);
+  text-transform:uppercase; margin-bottom:6px;}
+.onelinerbox .txt{font-size:10pt; line-height:1.65;}
+
+/* labels */
+.lab{ display:inline-block; font-size:7.2pt; padding:1px 5px; border-radius:2px;
+  vertical-align:1px; white-space:nowrap; font-weight:700;}
+.l-ok{background:#e4efe8; color:var(--ok); border:1px solid #b9d6c6;}
+.l-est{background:#fdf5e3; color:#8a6414; border:1px solid #e8d6a8;}
+.l-unv{background:#eceef1; color:#4b5563; border:1px solid #cfd4da;}
+.l-na{background:#f7e3e1; color:var(--accent); border:1px solid #e0b8b2;}
+
+ul,ol{margin:6px 0 10px; padding-left:19px;}
+li{margin-bottom:4px; line-height:1.6;}
+.ng li{margin-bottom:6px;}
+.ng b{color:var(--accent);}
+
+.ac{ margin:9px 0 12px; }
+.ac .item{ border-left:2px solid var(--line); padding:0 0 0 11px; margin-bottom:10px;
+  page-break-inside:avoid;}
+.ac .id{ font-weight:700; font-size:8.6pt; color:var(--navy); display:block; margin-bottom:2px;}
+.ac .gwt{ font-size:8.5pt; line-height:1.6;}
+.ac .gwt b{ color:var(--accent); font-weight:700;}
+
+.gate{ border:1.5px solid var(--ink); padding:0; margin:12px 0; page-break-inside:avoid;}
+.gate .ghead{ background:var(--ink); color:#fff; padding:7px 13px; font-weight:700; font-size:9.4pt;}
+.gate ul{ list-style:none; padding:12px 15px; margin:0;}
+.gate li{ padding-left:22px; position:relative; margin-bottom:6px; font-size:8.8pt;}
+.gate li .mk{ position:absolute; left:0; font-weight:700;}
+.gate li.pass .mk{ color:var(--ok);}
+.gate li.fail{ color:var(--accent); font-weight:700;}
+.gate li.fail .mk{ color:var(--accent);}
+.verdict{ background:var(--bg-warn); border-top:1.5px solid var(--accent);
+  padding:11px 15px; color:var(--accent); font-weight:700; font-size:10.5pt;}
+
+.src{font-size:7.6pt; color:var(--muted); line-height:1.6;}
+.src li{margin-bottom:3px;}
+.pb{page-break-before:always;}
+.avoid{page-break-inside:avoid;}
+</style></head><body>
+
+<div class="cover">
+  <div class="rule"></div>
+  <div class="kicker">Product Requirements Document · v1.1 (확정)</div>
+  <h1>전쟁-금리 이중 불확실성 대응<br>포트폴리오 운용 규칙</h1>
+  <div class="sub">코드네임 HORMUZ-RATE<br>
+  이란 전쟁 지속 국면에서의 금리 시나리오별 조건반사 규칙집</div>
+
+  <div class="box warn" style="margin-top:4px;">
+    <div class="bt">v1.0 → v1.1에서 바뀐 것</div>
+    <p>OQ-01·02·04 답변으로 실제 포지션이 확정되면서 <b>기능 우선순위가 뒤집혔다.</b>
+    F-09(집중 리스크 상한)를 신설해 Must 1순위로 올리고, F-02는 Should로 강등,
+    F-05는 투입할 현금이 없어 Won&#39;t으로 비활성화했다.</p>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="badge-fail" style="border-color:#a06714;color:#a06714;">상태 : G2 조건부 통과 — F-09·F-03 즉시 실행 / F-04 실행은 M1까지 보류</div>
+
+  <div class="meta">
+    <table>
+      <tr><td>작성일 · 개정</td><td>2026년 9월 7일 (v1.1)</td></tr>
+      <tr><td>분석기준시점</td><td>2026-09-07 17:20 (KST)</td></tr>
+      <tr><td>데이터 최종 갱신</td><td>2026-09-07 (환율·금리 당일 / 유가 09-01~09-07 보도 기준)</td></tr>
+      <tr><td>작성자 · 승인자</td><td>shk5005 (본인)</td></tr>
+      <tr><td>확정된 포지션</td><td>부동산 9.00억 · 대출 1.80억(LTV 20%) · 순자산 7.20억 · 주식:부동산 0:100 · 보유 2~5년</td></tr>
+      <tr><td>데이터 라벨</td><td>
+        <span class="lab l-ok">확인</span> <span class="lab l-est">추정</span>
+        <span class="lab l-unv">미검증</span> <span class="lab l-na">확인 불가</span></td></tr>
+    </table>
+  </div>
+  <div class="disclaim">
+    <b>고지.</b> 공개 데이터 기반 의사결정 프레임이며 투자 자문이 아니다.
+    평가액·순자산은 대출잔액과 LTV로 역산한 <b>파생값</b>이며, 감정 기준이 다르면 달라진다.
+    세후 소득·현금성 자산·물건 목록이 확인되지 않은 항목은 <b>공란으로 두었다.</b>
+  </div>
+</div>
+
+<section>
+<h2><span class="num">0</span>발견 — 이 PRD의 우선순위는 틀렸다</h2>
+<div class="box warn">
+  <div class="bt">v1.0의 전제가 실제 포지션에서 무너진다</div>
+  <p>v1.0은 <b>F-02 레버리지 상한</b>을 Must 1순위로 놓았다. 그러나 LTV 20%, 레버리지 1.25배,
+  금리 재산정 일정 없음이라는 실제 값을 대입하면 <b>금리 상승은 이 포트폴리오의 주된 위험이 아니다.</b>
+  금리가 +200bp 올라도 월 이자는 64만원 → 94만원이다.</p>
+  <p>실제 위험 순위: <b>① 집중(자산의 100%가 단일 자산군) → ② 유동성 완충 부재 →
+  ③ 2~5년 뒤 매도 시점의 거래 성립 여부 → ④ 금리.</b> 금리는 4순위다.</p>
+</div>
+
+<table class="d">
+<tr><th style="width:150px">확정 입력 <span class="lab l-ok">확인</span></th><th>값</th>
+    <th style="width:150px">파생 <span class="lab l-est">추정</span></th><th>값</th></tr>
+<tr><td>주식 : 부동산</td><td><b>0 : 100</b></td><td>부동산 평가액</td><td><b>9.00억원</b> (1.8억 ÷ 0.20)</td></tr>
+<tr><td>LTV</td><td><b>20%</b></td><td>순자산</td><td><b>7.20억원</b></td></tr>
+<tr><td>대출 잔액</td><td><b>1.80억원</b></td><td>레버리지 배수</td><td><b>1.25×</b> (하락을 1.25배 증폭)</td></tr>
+<tr><td>금리 재산정 일정</td><td>없음 <span class="lab l-unv">미검증</span></td><td>연 이자 (4.27%)</td><td><b>769만원</b> / 월 64만원</td></tr>
+<tr><td>투자기간</td><td><b>2~5년</b></td><td>매도 착수 시점</td><td>목표 −6~12개월</td></tr>
+</table>
+
+<div class="box">
+  <div class="bt">OQ-03에 대한 반론 — “일정 없음”은 아직 답이 아니다</div>
+  <p><b>고정금리로 확정된 것</b>과 <b>변동금리인데 재산정 주기를 모르는 것</b>은 완전히 다르다.
+  후자라면 “없음”이 아니라 “6개월마다”가 정답이고, 금리 리스크 노출이 달라진다.
+  대출약정서로 5분 내 확인 가능하므로 <span class="lab l-unv">미검증</span>으로 유지한다.</p>
+</div>
+</section>
+
+<section>
+<h2><span class="num">S2</span>성공 기준 — 기준선 확보</h2>
+<table class="d">
+<tr><th>지표</th><th style="width:120px">기준선</th><th style="width:130px">목표 · 임계</th><th style="width:100px">측정</th><th style="width:70px">주기</th></tr>
+<tr><td>MDD 재점검선</td><td><b>순자산 7.20억</b></td><td><b>−25%</b> (부동산 −20%, LTV 25% 도달)</td><td>평가액 재산정</td><td>월 1회</td></tr>
+<tr><td>비부동산 비중</td><td><b>0%</b></td><td>3년 내 <b>10%</b> = 7,200만원</td><td>계좌 합산</td><td>분기</td></tr>
+<tr><td>이자 ÷ 세후 연소득</td><td><b>확인 불가</b> → OQ-07</td><td>15% 초과 시 F-04 발동</td><td>원천징수영수증</td><td>연 1회 · 재산정 시</td></tr>
+<tr><td>사분면 전환 인지 시차</td><td>없음(무규칙)</td><td>5영업일 이내</td><td>주간 기록</td><td>이벤트 시</td></tr>
+<tr><td>강제청산 · 연체</td><td>0건</td><td>0건 유지</td><td>대출 계좌</td><td>상시</td></tr>
+</table>
+<div class="box">
+  <div class="bt">MDD 선은 손절선이 아니다</div>
+  <p>부동산은 손절 실행이 어렵다. 순자산 −25%는 <b>규칙 자체를 다시 쓰는 재검토선</b>이며,
+  자동 매도 신호가 아니다. 레버리지 1.25배가 자산가 하락을 순자산 손실로 증폭시킨다.</p>
+</div>
+
+<h3>하방 민감도 — 대출잔액 1.8억 고정</h3>
+<table class="d">
+<tr><th>부동산 변동</th><th>평가액</th><th>LTV</th><th>순자산</th><th>순자산 변동</th><th>판정</th></tr>
+<tr><td class="c">0%</td><td class="c">9.00억</td><td class="c">20.0%</td><td class="c">7.20억</td><td class="c">—</td><td>기준</td></tr>
+<tr><td class="c">−10%</td><td class="c">8.10억</td><td class="c">22.2%</td><td class="c">6.30억</td><td class="c">−12.5%</td><td>규칙 유지</td></tr>
+<tr><td class="c"><b>−20%</b></td><td class="c"><b>7.20억</b></td><td class="c"><b>25.0%</b></td><td class="c"><b>5.40억</b></td><td class="c"><b>−25.0%</b></td><td><b>재점검선 도달</b></td></tr>
+<tr><td class="c">−25%</td><td class="c">6.75억</td><td class="c">26.7%</td><td class="c">4.95억</td><td class="c">−31.2%</td><td>규칙 전면 재작성</td></tr>
+<tr><td class="c">−33%</td><td class="c">6.00억</td><td class="c">30.0%</td><td class="c">4.20억</td><td class="c">−41.6%</td><td>규칙 전면 재작성</td></tr>
+</table>
+
+<h3>이자 민감도 — 금리 재산정 시</h3>
+<table class="d">
+<tr><th style="width:110px">대출금리</th><th>연 이자</th><th>월 이자</th><th>현재 대비</th></tr>
+<tr><td class="c">4.27% (현재)</td><td class="c">769만원</td><td class="c">64.0만원</td><td class="c">—</td></tr>
+<tr><td class="c">5.27%</td><td class="c">949만원</td><td class="c">79.0만원</td><td class="c">+180만원/년</td></tr>
+<tr><td class="c">6.27%</td><td class="c">1,129만원</td><td class="c">94.0만원</td><td class="c">+360만원/년</td></tr>
+<tr><td class="c">7.27%</td><td class="c">1,309만원</td><td class="c">109.0만원</td><td class="c">+540만원/년</td></tr>
+</table>
+</section>
+
+<section>
+<h2><span class="num">S4</span>기능 목록 v1.1 — 우선순위 재정렬</h2>
+<table class="d">
+<tr><th style="width:52px">ID</th><th>기능</th><th style="width:110px">v1.0</th><th style="width:110px">v1.1</th><th style="width:150px">변경 사유</th></tr>
+<tr><td><b>F-09</b></td><td><b>집중 리스크 상한</b></td><td>—</td><td><b>Must (신설·1순위)</b></td><td>자산 100% 단일 자산군</td></tr>
+<tr><td>F-01</td><td>사분면 판정 규칙</td><td>Must</td><td>Must</td><td>유지</td></tr>
+<tr><td>F-02</td><td>레버리지 상한</td><td>Must</td><td><b>Should (강등)</b></td><td>LTV 20%로 이미 충족</td></tr>
+<tr><td><b>F-02b</b></td><td><b>실질 경보선 (이자 감당력)</b></td><td>—</td><td><b>Must (신설)</b></td><td>LTV보다 이자÷소득이 실제 트리거</td></tr>
+<tr><td>F-03</td><td>유동성 · 달러 헤지</td><td>Must</td><td>Must</td><td>재원 부재 → F-04에 종속</td></tr>
+<tr><td>F-04</td><td>매도 우선순위</td><td>Must</td><td>Must (실행 보류)</td><td>물건 목록 미확인</td></tr>
+<tr><td>F-05</td><td>채권 듀레이션</td><td>Should</td><td><b>Won&#39;t (비활성)</b></td><td>투입할 현금 0</td></tr>
+<tr><td>F-07</td><td>편향 체크리스트</td><td>Should</td><td>Should</td><td>유지</td></tr>
+</table>
+</section>
+
+<section>
+<h2><span class="num">F-02~F-09</span>운용 규칙 실제 숫자</h2>
+
+<div class="ac">
+<div class="item"><span class="id">F-09 집중 리스크 상한 · Must 1순위 · 목표 비부동산 ≥ 10%</span><span class="gwt">
+현재 0%. 3년 내 순자산의 10%(<b>7,200만원</b>)를 부동산 밖으로.
+<b>Given</b> 매 분기 말, <b>Then</b> 비부동산 비중을 기록하고 직전 분기 대비 증가하지 않았으면 사유를 남긴다.
+시장 타이밍과 무관하게 실행하는 유일한 규칙 — 어느 사분면에서도 손해가 아니다.</span></div>
+
+<div class="item"><span class="id">F-02 레버리지 상한 · Should · LTV 25% · 여력 4,500만원</span><span class="gwt">
+상한 25%까지 신규 차입 여력은 <b>4,500만원</b>이나 사분면 A·B·B′에서는 <b>신규 차입 0</b>.
+개인 주담대는 통상 LTV 기반 기한이익상실 조항이 없어 <b>강제청산 위험이 낮다</b>
+<span class="lab l-unv">미검증</span> — 약정서 확인 필요.
+<b>Given</b> 브렌트 3거래일 연속 $100↑, <b>When</b> 미 10년물 4.9% 초과, <b>Then</b> 신규 차입 동결.</span></div>
+
+<div class="item"><span class="id">F-02b 실질 경보선 · Must · 이자 ÷ 세후 연소득 &gt; 15%</span><span class="gwt">
+LTV가 아니라 <b>이자 감당력</b>이 진짜 트리거다. 세후 연소득 미확인으로
+<b>임계 금액은 공란</b> <span class="lab l-na">확인 불가</span> — OQ-07.
+<b>Given</b> 대출금리 재산정 통지 수령, <b>Then</b> 비율을 재계산하고 15% 초과 시 F-04 1순위 물건 매도 착수.</span></div>
+
+<div class="item"><span class="id">F-03 유동성 · 달러 헤지 · Must · 1단계 1,000만 → 2단계 2,160~3,600만</span><span class="gwt">
+1단계는 원화 현금 완충(6개월치 이자 <b>384만원</b> + 생활비). 2단계는 순자산의 3~5%를 달러로.
+<b>재원이 없다</b> — 자산 100%가 부동산이므로 신규 저축이나 부분 매도에서 나와야 한다.
+<b>F-03은 F-04에 종속된다.</b>
+<b>Given</b> 1단계 완충 확보 후, <b>When</b> 원/달러 1,400원 돌파, <b>Then</b> 달러 3회 분할 매수, 1회차 D+3 이내.</span></div>
+
+<div class="item"><span class="id">F-04 매도 우선순위 · Must · 실행 보류 · 4기준 × 0~3점</span><span class="gwt">
+①현금흐름 부재 ②거래회전율 낮음 ③규제 노출(다주택·초고가) ④2~5년 내 매도 난이도 —
+총점 높은 순으로 매도. 물건 목록 미확인이라 <b>점수표는 비어 있다</b>(OQ-08).
+보유 기간이 2~5년이므로 <b>실제 착수는 목표 시점 −6~12개월</b>(실거래 신고 lag 30일 + 협상 기간).
+<b>Given</b> 침체 신호 3종 중 2개 이상, <b>Then</b> 1순위 물건 매도 착수. 금리 하락을 매수 신호로 읽지 않는다.</span></div>
+
+<div class="item"><span class="id">F-05 채권 듀레이션 · Won&#39;t · 해당 없음</span><span class="gwt">
+채권에 넣을 현금이 <b>0</b>이다. 미 10년물 5% 논의는 이 포지션에서 실행 불가능하므로 규칙에서 내린다.
+없는 돈으로 세우는 계획은 계획이 아니다.
+<b>재활성 조건</b> 현금성 자산 3,000만원 이상 확보 시 Should로 복원.</span></div>
+</div>
+</section>
+
+<section>
+<h2><span class="num">S8</span>미결 사항 갱신</h2>
+<table class="d">
+<tr><th style="width:56px">ID</th><th>질문</th><th style="width:110px">막는 항목</th><th style="width:110px">상태</th><th style="width:120px">확인 방법</th></tr>
+<tr><td>OQ-01</td><td>자산 구성 · 부동산 비중</td><td>F-02·F-04</td><td><b style="color:#1f6b45">해소</b> 0:100</td><td>—</td></tr>
+<tr><td>OQ-02</td><td>LTV · 대출 잔액</td><td>F-02</td><td><b style="color:#1f6b45">해소</b> 20% / 1.8억</td><td>—</td></tr>
+<tr><td>OQ-04</td><td>투자기간</td><td>F-04·F-05</td><td><b style="color:#1f6b45">해소</b> 2~5년</td><td>—</td></tr>
+<tr><td>OQ-03</td><td>고정금리인가, 변동인데 일정을 모르는가</td><td>F-02b 발동 시점</td><td><b style="color:#a06714">미검증</b></td><td>대출약정서 · 은행 앱</td></tr>
+<tr><td><b>OQ-06</b></td><td>현금성 자산 잔액</td><td>F-03 1단계 재원</td><td><b style="color:#8c2f24">신규 Blocking</b></td><td>계좌 합산</td></tr>
+<tr><td><b>OQ-07</b></td><td>세후 연소득</td><td>F-02b 임계 금액</td><td><b style="color:#8c2f24">신규 Blocking</b></td><td>원천징수영수증</td></tr>
+<tr><td><b>OQ-08</b></td><td>보유 물건 목록 (지역·면적·전월세)</td><td>F-04 점수표</td><td><b style="color:#8c2f24">신규 Blocking</b></td><td>M1 자산 인벤토리</td></tr>
+<tr><td>OQ-05</td><td>호르무즈 통항량 데이터</td><td>F-01 정확도</td><td>Non-blocking</td><td>유료 데이터</td></tr>
+</table>
+</section>
+
+<section>
+<h2><span class="num">S9</span>G2 실행 착수 게이트 — v1.1 재판정</h2>
+<div class="gate">
+  <div class="ghead">2026-09-07 재판정</div>
+  <ul>
+    <li class="pass"><span class="mk">✔</span> Must 기능 전부에 수용 기준(AC) 존재 — F-09·F-02b 신설분 포함</li>
+    <li class="pass"><span class="mk">✔</span> OQ-01 · 02 · 04 해소 — 배분 0:100, LTV 20%/1.8억, 기간 2~5년</li>
+    <li class="pass"><span class="mk">✔</span> S2 MDD 기준선 확보 — 순자산 7.2억, 재점검선 −25%(부동산 −20%)</li>
+    <li class="pass"><span class="mk">✔</span> 데이터 출처 접근성 실증 · Non-goals 명시(NG-1~5)</li>
+    <li style="color:#a06714;font-weight:700;"><span class="mk" style="color:#a06714;">△</span> OQ-03 미검증 — 고정/변동 구분 필요</li>
+    <li class="fail"><span class="mk">✘</span> 신규 Blocking 3건 (OQ-06·07·08) — F-04 실행과 F-02b 임계 금액이 걸림</li>
+  </ul>
+  <div class="verdict" style="border-top-color:#a06714;background:#faeedc;color:#a06714;">
+    판정 : 조건부 통과 — F-09·F-03 1단계 즉시 실행 / F-04 실행은 M1 인벤토리까지 보류</div>
+</div>
+
+<div class="box warn">
+  <div class="bt">완전 통과로 찍지 않은 이유</div>
+  <p>답변 4건으로 규칙의 <b>정의</b>는 확정됐지만, F-04의 <b>실행</b>에는 물건 목록이,
+  F-02b의 임계 금액에는 세후 소득이 필요하다. 없는 값을 채워 도장을 찍으면
+  이 문서는 근거 없는 숫자를 사실처럼 보이게 만드는 도구가 된다.
+  대신 <b>실행 가능한 규칙(F-09·F-03 1단계)은 지금 풀었다.</b></p>
+</div>
+
+<h3>즉시 실행 항목 (승인 불요)</h3>
+<table class="d">
+<tr><th style="width:56px">ID</th><th>행동</th><th style="width:130px">금액 · 기한</th></tr>
+<tr><td>F-09</td><td>비부동산 자산 적립 개시 — 어느 사분면에서도 손해가 아님</td><td>3년 내 7,200만원</td></tr>
+<tr><td>F-03①</td><td>원화 현금 완충 확보 (6개월 이자 + 생활비)</td><td>최소 1,000만원</td></tr>
+<tr><td>OQ-03</td><td>대출약정서에서 금리 유형·재산정 주기 확인</td><td>5분</td></tr>
+<tr><td>M1</td><td>자산 인벤토리 작성 (물건·현금·소득) → OQ-06·07·08 동시 해소</td><td>1주</td></tr>
+</table>
+
+<h3>판단 신뢰도 : Medium</h3>
+<p>사실 데이터는 당일 원출처에서 검증됐고 포지션 4건이 확정되어 v1.0보다 규칙의 구체성이 올라갔다.
+그러나 ① 임계값(ASM-02)이 백테스트되지 않았고, ② 세후 소득·물건 구성이 미상이며,
+③ 유가·전쟁 경로는 본질적으로 예측 불가능하다.</p>
+
+<h3>출처</h3>
+<ul class="src">
+<li>한국은행 ECOS 100대 주요 경제지표 — 기준금리 3.00%·원/달러 1,340.5원·예금은행 대출금리 4.27% (2026-09-07 조회)</li>
+<li>Federal Reserve H.15 Selected Interest Rates — 미 10년물 4.705% (2026-09-04)</li>
+<li>Al Jazeera / CNBC — 브렌트 $92~94.5, WTI ~$90, 두바이 $100 (2026-09-01)</li>
+<li>Charles Schwab — FOMC 2026-07-29 동결 9-3</li>
+<li>뉴스1 — 분당 아파트 1년 +29.5%, 전국 상승률 1위 (2026-09-07)</li>
+</ul>
+</section>
+
+</body></html>
