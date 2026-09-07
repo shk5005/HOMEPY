@@ -5,7 +5,7 @@ SRC, OUT = sys.argv[1], sys.argv[2]
 
 FOOT = """<div style="font-family:'DejaVu Sans',sans-serif;font-size:7pt;color:#6b7280;
 width:100%;padding:0 14mm;display:flex;justify-content:space-between;">
-<span>PRD · HORMUZ-RATE v1.0 — 2026-09-07 기준 · Draft (G2 미통과)</span>
+<span>PRD v1.2 · HORMUZ-RATE — 2026-09-07 · 미통과 (재설계 필요)</span>
 <span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>"""
 
 async def main():
