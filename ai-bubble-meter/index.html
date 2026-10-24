@@ -1,0 +1,831 @@
+<style>
+.bm{max-width:74rem;margin-inline:auto;display:flex;flex-direction:column;gap:var(--cds-gap-xl);font-family:var(--font-anthropic-sans)}
+.bm h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;text-wrap:balance}
+.bm h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0;text-wrap:balance}
+.bm h3{font-size:var(--cds-font-size-body);font-weight:var(--cds-font-weight-medium);margin:0}
+.bm p{margin:0;line-height:1.6;max-width:68ch}
+.bm-muted{color:var(--color-fg-muted)}
+.bm-cap{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.bm-head{display:flex;flex-direction:column;gap:var(--cds-gap-sm)}
+.bm-stamp{display:flex;flex-wrap:wrap;gap:var(--cds-gap-xs) var(--cds-gap-md);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.bm-stamp b{color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.bm-take{font-size:var(--cds-font-size-body)}
+.bm-sec{display:flex;flex-direction:column;gap:var(--cds-gap-md)}
+.bm-grid{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))}
+.bm-card{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg);display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-width:0;position:relative}
+.bm-gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:var(--cds-gap-xs)}
+.bm-gauge{width:100%;max-width:26rem;min-height:12rem}
+.bm-big{font-family:var(--font-anthropic-serif);font-weight:400;font-size:calc(var(--cds-font-size-title) * 2.4);line-height:1;font-variant-numeric:tabular-nums}
+.bm-stage{display:inline-flex;align-items:center;gap:var(--cds-gap-xs);padding:2px 10px;border-radius:999px;border:1px solid var(--color-border-line);font-size:var(--cds-font-size-caption);font-weight:var(--cds-font-weight-medium)}
+.bm-stage i{width:.5rem;height:.5rem;border-radius:50%;background:currentColor;display:inline-block}
+.bm-layers{display:flex;flex-direction:column;gap:var(--cds-gap-sm);min-height:16rem}
+.bm-lrow{display:grid;grid-template-columns:1fr auto;gap:2px var(--cds-gap-sm);align-items:baseline}
+.bm-lname{font-size:var(--cds-font-size-caption)}
+.bm-lval{font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums;color:var(--color-fg-muted)}
+.bm-lval b{color:var(--color-fg)}
+.bm-track{grid-column:1/-1;height:10px;border-radius:5px;background:var(--cds-chart-grid);position:relative;overflow:hidden}
+.bm-fill{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.bm-ticks{grid-column:1/-1;position:relative;height:0}
+.bm-tiles{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))}
+.bm-tile{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg);display:flex;flex-direction:column;gap:var(--cds-gap-xs)}
+.bm-tile .bm-num{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums}
+.bm-chart{width:100%;min-height:15rem;position:relative}
+.bm-tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:2}
+.bm-tip .k{color:var(--cds-text-secondary)}
+.bm-tablebox{max-height:34rem;overflow:auto;border-top:1px solid var(--color-border-line)}
+.bm table{border-collapse:collapse;width:100%;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums}
+.bm th{position:sticky;top:0;background:var(--color-panel);text-align:left;font-weight:var(--cds-font-weight-medium);padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);z-index:1}
+.bm th button{all:unset;cursor:pointer;display:inline-flex;gap:4px;align-items:center}
+.bm th button:focus-visible{outline:2px solid var(--color-fg);outline-offset:2px;border-radius:2px}
+.bm td{padding:var(--cds-pad-xs) var(--cds-pad-sm);border-bottom:1px solid var(--color-border-line);vertical-align:top}
+.bm td.num{text-align:right;white-space:nowrap}
+.bm td.wrap{min-width:14rem;max-width:24rem}
+.bm td.nm{min-width:9rem;font-weight:var(--cds-font-weight-medium)}
+.bm-sbar{display:flex;align-items:center;gap:6px;min-width:7rem}
+.bm-sbar span.b{height:8px;border-radius:4px;display:inline-block}
+.bm-conf{display:inline-block;padding:0 6px;border-radius:999px;border:1px solid var(--color-border-line)}
+.bm a{color:inherit}
+.bm-search{font:inherit;font-size:var(--cds-font-size-caption);padding:6px 10px;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-bg);color:var(--color-fg);width:min(100%,18rem)}
+.bm-sens{display:flex;flex-direction:column;gap:6px;min-height:14rem}
+.bm-srow{display:grid;grid-template-columns:minmax(8rem,14rem) 1fr auto;gap:var(--cds-gap-sm);align-items:center;font-size:var(--cds-font-size-caption)}
+.bm-srow .t{height:8px;border-radius:4px;background:var(--cds-chart-grid);position:relative}
+.bm-srow .t span{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--cds-chart-muted)}
+.bm-srow.top .t span{background:var(--cds-chart-status-critical)}
+.bm-srow .v{font-variant-numeric:tabular-nums}
+.bm-scn{display:grid;gap:var(--cds-gap-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))}
+.bm-scn .bm-card{border-top-width:3px}
+.bm-scn .bull{border-top-color:var(--color-ok)}
+.bm-scn .base{border-top-color:var(--color-warn)}
+.bm-scn .bear{border-top-color:var(--color-bad)}
+.bm dl{margin:0;display:grid;gap:var(--cds-gap-xs)}
+.bm dt{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.bm dd{margin:0 0 var(--cds-gap-xs);line-height:1.5}
+.bm ul,.bm ol{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:6px;line-height:1.55}
+.bm-judge{display:grid;gap:var(--cds-gap-sm) var(--cds-gap-lg);grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))}
+.bm-judge div{display:flex;flex-direction:column;gap:4px}
+.bm-judge h3{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.bm-tag{font-size:var(--cds-font-size-caption);font-weight:var(--cds-font-weight-medium);padding:1px 8px;border-radius:999px;border:1px solid var(--color-border-line);white-space:nowrap}
+.bm-tag.f{color:var(--color-ok)}
+.bm-tag.r{color:var(--color-warn)}
+.bm-tag.u{color:var(--color-bad)}
+.bm-claims{display:flex;flex-direction:column;gap:var(--cds-gap-sm)}
+.bm-claim{display:grid;grid-template-columns:auto 1fr;gap:var(--cds-gap-sm);align-items:baseline}
+.bm-claim p{max-width:none}
+.bm-fail{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);min-height:inherit}
+.bm-fail i{width:.375rem;height:.375rem;border-radius:50%;background:var(--color-bad);display:inline-block}
+[data-dash-source-state=empty]{color:transparent}
+[data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+.bm-curve{width:100%;min-height:16rem;position:relative}
+.bm-pos{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--cds-gap-xs) var(--cds-gap-sm)}
+.bm-pos .bm-num{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title)}
+.bm-phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;min-height:7rem}
+.bm-ph{border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-sm);display:flex;flex-direction:column;gap:4px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);min-width:0}
+.bm-ph b{color:var(--color-fg);font-weight:var(--cds-font-weight-medium)}
+.bm-ph.on{border-color:var(--color-warn);border-width:2px;color:var(--color-fg);background:var(--color-bg)}
+.bm-ph.on b{color:var(--color-warn)}
+.bm-ph .arrow{font-size:var(--cds-font-size-caption);color:var(--color-warn);font-weight:var(--cds-font-weight-medium)}
+.bm-tl{width:100%;min-height:15rem;position:relative}
+@media (max-width:40rem){.bm-phases{grid-template-columns:1fr}.bm-ph{flex-direction:row;flex-wrap:wrap;gap:4px 8px}}
+@media (max-width:40rem){.bm .hide-n{display:none}.bm-srow{grid-template-columns:7rem 1fr auto}}
+@media (prefers-reduced-motion:no-preference){
+ .bm-fill.anim{animation:bmGrow var(--cds-dur-slow) var(--cds-ease-out) both}
+ @keyframes bmGrow{from{width:0}}
+}
+</style>
+
+<div class="bm">
+ <header class="bm-head" id="top">
+  <h1>AI 채찍효과 버블 미터</h1>
+  <div class="bm-stamp">
+   <span>분석일 <b id="stDate" data-source="latest" data-field="date_ko" data-row="0">—</b></span>
+   <span>분석기준시점 <b id="stTime" data-source="latest" data-field="time_ko" data-row="0">—</b></span>
+   <span>데이터 최종 기준일 <b id="stAsof" data-source="latest" data-field="asof_ko" data-row="0">—</b> (지표별 기준일은 표 참조)</span>
+   <span>매주 월요일 오전 자동 갱신</span>
+  </div>
+  <p class="bm-take" id="takeaway"><span class="dash-skeleton">—</span></p>
+ </header>
+
+ <section class="bm-sec" id="meter">
+  <div class="bm-grid">
+   <div class="bm-card">
+    <h2>종합 버블 점수</h2>
+    <p class="bm-cap">7개 계층 가중 평균. 0은 정상, 100은 1999년 말 수준의 극단. 붕괴 시점을 알려주는 지표가 아닙니다.</p>
+    <div class="bm-gauge-wrap">
+     <div class="bm-gauge" id="gauge" data-source="composite"></div>
+     <div class="bm-big dash-skeleton" id="score" data-source="composite" data-field="score" data-row="0">—</div>
+     <div class="bm-stage dash-skeleton" id="stage" data-source="composite" data-field="stage" data-row="0">—</div>
+    </div>
+   </div>
+   <div class="bm-card">
+    <h2>채찍 마디별 점수</h2>
+    <p class="bm-cap">최종수요(하류)에서 금융시장까지. 괄호는 계층 가중치(%).</p>
+    <div class="bm-layers dash-skeleton" id="layers" data-source="layers"></div>
+   </div>
+  </div>
+  <div class="bm-tiles">
+   <div class="bm-tile"><span class="bm-cap">가장 뜨거운 마디</span><span class="bm-num dash-skeleton" id="hotName" data-source="layers_rank" data-field="layer" data-row="0">—</span><span class="bm-cap"><span id="hotScore" data-source="layers_rank" data-field="score" data-row="0">—</span>점</span></div>
+   <div class="bm-tile"><span class="bm-cap">가장 차가운 마디</span><span class="bm-num dash-skeleton" id="coldName" data-source="layers_rank" data-field="layer" data-row="6">—</span><span class="bm-cap"><span id="coldScore" data-source="layers_rank" data-field="score" data-row="6">—</span>점</span></div>
+   <div class="bm-tile"><span class="bm-cap">KOSPI 최근 종가 (<span id="kDate" data-source="kospi_chg" data-field="last_date" data-row="0">—</span>)</span><span class="bm-num dash-skeleton" id="kLast" data-source="kospi_chg" data-field="last" data-row="0">—</span><span class="bm-cap">기록 중 고점 대비 <span id="kChg" data-source="kospi_chg" data-field="chg" data-row="0">—</span></span></div>
+   <div class="bm-tile"><span class="bm-cap">신뢰도 Low 지표 비중</span><span class="bm-num dash-skeleton" id="lowShare" data-source="quality" data-field="low_share" data-row="0">—</span><span class="bm-cap">전체 <span id="nInd" data-source="quality" data-field="n" data-row="0">—</span>개 지표 중</span></div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="cycle">
+  <h2>사이클 위치와 타임라인</h2>
+  <div class="bm-grid">
+   <div class="bm-card">
+    <h3>버블 단계 곡선 위의 현재 위치</h3>
+    <p class="bm-cap">Rodrigue의 버블 단계 모형(개념도, 실측 가격 아님). 종합 점수를 상승 구간 위치로 옮겨 찍었습니다.</p>
+    <div class="bm-pos">
+     <span class="bm-num dash-skeleton" id="cyStage" data-source="cycle_pos" data-field="stage" data-row="0">—</span>
+     <span class="bm-cap">정점(100)까지 <b id="cyGap" data-source="cycle_pos" data-field="gap" data-row="0">—</b>점</span>
+    </div>
+    <div class="bm-curve" id="curve" data-source="cycle_curve cycle_pos"></div>
+    <p class="bm-cap">한계: 점수의 시계열이 아직 없어 상승 구간에 있다고 가정했습니다. 7월 신용융자 급감과 10월 KOSPI 조정은 '1차 매도'일 수도, 정점 뒤 '불 트랩'일 수도 있으며 지금 데이터로는 구분할 수 없습니다.</p>
+   </div>
+   <div class="bm-card">
+    <h3>메모리(채찍 상류) 사이클 위치</h3>
+    <p class="bm-cap">DRAM 계약가 분기 상승률의 부호와 방향으로 판정. 판정 규칙은 각 칸에 적혀 있습니다.</p>
+    <div class="bm-phases dash-skeleton" id="phases" data-source="mem_phases mem_pos"></div>
+    <p class="bm-cap" id="memWhy" data-source="mem_pos">—</p>
+    <p class="bm-cap">채찍효과에서는 3단계(후기 확장)에 쇼티지 게이밍 주문이 가장 많이 쌓이고, 4단계에서 그 주문이 한꺼번에 취소됩니다.</p>
+   </div>
+  </div>
+  <div class="bm-card" id="trendCard">
+   <h3>버블 점수 추이</h3>
+   <p class="bm-cap">갱신할 때마다 같은 규칙으로 다시 계산한 기록. 점수가 꺾이는지 보면 정점 전인지 후인지 가릴 수 있습니다.</p>
+   <p class="bm-take" id="trendWhy" data-source="trend">—</p>
+   <div class="bm-chart" id="trendChart" data-source="score_log"></div>
+  </div>
+  <div class="bm-tiles">
+   <div class="bm-tile"><span class="bm-cap">AI 사이클 기점 이후</span><span class="bm-num dash-skeleton" id="anMonths" data-source="analog" data-field="months_now" data-row="0">—</span><span class="bm-cap">개월 (ChatGPT 공개 기준)</span></div>
+   <div class="bm-tile"><span class="bm-cap">닷컴 사이클의 같은 시점</span><span class="bm-num dash-skeleton" id="anEq" data-source="analog" data-field="dot_equiv" data-row="0">—</span><span class="bm-cap">넷스케이프 IPO 기준</span></div>
+   <div class="bm-tile"><span class="bm-cap">그 시점에서 나스닥 정점까지</span><span class="bm-num dash-skeleton" id="anLeft" data-source="analog" data-field="to_peak" data-row="0">—</span><span class="bm-cap">개월이 남아 있었음</span></div>
+   <div class="bm-tile"><span class="bm-cap">CAPE, 닷컴 정점 대비</span><span class="bm-num dash-skeleton" id="anCape" data-source="analog" data-field="cape_vs_peak" data-row="0">—</span><span class="bm-cap">1999년 12월 = 100%</span></div>
+  </div>
+  <div class="bm-card">
+   <h3>타임라인: AI 사이클과 닷컴 사이클 겹쳐 보기</h3>
+   <p class="bm-cap">가로축은 각 사이클 기점 이후 개월 수. 기점을 같게 둔 유비일 뿐 두 사이클의 길이가 같다는 근거는 없습니다. 점에 마우스를 올리면 사건이 보입니다.</p>
+   <div class="bm-tl" id="tl" data-source="timeline_m"></div>
+   <div class="bm-tablebox" style="max-height:20rem">
+    <table id="tlTbl" data-source="timeline" data-row-key="id">
+     <thead><tr>
+      <th data-field="lane">사이클</th>
+      <th data-field="date">날짜</th>
+      <th data-source="timeline_m" data-field="months" class="num">기점 후 개월</th>
+      <th data-field="event">사건</th>
+      <th data-field="stage" class="hide-n">단계</th>
+      <th data-field="confidence" class="hide-n">신뢰도</th>
+      <th data-field="source" class="hide-n">출처</th>
+     </tr></thead>
+     <tbody></tbody>
+    </table>
+   </div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="whip">
+  <h2>채찍효과: 상류로 갈수록 커지는 진폭</h2>
+  <div class="bm-grid">
+   <div class="bm-card">
+    <h3>수요 변동의 증폭 예시</h3>
+    <p class="bm-cap">영상 속 설명으로 시청자 댓글이 전한 예시. 원문 대조 전이라 실측치가 아닌 개념 예시로만 보세요.</p>
+    <div class="bm-chart" id="chain" data-source="chain"></div>
+   </div>
+   <div class="bm-card">
+    <h3>DRAM 계약가격 전분기 대비 상승률</h3>
+    <p class="bm-cap">가격은 아직 오르지만 상승률은 세 분기째 줄고 있습니다. 막대는 범위의 중간값, 가는 선은 보도된 범위.</p>
+    <div class="bm-chart" id="dram" data-source="dram"></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="indicators">
+  <div class="bm-card">
+   <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--cds-gap-sm);align-items:end">
+    <div><h2>지표 원장</h2><p class="bm-cap">각 지표의 원값, 정상·극단 기준, 0~100 환산 점수, 근거의 한계. 정상·극단 기준 다수는 분석자 가정입니다.</p></div>
+    <input class="bm-search" id="q" type="search" placeholder="지표·계층 검색" aria-label="지표 검색">
+   </div>
+   <div class="bm-tablebox">
+    <table id="tbl" data-source="indicators" data-row-key="id">
+     <thead><tr>
+      <th data-field="name"><button data-k="name">지표</button></th>
+      <th data-field="layer"><button data-k="layer">계층</button></th>
+      <th data-field="raw" class="num"><button data-k="raw">원값</button></th>
+      <th data-field="unit">단위</th>
+      <th data-field="score"><button data-k="score">점수</button></th>
+      <th data-field="confidence"><button data-k="confidence">신뢰도</button></th>
+      <th data-field="metric" class="hide-n">측정 내용</th>
+      <th data-field="normal" class="num hide-n">정상</th>
+      <th data-field="extreme" class="num hide-n">극단</th>
+      <th data-field="note" class="hide-n">근거·한계</th>
+      <th data-field="rule" class="hide-n">환산 규칙</th>
+      <th data-field="as_of"><button data-k="as_of">기준일</button></th>
+      <th data-field="source">출처</th>
+     </tr></thead>
+     <tbody></tbody>
+    </table>
+   </div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="sensitivity">
+  <div class="bm-card">
+   <h2>민감도: 어느 지표가 결론을 움직이나</h2>
+   <p class="bm-cap">각 지표 점수가 10점 오를 때 종합 점수가 오르는 폭. 위쪽 세 개가 판단을 좌우하는 핵심 변수입니다.</p>
+   <div class="bm-sens dash-skeleton" id="sens" data-source="sensitivity"></div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="scenarios">
+  <h2>시나리오</h2>
+  <div class="bm-scn">
+   <div class="bm-card bull">
+    <h3>Bull: 수요가 투자를 따라잡는다</h3>
+    <dl>
+     <dt>발생 조건</dt><dd>추론(inference) 실사용 매출이 capex 증가 속도를 따라잡고, DRAM 가격 상승이 하락 전환 없이 완만하게 멈춤.</dd>
+     <dt>핵심 변수</dt><dd>하이퍼스케일러 클라우드 증분 매출, 기업용 AI 유료 전환율.</dd>
+     <dt>예상 결과</dt><dd>버블 점수 하락. 이번 상승이 버블보다는 설비 사이클로 재해석됨.</dd>
+     <dt>선행지표</dt><dd>클라우드 매출 가속, 메모리 공급사 재고 안정, 회사채 발행 프리미엄 축소.</dd>
+     <dt>무효화 조건</dt><dd>capex 가이던스 하향 또는 메모리 현물가가 계약가 아래로 내려감.</dd>
+    </dl>
+   </div>
+   <div class="bm-card base">
+    <h3>Base: 높은 점수에서 고변동 지속</h3>
+    <dl>
+     <dt>발생 조건</dt><dd>가격 상승률 감속이 이어지지만 2027년 공급부족 기대가 바닥을 받침. 업종 내 순환 조정.</dd>
+     <dt>핵심 변수</dt><dd>4분기 계약가 실제치, 10월 27~28일 하이퍼스케일러 실적의 capex 가이던스.</dd>
+     <dt>예상 결과</dt><dd>점수는 과열 구간에 머물고 한국 대형 반도체주는 지수보다 큰 진폭.</dd>
+     <dt>선행지표</dt><dd>BofA 현금 비중, 반도체 수출의 단가·물량 분해, 신용잔고.</dd>
+     <dt>무효화 조건</dt><dd>계약가 상승률 마이너스 전환(Bear로) 또는 매출 가속 확인(Bull로).</dd>
+    </dl>
+   </div>
+   <div class="bm-card bear">
+    <h3>Bear: 가수요가 걷히며 채찍이 되돌아친다</h3>
+    <dl>
+     <dt>발생 조건</dt><dd>중복 주문이 정리되며 주문 취소·LTA 재협상이 나오고, 재고가 쌓이고 메모리 가격이 하락 전환.</dd>
+     <dt>핵심 변수</dt><dd>공급사 재고일수, 현물·계약가 역전, AI 인프라 신용 스프레드.</dd>
+     <dt>예상 결과</dt><dd>상류(장비·소재·메모리)가 하류(서비스)보다 먼저, 더 크게 하락. 한국 수출 증가율 급반락.</dd>
+     <dt>선행지표</dt><dd>주문 취소 보도, 오라클 등 AI 부채 발행사 CDS 추가 확대, 신규 회사채 프리미엄 확대.</dd>
+     <dt>무효화 조건</dt><dd>재고 증가에도 가격이 버티고 최종 사용량이 계속 늘어남.</dd>
+    </dl>
+   </div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="judgment">
+  <div class="bm-card">
+   <h2>최종 판단</h2>
+   <p class="bm-cap">아래 서술은 2026년 10월 24일 첫 분석 기준입니다. 자동 갱신은 숫자와 점수만 바꾸며, 서술은 요청할 때 다시 씁니다.</p>
+   <div class="bm-judge">
+    <div><h3>① 핵심 사실</h3><p>한국 반도체 수출과 그 비중이 기록 수준이고, 미국 CAPE와 상위 종목 집중도는 닷컴 정점에 근접. DRAM 가격은 오르지만 상승 속도는 꺾임.</p></div>
+    <div><h3>② 가장 강력한 투자 논리</h3><p>공급이 실제로 부족하고(리드타임, 2027년 공급 부족 전망) 주도 기업은 이익을 냅니다. 엔비디아 선행 PER은 10년 내 최저권으로, 닷컴과 달리 가격이 이익을 앞질러 달리지 않았습니다.</p></div>
+    <div><h3>③ 가장 강력한 반대 논리</h3><p>채찍효과 이론상 부족기에 관측되는 주문은 실수요보다 큽니다. 공급사 스스로 중복 주문을 인정했고, 투자 대비 매출 괴리는 아직 메워지지 않았습니다.</p></div>
+    <div><h3>④ 시장이 놓칠 수 있는 변수</h3><p>가격 상승률의 2계 미분. 수준(쇼티지)만 보면 호황이지만 감속은 채찍이 되돌아오기 전 단계에서 나타납니다.</p></div>
+    <div><h3>⑤ 가장 중요한 Risk</h3><p>부채 조달 capex. 현금흐름으로 하던 투자가 부채로 넘어가면 신용 스프레드가 투자 중단 스위치가 됩니다.</p></div>
+    <div><h3>⑥ 현재 판단</h3><p>버블 형성 구간(과열)이나 붕괴 확정 신호는 없음. 상류 노출 자산의 비중 확대보다 변동성 관리가 맞는 국면.</p></div>
+    <div><h3>⑦ 판단의 신뢰도</h3><p><b>Medium-Low</b>. 상당수 수치가 2차 인용이고 정상·극단 기준을 분석자가 정했습니다. 영상 자막 원문은 확보하지 못했습니다.</p></div>
+    <div><h3>⑧ Kill Switch</h3><p>점수 하향: AI 증분 매출이 두 분기 연속 capex 증가율을 웃돌 때. 경보 상향: DRAM 계약가 하락 전환과 현물가 역전이 함께 나올 때, 또는 하이퍼스케일러 한 곳 이상이 내년 capex를 낮출 때.</p></div>
+    <div><h3>⑨ 관찰할 데이터 5개</h3><ol><li>TrendForce 월간 DRAM 계약가와 현물가 차이</li><li>하이퍼스케일러 capex 가이던스와 클라우드 매출 (10월 27~28일)</li><li>관세청 반도체 수출의 단가·물량 분해</li><li>메모리 3사 재고일수</li><li>AI 회사채 발행 프리미엄과 오라클 CDS</li></ol></div>
+   </div>
+  </div>
+ </section>
+
+ <section class="bm-sec" id="video">
+  <div class="bm-grid">
+   <div class="bm-card">
+    <h2>영상 분석과 확인 수준</h2>
+    <p class="bm-cap">서울대학교 채널 「주문이 폭주할 때 오히려 의심해야 하는 이유」(스탠퍼드 황승진 교수, 2026년 10월 8일 게시, 23분). 자막 수집이 차단돼 타임라인·공개 논문·댓글로 재구성했습니다.</p>
+    <div class="bm-claims">
+     <div class="bm-claim"><span class="bm-tag f">사실</span><p>채찍효과는 Lee·Padmanabhan·Whang(황승진)의 1997년 Management Science 논문 「Information Distortion in a Supply Chain」에서 정립. 영상 타임라인은 이 논문을 Management Science 50년 Top 10으로 소개.</p></div>
+     <div class="bm-claim"><span class="bm-tag f">사실</span><p>논문이 제시한 네 원인: 수요 예측 갱신, 주문 일괄처리, 가격 변동에 따른 선구매, 공급 부족 시 배급 게이밍(가수요). 출발점은 P&amp;G 기저귀와 HP 프린터의 주문 변동.</p></div>
+     <div class="bm-claim"><span class="bm-tag r">재구성</span><p>가수요를 '유령 주문'으로 설명하고, 닷컴 붕괴와 AI 붐을 비교하며 거품이 빠지면 누가 먼저 떨어지는지를 다룸(타임라인 10:37, 13:36).</p></div>
+     <div class="bm-claim"><span class="bm-tag r">재구성</span><p>한국은 제조업 공급망 상류에 있어 최종 소비보다 변동폭이 훨씬 크다는 취지(복수 댓글 요약).</p></div>
+     <div class="bm-claim"><span class="bm-tag u">미확인</span><p>'AI를 보는 세 가지 시각'(15:12)의 구체 내용. 이 대시보드 점수에는 반영하지 않았습니다.</p></div>
+     <div class="bm-claim"><span class="bm-tag r">재구성</span><p>위험 감수와 다양성이 혁신을 만든다는 결론(21:12). 버블은 붕괴해도 산업은 남는다는 관점과 이어짐.</p></div>
+    </div>
+   </div>
+   <div class="bm-card">
+    <h2>편향 점검</h2>
+    <ul>
+     <li><b>가용성·최근성</b>: 닷컴 유비는 생생하지만 지금 주도주는 이익을 냅니다. 반대지표(엔비디아 PER)를 함께 넣었습니다.</li>
+     <li><b>기저율 무시</b>: 과거 메모리 호황은 매번 가격 정점 뒤 하락했지만 정점 이후 하락 시점은 매번 달랐습니다. 점수는 방향이지 타이밍이 아닙니다.</li>
+     <li><b>심슨의 역설</b>: 수출 증가율 대부분은 가격 효과입니다. 물량 기준으로 보면 증폭은 더 작을 수 있습니다.</li>
+     <li><b>확증 편향(분석자)</b>: 정상·극단 기준을 직접 정했습니다. 민감도 표로 어느 가정이 결론을 움직이는지 공개했습니다.</li>
+     <li><b>사회적 증거(Munger)</b>: 반도체 롱이 가장 붐비는 거래. 동시에 응답자 절반 가까이가 버블을 의심해 최종 도취 국면은 아닙니다.</li>
+     <li><b>인센티브 편향(Munger)</b>: 공급사는 부족을, 매수 측은 수요를 과장할 유인이 있습니다. 주문 자료는 사용량과 대조해야 합니다.</li>
+     <li><b>사후확신</b>: 버블은 사후에만 확정됩니다. 이 점수는 확률적 경보입니다.</li>
+    </ul>
+   </div>
+  </div>
+  <p class="bm-cap">방법: 지표마다 (원값 − 정상) ÷ (극단 − 정상) × 100으로 환산하거나, 정량화가 안 되는 지표는 규칙을 밝힌 정성 점수를 줬습니다. 계층 점수는 계층 안 평균, 종합 점수는 계층 가중 평균입니다. 투자 권유가 아닙니다.</p>
+ </section>
+</div>
+
+<script>
+(function(){
+ const fmt1 = d3.format('.1f'), fmt0 = d3.format(',.0f');
+ const BANDS = [
+  {lo:0, hi:20, name:'정상', color:'var(--color-ok)', op:.55},
+  {lo:20, hi:40, name:'확장', color:'var(--cds-chart-muted)', op:.7},
+  {lo:40, hi:60, name:'과열 초기', color:'var(--color-warn)', op:.45},
+  {lo:60, hi:80, name:'버블 형성', color:'var(--color-warn)', op:.9},
+  {lo:80, hi:101, name:'버블 극단', color:'var(--color-bad)', op:.9}
+ ];
+ const bandOf = s => BANDS.find(b => s >= b.lo && s < b.hi) || BANDS[BANDS.length-1];
+ window.bmBandName = s => bandOf(s).name;
+
+ dash.calc('layers', {
+  inputs: ['indicators'], title: '마디별 버블 점수',
+  description: '계층 안 지표 점수 평균, 계층 가중치, 종합 점수 기여분.',
+  fn: (indicators) => {
+   const g = d3.group(indicators, d => d.layer);
+   const tw = d3.sum([...g.values()], v => v[0].layer_weight);
+   return [...g].map(([layer, v]) => {
+    const score = d3.mean(v, d => d.score), weight = v[0].layer_weight;
+    return {layer, score: Math.round(score * 10) / 10, weight, contribution: Math.round(score * weight / tw * 10) / 10, n: v.length};
+   }).sort((a, b) => d3.ascending(a.layer, b.layer));
+  }
+ });
+ dash.calc('composite', {
+  inputs: ['layers'], title: '종합 버블 점수',
+  description: '마디 점수의 가중 평균(0~100)과 구간 이름.',
+  fn: (layers) => {
+   const s = d3.sum(layers, d => d.score * d.weight) / d3.sum(layers, d => d.weight);
+   const stage = s < 20 ? '정상' : s < 40 ? '확장' : s < 60 ? '과열 초기' : s < 80 ? '버블 형성' : '버블 극단';
+   return [{score: Math.round(s * 10) / 10, stage}];
+  }
+ });
+ dash.calc('layers_rank', {
+  inputs: ['layers'], title: '마디 순위',
+  description: '마디를 점수 높은 순으로 정렬.',
+  fn: (layers) => [...layers].sort((a, b) => b.score - a.score).map(d => ({layer: d.layer.replace(/^\d+\s/, ''), score: d.score}))
+ });
+ dash.calc('sensitivity', {
+  inputs: ['indicators'], title: '지표별 민감도',
+  description: '지표 점수 +10점이 종합 점수를 올리는 폭(계층 가중치 ÷ 계층 내 지표 수).',
+  fn: (indicators) => {
+   const n = d3.rollup(indicators, v => v.length, d => d.layer);
+   const w = d3.rollup(indicators, v => v[0].layer_weight, d => d.layer);
+   const tw = d3.sum([...w.values()]);
+   return indicators.map(d => ({id: d.id, name: d.name, impact10: Math.round(10 * w.get(d.layer) / n.get(d.layer) / tw * 100) / 100}))
+    .sort((a, b) => b.impact10 - a.impact10);
+  }
+ });
+ dash.calc('kospi_chg', {
+  inputs: ['kospi'], title: 'KOSPI 최근 변화',
+  description: '가장 최근 종가와, 기록된 종가 중 최고치 대비 변화율.',
+  fn: (kospi) => {
+   const r = [...kospi].sort((a, b) => d3.ascending(a.date, b.date));
+   const high = d3.max(r, d => d.close), lr = r[r.length - 1];
+   return [{high, last: lr.close, last_date: lr.date, chg: Math.round((lr.close / high - 1) * 1000) / 10}];
+  }
+ });
+ dash.calc('quality', {
+  inputs: ['indicators'], title: '근거 품질',
+  description: '신뢰도 Low 지표의 개수 비중.',
+  fn: (indicators) => [{n: indicators.length, low: indicators.filter(d => d.confidence === 'Low').length,
+   low_share: Math.round(indicators.filter(d => d.confidence === 'Low').length / indicators.length * 1000) / 10}]
+ });
+
+ const $ = id => document.getElementById(id);
+ const failLine = el => { el.replaceChildren(); const f = document.createElement('div'); f.className = 'bm-fail'; const i = document.createElement('i'); const t = document.createElement('span'); t.textContent = 'Failed to load'; f.append(i, t); el.append(f); };
+ const tipIn = (box) => { let t = box.querySelector('.bm-tip'); if (!t) { t = document.createElement('div'); t.className = 'bm-tip'; t.hidden = true; box.append(t); } return t; };
+ const showTip = (box, tip, ev, lines) => {
+  tip.replaceChildren(); lines.forEach((l, i) => { const d = document.createElement('div'); if (i === 0) d.className = 'k'; d.textContent = l; tip.append(d); });
+  tip.hidden = false;
+  const r = box.getBoundingClientRect(); let x = ev.clientX - r.left + 12, y = ev.clientY - r.top - 10;
+  const tw = tip.offsetWidth; if (x + tw > r.width) x = Math.max(0, ev.clientX - r.left - tw - 12);
+  tip.style.left = x + 'px'; tip.style.top = Math.max(0, y) + 'px';
+ };
+ let animated = false;
+
+ function drawGauge(el, score) {
+  el.replaceChildren();
+  const w = Math.min(el.clientWidth || 360, 416), h = w * 0.56, r = w * 0.44, cx = w / 2, cy = h - 8;
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`).attr('role', 'img').attr('aria-label', `버블 점수 ${score}`);
+  const a = s => -Math.PI / 2 + Math.min(s, 100) / 100 * Math.PI;
+  const arc = d3.arc().innerRadius(r * 0.74).outerRadius(r).cornerRadius(2).padAngle(0.012);
+  const g = svg.append('g').attr('transform', `translate(${cx},${cy})`);
+  BANDS.forEach(b => g.append('path').attr('d', arc({startAngle: a(b.lo), endAngle: a(Math.min(b.hi, 100))})).style('fill', b.color).style('fill-opacity', b.op));
+  [0, 20, 40, 60, 80, 100].forEach(t => {
+   const an = a(t), rx = Math.sin(an) * (r + 12), ry = -Math.cos(an) * (r + 12);
+   g.append('text').attr('x', rx).attr('y', ry).attr('text-anchor', t < 50 ? 'end' : t > 50 ? 'start' : 'middle').attr('dominant-baseline', 'middle')
+    .style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').text(t);
+  });
+  const an = a(score), nx = Math.sin(an) * r * 0.9, ny = -Math.cos(an) * r * 0.9;
+  g.append('line').attr('x1', 0).attr('y1', 0).attr('x2', nx).attr('y2', ny).style('stroke', 'var(--color-fg)').attr('stroke-width', 3).attr('stroke-linecap', 'round');
+  g.append('circle').attr('r', 6).style('fill', 'var(--color-fg)');
+ }
+
+ function drawLayers(el, rows) {
+  el.replaceChildren();
+  rows.forEach(d => {
+   const b = bandOf(d.score);
+   const row = document.createElement('div'); row.className = 'bm-lrow';
+   const nm = document.createElement('span'); nm.className = 'bm-lname'; nm.textContent = `${d.layer.replace(/^\d+\s/, '')} (${d.weight})`;
+   const v = document.createElement('span'); v.className = 'bm-lval'; const bb = document.createElement('b'); bb.textContent = fmt1(d.score); v.append(bb, document.createTextNode(` · 기여 ${fmt1(d.contribution)}`));
+   const tr = document.createElement('div'); tr.className = 'bm-track';
+   const f = document.createElement('div'); f.className = 'bm-fill' + (animated ? '' : ' anim'); f.style.width = d.score + '%'; f.style.background = b.color; f.style.opacity = Math.max(b.op, .6);
+   tr.append(f);
+   const tip = tipIn(el);
+   tr.addEventListener('mousemove', ev => showTip(el, tip, ev, [d.layer.replace(/^\d+\s/, ''), `점수 ${fmt1(d.score)} · ${b.name}`, `가중치 ${d.weight}% · 기여 ${fmt1(d.contribution)}점 · 지표 ${d.n}개`]));
+   tr.addEventListener('mouseleave', () => { tip.hidden = true; });
+   row.append(nm, v, tr); el.append(row);
+  });
+  const legend = document.createElement('div'); legend.className = 'bm-cap'; legend.textContent = '구간: 0~20 정상 · 20~40 확장 · 40~60 과열 초기 · 60~80 버블 형성 · 80~100 버블 극단';
+  el.append(legend);
+ }
+
+ function barChart(el, rows, opt) {
+  el.replaceChildren();
+  const W = el.clientWidth || 360, H = 240, m = {t: 24, r: 8, b: 40, l: 36};
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const x = d3.scaleBand(rows.map(opt.key), [m.l, W - m.r]).padding(0.38);
+  const ymax = d3.max(rows, opt.top);
+  const y = d3.scaleLinear([0, ymax * 1.12], [H - m.b, m.t]).nice();
+  const ga = svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(W - m.l - m.r)).tickFormat(d => d + '%'));
+  ga.attr('font-size', null).attr('font-family', null);
+  ga.select('.domain').remove();
+  ga.selectAll('line').style('stroke', 'var(--cds-chart-grid)');
+  ga.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)');
+  const gx = svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8));
+  gx.attr('font-size', null).attr('font-family', null);
+  gx.select('.domain').style('stroke', 'var(--cds-chart-axis)');
+  gx.selectAll('text').style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)').each(function(){
+   const t = d3.select(this), full = t.text(); if (x.bandwidth() < 70 && full.length > 6) t.text(full.split(' ')[0]);
+  });
+  const tip = tipIn(el);
+  const bars = svg.append('g').selectAll('rect').data(rows).join('rect')
+   .attr('x', d => x(opt.key(d))).attr('width', x.bandwidth()).attr('y', d => y(opt.val(d))).attr('height', d => y(0) - y(opt.val(d))).attr('rx', 4)
+   .style('fill', (d, i) => opt.color(d, i));
+  if (opt.range) {
+   svg.append('g').selectAll('line').data(rows.filter(d => opt.range(d)[0] !== opt.range(d)[1])).join('line')
+    .attr('x1', d => x(opt.key(d)) + x.bandwidth() / 2).attr('x2', d => x(opt.key(d)) + x.bandwidth() / 2)
+    .attr('y1', d => y(opt.range(d)[0])).attr('y2', d => y(opt.range(d)[1])).style('stroke', 'var(--color-fg)').attr('stroke-width', 2).attr('stroke-linecap', 'round');
+  }
+  svg.append('g').selectAll('text').data(rows).join('text')
+   .attr('x', d => x(opt.key(d)) + x.bandwidth() / 2).attr('y', d => y(opt.top(d)) - 6).attr('text-anchor', 'middle')
+   .style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').style('font-variant-numeric', 'tabular-nums').text(opt.label);
+  bars.on('mousemove', (ev, d) => { d3.select(ev.currentTarget).style('fill-opacity', .8); showTip(el, tip, ev, opt.tip(d)); })
+   .on('mouseleave', (ev) => { d3.select(ev.currentTarget).style('fill-opacity', 1); tip.hidden = true; });
+ }
+
+ let sortKey = 'score', sortDir = -1;
+ function drawTable(rows) {
+  const tb = $('tbl').querySelector('tbody'); tb.replaceChildren();
+  const q = ($('q').value || '').trim().toLowerCase();
+  const sorted = rows.filter(d => !q || (d.name + ' ' + d.layer + ' ' + d.metric).toLowerCase().includes(q))
+   .sort((a, b) => sortDir * (typeof a[sortKey] === 'number' ? a[sortKey] - b[sortKey] : String(a[sortKey]).localeCompare(String(b[sortKey]))));
+  sorted.forEach(d => {
+   const tr = document.createElement('tr'); tr.dataset.key = d.id;
+   const td = (txt, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; if (txt !== undefined) c.textContent = txt; tr.append(c); return c; };
+   td(d.name, 'nm'); td(d.layer);
+   td(String(d.raw), 'num'); td(d.unit);
+   const sc = td(undefined); const sb = document.createElement('div'); sb.className = 'bm-sbar';
+   const bar = document.createElement('span'); bar.className = 'b'; bar.style.width = (d.score * 0.6) + 'px'; bar.style.background = bandOf(d.score).color; bar.style.opacity = .85;
+   const sv = document.createElement('span'); sv.textContent = String(d.score); sb.append(bar, sv); sc.append(sb);
+   const cf = td(undefined); const cb = document.createElement('span'); cb.className = 'bm-conf'; cb.textContent = d.confidence; cb.style.color = d.confidence === 'High' ? 'var(--color-ok)' : d.confidence === 'Low' ? 'var(--color-bad)' : 'var(--color-warn)'; cf.append(cb);
+   td(d.metric, 'wrap hide-n'); td(String(d.normal), 'num hide-n'); td(String(d.extreme), 'num hide-n');
+   td(d.note, 'wrap hide-n'); td(d.rule, 'wrap hide-n'); td(d.as_of, 'num');
+   const sr = td(undefined, 'wrap'); const a = document.createElement('a'); a.href = d.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = d.source; sr.append(a);
+   tb.append(tr);
+  });
+  $('tbl').querySelectorAll('th button').forEach(b => { const th = b.parentElement; th.setAttribute('aria-sort', b.dataset.k === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'); });
+ }
+ let lastRows = [];
+ $('tbl').querySelectorAll('th button').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.k; if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (k === 'score' || k === 'raw') ? -1 : 1; }
+  drawTable(lastRows);
+ }));
+ $('q').addEventListener('input', () => drawTable(lastRows));
+
+ function drawSens(el, rows) {
+  el.replaceChildren();
+  const mx = d3.max(rows, d => d.impact10);
+  rows.forEach((d, i) => {
+   const r = document.createElement('div'); r.className = 'bm-srow' + (i < 3 ? ' top' : '');
+   const n = document.createElement('span'); n.textContent = d.name;
+   const t = document.createElement('div'); t.className = 't'; const s = document.createElement('span'); s.style.width = (d.impact10 / mx * 100) + '%'; t.append(s);
+   const v = document.createElement('span'); v.className = 'v'; v.textContent = '+' + d3.format('.2f')(d.impact10) + '점';
+   r.append(n, t, v); el.append(r);
+  });
+ }
+
+ const setText = (el, txt) => { el.textContent = txt; el.classList.remove('dash-skeleton'); };
+
+ dash.onData(() => {
+  const comp = dash.data('composite'), lay = dash.data('layers'), rank = dash.data('layers_rank'), ind = dash.data('indicators'),
+   chain = dash.data('chain'), dram = dash.data('dram'), sens = dash.data('sensitivity'), kc = dash.data('kospi_chg'), qual = dash.data('quality');
+
+  if (comp.status === 'ok' && comp.data.length) {
+   const c = comp.data[0];
+   drawGauge($('gauge'), c.score);
+   setText($('score'), fmt1(c.score)); setText($('stage'), c.stage);
+   $('stage').style.color = bandOf(c.score).color === 'var(--cds-chart-muted)' ? 'var(--color-fg)' : bandOf(c.score).color;
+   const tk = $('takeaway'); tk.replaceChildren();
+   const s1 = document.createElement('span'); s1.dataset.source = 'composite'; s1.dataset.field = 'score'; s1.dataset.row = '0'; s1.textContent = fmt1(c.score);
+   const s2 = document.createElement('b'); s2.dataset.source = 'composite'; s2.dataset.field = 'stage'; s2.dataset.row = '0'; s2.textContent = c.stage;
+   tk.append(document.createTextNode('종합 버블 점수 '), s1, document.createTextNode('점, '), s2,
+    document.createTextNode(' 구간입니다. 주문과 가격은 채찍의 상류(한국 반도체)에서 가장 크게 부풀었고, 가격 상승 속도가 꺾이기 시작했습니다. 붕괴 시점이 아니라 경계 수준을 재는 지표입니다.'));
+  } else if (comp.status === 'error') { failLine($('gauge')); }
+  else { $('gauge').replaceChildren(); $('score').textContent = '—'; $('stage').textContent = '—'; }
+
+  if (lay.status === 'ok') { $('layers').classList.remove('dash-skeleton'); drawLayers($('layers'), lay.data); }
+  else if (lay.status === 'error') { $('layers').classList.remove('dash-skeleton'); failLine($('layers')); }
+
+  if (rank.status === 'ok' && rank.data.length) {
+   const r = rank.data;
+   setText($('hotName'), r[0].layer); $('hotScore').textContent = fmt1(r[0].score);
+   setText($('coldName'), r[r.length - 1].layer); $('coldScore').textContent = fmt1(r[r.length - 1].score);
+   $('coldName').dataset.row = String(r.length - 1); $('coldScore').dataset.row = String(r.length - 1);
+  }
+  if (kc.status === 'ok' && kc.data.length) {
+   setText($('kLast'), d3.format(',.2f')(kc.data[0].last)); $('kDate').textContent = kc.data[0].last_date;
+   const ch = kc.data[0].chg; $('kChg').textContent = (ch > 0 ? '+' : '') + fmt1(ch) + '%'; $('kChg').style.color = ch < 0 ? 'var(--color-bad)' : 'var(--color-ok)';
+  }
+  if (qual.status === 'ok' && qual.data.length) { setText($('lowShare'), fmt1(qual.data[0].low_share) + '%'); $('nInd').textContent = fmt0(qual.data[0].n); }
+
+  if (chain.status === 'ok') {
+   const rows = [...chain.data].sort((a, b) => a.order - b.order);
+   barChart($('chain'), rows, {
+    key: d => d.stage, val: d => d.pct, top: d => d.pct,
+    label: (d, i) => d.pct + '%' + (i > 0 ? ` (×${fmt1(d.pct / rows[i - 1].pct)})` : ''),
+    color: (d, i) => i === rows.length - 1 ? 'var(--cds-chart-status-critical)' : dash.colors[0],
+    tip: d => [d.stage, `수요 변동 ${d.pct}%`, 'GDP 변동 대비 ' + fmt1(d.pct / rows[0].pct) + '배']
+   });
+  } else if (chain.status === 'error') failLine($('chain'));
+
+  if (dram.status === 'ok') {
+   barChart($('dram'), dram.data, {
+    key: d => d.quarter, val: d => (d.low + d.high) / 2, top: d => d.high, range: d => [d.low, d.high],
+    label: d => d.low === d.high ? `+${d.low}%` : `+${d.low}~${d.high}%`,
+    color: (d) => d.kind === '전망' ? 'var(--cds-chart-muted)' : dash.colors[0],
+    tip: d => [d.quarter + ' · ' + d.kind, d.low === d.high ? `+${d.low}%` : `+${d.low}~${d.high}%`, d.source]
+   });
+  } else if (dram.status === 'error') failLine($('dram'));
+
+  if (ind.status === 'ok') { lastRows = ind.data; drawTable(lastRows); }
+  if (sens.status === 'ok') { $('sens').classList.remove('dash-skeleton'); drawSens($('sens'), sens.data); }
+  else if (sens.status === 'error') { $('sens').classList.remove('dash-skeleton'); failLine($('sens')); }
+
+  if (lay.status === 'ok') animated = true;
+ });
+
+ const named = document.getElementById(location.hash.slice(1));
+ if (named) setTimeout(() => { named.scrollIntoView(); dash.setLink(named.id); }, 0);
+})();
+</script>
+
+<script>
+(function(){
+ const fmt1 = d3.format('.1f');
+ const MONTH = 30.4375 * 86400000;
+
+ dash.calc('cycle_pos', {
+  inputs: ['composite', 'cycle_curve'], title: '버블 곡선 위 위치',
+  description: '종합 점수를 버블 곡선 상승 구간의 가로 위치로 옮기고 단계 이름을 붙임(0→0, 30→22, 50→42, 80→56, 100→정점 60).',
+  fn: (composite, cycle_curve) => {
+   const s = composite[0].score;
+   const x = d3.scaleLinear([0, 30, 50, 80, 100], [0, 22, 42, 56, 60]).clamp(true)(s);
+   const p = [...cycle_curve].sort((a, b) => a.x - b.x);
+   const i = Math.max(1, d3.bisector(d => d.x).left(p, x)), a = p[i - 1], b = p[Math.min(i, p.length - 1)];
+   const y = a.x === b.x ? a.y : a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+   const base = s < 30 ? '잠복(Stealth)' : s < 50 ? '인지(Awareness)' : s < 80 ? '열광(Mania)' : '정점 근접(Blow-off)';
+   const t = (s - 50) / 30, sub = s >= 50 && s < 80 ? (t < 1 / 3 ? ' 초반' : t < 2 / 3 ? ' 중반' : ' 후반') : '';
+   return [{score: s, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, stage: base + sub, gap: Math.round((100 - s) * 10) / 10}];
+  }
+ });
+ dash.calc('mem_pos', {
+  inputs: ['dram', 'mem_phases'], title: '메모리 사이클 단계',
+  description: '최근 분기 DRAM 계약가 상승률(범위 중간값)의 부호와 직전 분기 대비 방향으로 단계를 판정.',
+  fn: (dram, mem_phases) => {
+   const q = [...dram].sort((a, b) => d3.ascending(a.quarter.slice(2) + a.quarter[0], b.quarter.slice(2) + b.quarter[0]));
+   const mid = q.map(d => (d.low + d.high) / 2), last = mid[mid.length - 1], prev = mid[mid.length - 2];
+   const order = last > 0 ? (last < prev ? 3 : 2) : (prev > 0 ? 4 : (last < prev ? 5 : 1));
+   let decel = 0; for (let i = mid.length - 1; i > 0 && mid[i] < mid[i - 1]; i--) decel++;
+   const ph = mem_phases.find(d => d.order === order);
+   return [{order, phase: ph.phase, last, prev, last_q: q[q.length - 1].quarter, prev_q: q[q.length - 2].quarter, decel_quarters: decel}];
+  }
+ });
+ dash.calc('timeline_m', {
+  inputs: ['timeline'], title: '기점 이후 개월 수',
+  description: '사건 날짜에서 그 사이클 기점(ChatGPT 공개, 넷스케이프 IPO)까지의 개월 수(30.44일=1개월).',
+  fn: (timeline) => {
+   const anchor = new Map(timeline.filter(d => d.stage === '기점').map(d => [d.lane, Date.parse(d.date)]));
+   return timeline.map(d => ({id: d.id, lane: d.lane, date: d.date, stage: d.stage, event: d.event,
+    months: Math.round((Date.parse(d.date) - anchor.get(d.lane)) / (30.4375 * 86400000) * 10) / 10}));
+  }
+ });
+ dash.calc('analog', {
+  inputs: ['timeline', 'timeline_m', 'indicators'], title: '닷컴 유비 위치',
+  description: 'AI 사이클 경과 개월을 닷컴 기점에 더한 같은 시점, 그 시점에서 나스닥 정점까지 남은 개월, CAPE의 닷컴 정점 대비 비율.',
+  fn: (timeline, timeline_m, indicators) => {
+   const now = timeline_m.find(d => d.stage === '현재').months;
+   const peak = timeline_m.find(d => d.stage === '정점').months;
+   const a0 = new Date(timeline.find(d => d.lane === '닷컴 사이클' && d.stage === '기점').date);
+   const eq = new Date(a0.getTime() + now * 30.4375 * 86400000);
+   const cape = indicators.find(d => d.id === 'cape');
+   return [{months_now: now, dot_equiv: `${eq.getUTCFullYear()}년 ${eq.getUTCMonth() + 1}월`,
+    to_peak: Math.round((peak - now) * 10) / 10, cape_vs_peak: Math.round(cape.raw / cape.extreme * 1000) / 10}];
+  }
+ });
+
+ const $ = id => document.getElementById(id);
+ const failLine = el => { el.replaceChildren(); const f = document.createElement('div'); f.className = 'bm-fail'; const i = document.createElement('i'); const t = document.createElement('span'); t.textContent = 'Failed to load'; f.append(i, t); el.append(f); };
+ const tipIn = (box) => { let t = box.querySelector('.bm-tip'); if (!t) { t = document.createElement('div'); t.className = 'bm-tip'; t.hidden = true; box.append(t); } return t; };
+ const showTip = (box, tip, ev, lines) => {
+  tip.replaceChildren(); lines.forEach((l, i) => { const d = document.createElement('div'); if (i === 0) d.className = 'k'; d.textContent = l; tip.append(d); });
+  tip.hidden = false; tip.style.whiteSpace = 'normal'; tip.style.maxWidth = '16rem';
+  const r = box.getBoundingClientRect(); let x = ev.clientX - r.left + 12, y = ev.clientY - r.top - 10;
+  const tw = tip.offsetWidth; if (x + tw > r.width) x = Math.max(0, ev.clientX - r.left - tw - 12);
+  tip.style.left = x + 'px'; tip.style.top = Math.max(0, y) + 'px';
+ };
+ const setText = (el, txt) => { el.textContent = txt; el.classList.remove('dash-skeleton'); };
+ const muted = sel => sel.style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)');
+
+ function drawCurve(el, pts, pos) {
+  el.querySelectorAll('svg').forEach(s => s.remove());
+  const W = el.clientWidth || 360, H = 260, m = {t: 22, r: 12, b: 26, l: 12};
+  const x = d3.scaleLinear([0, 100], [m.l, W - m.r]), y = d3.scaleLinear([0, 100], [H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '버블 단계 곡선과 현재 위치');
+  const zones = [[0, 22, '잠복'], [22, 42, '인지'], [42, 60, '열광'], [60, 100, '붕괴·회귀']];
+  zones.forEach(([a, b, n], i) => {
+   svg.append('rect').attr('x', x(a)).attr('width', x(b) - x(a)).attr('y', m.t).attr('height', H - m.t - m.b).style('fill', i % 2 ? 'var(--cds-chart-grid)' : 'var(--color-panel)').style('fill-opacity', .7);
+   muted(svg.append('text').attr('x', (x(a) + x(b)) / 2).attr('y', H - 8).attr('text-anchor', 'middle')).text(n);
+  });
+  const p = [...pts].sort((a, b) => a.x - b.x), line = d3.line().x(d => x(d.x)).y(d => y(d.y));
+  svg.append('path').attr('d', line(p)).style('fill', 'none').style('stroke', 'var(--cds-chart-muted)').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+  const past = p.filter(d => d.x <= pos.x).concat([{x: pos.x, y: pos.y}]);
+  svg.append('path').attr('d', line(past)).style('fill', 'none').style('stroke', dash.colors[0]).attr('stroke-width', 3).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+  const keep = W >= 520 ? null : new Set(['열광', '정점', '공포', '절망']);
+  p.filter(d => d.label && (!keep || keep.has(d.label))).forEach((d, i) => {
+   const up = d.y < 60 || d.label === '정점';
+   svg.append('circle').attr('cx', x(d.x)).attr('cy', y(d.y)).attr('r', 2.5).style('fill', 'var(--cds-chart-muted)');
+   muted(svg.append('text').attr('x', x(d.x)).attr('y', y(d.y) + (up ? -8 : 14)).attr('text-anchor', d.x > 92 ? 'end' : d.x < 6 ? 'start' : 'middle')).text(d.label);
+  });
+  svg.append('circle').attr('cx', x(pos.x)).attr('cy', y(pos.y)).attr('r', 12).style('fill', 'var(--cds-chart-status-critical)').style('fill-opacity', .18);
+  svg.append('circle').attr('cx', x(pos.x)).attr('cy', y(pos.y)).attr('r', 6).style('fill', 'var(--cds-chart-status-critical)');
+  svg.append('text').attr('x', x(pos.x) - 12).attr('y', y(pos.y) + 4).attr('text-anchor', 'end').style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').style('font-weight', 600).text(`현재 ${fmt1(pos.score)}`);
+ }
+
+ function drawPhases(el, phases, cur) {
+  el.replaceChildren();
+  [...phases].sort((a, b) => a.order - b.order).forEach(d => {
+   const c = document.createElement('div'); c.className = 'bm-ph' + (d.order === cur.order ? ' on' : '');
+   const n = document.createElement('b'); n.textContent = `${d.order}. ${d.phase}`;
+   const r = document.createElement('span'); r.textContent = d.rule;
+   c.append(n, r);
+   if (d.order === cur.order) { const a = document.createElement('span'); a.className = 'arrow'; a.textContent = '◆ 현재'; c.append(a); }
+   el.append(c);
+  });
+ }
+
+ function drawTimeline(el, rows) {
+  el.querySelectorAll('svg').forEach(s => s.remove());
+  const W = el.clientWidth || 360, H = 240, m = {t: 30, r: 16, b: 34, l: 44};
+  const lanes = ['AI 사이클', '닷컴 사이클'], ly = d3.scalePoint(lanes, [m.t + 40, H - m.b - 40]);
+  const x = d3.scaleLinear([0, d3.max(rows, d => d.months) + 3], [m.l, W - m.r]);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  const ax = svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(W < 480 ? 5 : 9).tickSize(-(H - m.t - m.b)).tickFormat(d => d + '개월'));
+  ax.attr('font-size', null).attr('font-family', null); ax.select('.domain').remove();
+  ax.selectAll('line').style('stroke', 'var(--cds-chart-grid)'); muted(ax.selectAll('text'));
+  const pk = rows.find(d => d.stage === '정점'), tr = rows.find(d => d.stage === '절망');
+  if (pk && tr) {
+   svg.append('rect').attr('x', x(pk.months)).attr('width', x(tr.months) - x(pk.months)).attr('y', ly('닷컴 사이클') - 16).attr('height', 32).attr('rx', 4).style('fill', 'var(--cds-chart-status-critical)').style('fill-opacity', .1);
+   muted(svg.append('text').attr('x', (x(pk.months) + x(tr.months)) / 2).attr('y', ly('닷컴 사이클') + 30).attr('text-anchor', 'middle')).text('붕괴 구간');
+  }
+  lanes.forEach(l => {
+   svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', ly(l)).attr('y2', ly(l)).style('stroke', 'var(--cds-chart-axis)');
+   svg.append('text').attr('x', 4).attr('y', ly(l) + 4).style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').text(l.replace(' 사이클', ''));
+  });
+  const now = rows.find(d => d.stage === '현재');
+  if (now) {
+   svg.append('line').attr('x1', x(now.months)).attr('x2', x(now.months)).attr('y1', m.t - 6).attr('y2', H - m.b).style('stroke', 'var(--cds-chart-status-critical)').attr('stroke-dasharray', '4 3').attr('stroke-width', 1.5);
+   svg.append('text').attr('x', x(now.months)).attr('y', m.t - 12).attr('text-anchor', x(now.months) > W - 80 ? 'end' : 'middle').style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').style('font-weight', 600).text(`현재 ${fmt1(now.months)}개월`);
+  }
+  const showLabel = d => d.lane === '닷컴 사이클' || ['기점', '1차 매도'].includes(d.stage);
+  const tip = tipIn(el);
+  let flip = {};
+  rows.forEach(d => {
+   const cx = x(d.months), cy = ly(d.lane), col = d.stage === '현재' ? 'var(--cds-chart-status-critical)' : d.lane === 'AI 사이클' ? dash.colors[0] : 'var(--cds-chart-muted)';
+   const c = svg.append('circle').attr('cx', cx).attr('cy', cy).attr('r', d.stage === '현재' ? 7 : 5)
+    .style('fill', d.stage === '예정' ? 'var(--color-panel)' : col).style('stroke', col).attr('stroke-width', 2).style('cursor', 'default');
+   c.on('mousemove', ev => showTip(el, tip, ev, [`${d.date} · 기점 후 ${fmt1(d.months)}개월`, d.event])).on('mouseleave', () => { tip.hidden = true; });
+   if (showLabel(d) && d.stage !== '현재') {
+    flip[d.lane] = !flip[d.lane];
+    const up = flip[d.lane];
+    muted(svg.append('text').attr('x', cx).attr('y', cy + (up ? -12 : 20)).attr('text-anchor', cx < m.l + 20 ? 'start' : cx > W - 60 ? 'end' : 'middle')).text(d.stage === 'Mania' ? 'CAPE 정점' : d.stage === 'Awareness' ? '비이성적 과열' : d.stage === '절망' ? '바닥' : d.stage);
+   }
+  });
+ }
+
+ function drawTlTable(rows, mrows) {
+  const tb = $('tlTbl').querySelector('tbody'); tb.replaceChildren();
+  const mm = new Map(mrows.map(d => [d.id, d.months]));
+  [...rows].sort((a, b) => d3.ascending(a.lane, b.lane) || d3.ascending(a.date, b.date)).forEach(d => {
+   const tr = document.createElement('tr'); tr.dataset.key = d.id;
+   [[d.lane], [d.date, 'num'], [mm.has(d.id) ? fmt1(mm.get(d.id)) : '—', 'num'], [d.event, 'wrap'], [d.stage, 'hide-n'], [d.confidence, 'hide-n'], [d.source, 'hide-n']]
+    .forEach(([t, c]) => { const td = document.createElement('td'); if (c) td.className = c; td.textContent = t; tr.append(td); });
+   tb.append(tr);
+  });
+ }
+
+ dash.onData(() => {
+  const cp = dash.data('cycle_pos'), cc = dash.data('cycle_curve'), mp = dash.data('mem_pos'), ph = dash.data('mem_phases'),
+   tm = dash.data('timeline_m'), tl = dash.data('timeline'), an = dash.data('analog');
+
+  if (cp.status === 'ok' && cc.status === 'ok' && cp.data.length) {
+   const p = cp.data[0];
+   setText($('cyStage'), p.stage); $('cyGap').textContent = fmt1(p.gap);
+   drawCurve($('curve'), cc.data, p);
+  } else if (cp.status === 'error' || cc.status === 'error') failLine($('curve'));
+
+  if (mp.status === 'ok' && ph.status === 'ok' && mp.data.length) {
+   const c = mp.data[0];
+   $('phases').classList.remove('dash-skeleton'); drawPhases($('phases'), ph.data, c);
+   $('memWhy').textContent = `판정 근거: ${c.last_q} 상승률(범위 중간값) +${fmt1(c.last)}%, 직전 ${c.prev_q} +${fmt1(c.prev)}%. ${c.decel_quarters}개 분기 연속 감속.`;
+  } else if (mp.status === 'error' || ph.status === 'error') { $('phases').classList.remove('dash-skeleton'); failLine($('phases')); }
+
+  if (an.status === 'ok' && an.data.length) {
+   const a = an.data[0];
+   setText($('anMonths'), fmt1(a.months_now)); setText($('anEq'), a.dot_equiv);
+   setText($('anLeft'), fmt1(a.to_peak)); setText($('anCape'), fmt1(a.cape_vs_peak) + '%');
+  }
+  if (tm.status === 'ok') drawTimeline($('tl'), tm.data);
+  else if (tm.status === 'error') failLine($('tl'));
+  if (tl.status === 'ok' && tm.status === 'ok') drawTlTable(tl.data, tm.data);
+ });
+})();
+</script>
+
+<script>
+(function(){
+ const fmt1 = d3.format('.1f');
+ dash.calc('latest', {
+  inputs: ['score_log'], title: '최근 분석 시점',
+  description: '점수 기록의 마지막 행에서 분석일, 분석 시각, 데이터 기준일을 읽음.',
+  fn: (score_log) => {
+   const r = [...score_log].sort((a, b) => d3.ascending(a.date + a.time_kst, b.date + b.time_kst)).pop();
+   const ko = s => { const [y, m, d] = s.split('-'); return `${y}년 ${+m}월 ${+d}일`; };
+   const [hh, mm] = r.time_kst.split(':');
+   return [{date_ko: ko(r.date), time_ko: `${hh}시:${mm}분 KST`, asof_ko: ko(r.data_asof)}];
+  }
+ });
+ dash.calc('trend', {
+  inputs: ['score_log'], title: '점수 방향',
+  description: '최근 두 기록의 점수 차, 연속 하락 횟수, 메모리 단계로 정점 통과 여부를 판정.',
+  fn: (score_log) => {
+   const r = [...score_log].sort((a, b) => d3.ascending(a.date + a.time_kst, b.date + b.time_kst));
+   const last = r[r.length - 1], prev = r[r.length - 2];
+   let down = 0; for (let i = r.length - 1; i > 0 && r[i].score < r[i - 1].score; i--) down++;
+   const delta = prev ? Math.round((last.score - prev.score) * 10) / 10 : null;
+   const signal = r.length < 2 ? '첫 기록' : down >= 2 && last.mem_phase >= 4 ? '정점 통과 신호' : down >= 2 ? '점수 하락, 메모리 미전환' : delta > 0 ? '상승 지속' : delta < 0 ? '하락' : '보합';
+   return [{runs: r.length, last: last.score, delta, down_runs: down, mem_phase: last.mem_phase, signal}];
+  }
+ });
+
+ const $ = id => document.getElementById(id);
+ const tipIn = (box) => { let t = box.querySelector('.bm-tip'); if (!t) { t = document.createElement('div'); t.className = 'bm-tip'; t.hidden = true; box.append(t); } return t; };
+ const muted = sel => sel.style('fill', 'var(--color-fg-muted)').style('font-size', 'var(--cds-font-size-caption)');
+
+ function drawTrend(el, rows) {
+  el.querySelectorAll('svg').forEach(s => s.remove());
+  const r = [...rows].map(d => ({...d, t: new Date(d.date + 'T00:00:00Z')})).sort((a, b) => a.t - b.t);
+  const W = el.clientWidth || 360, H = 220, m = {t: 14, r: 56, b: 28, l: 34};
+  const t0 = r[0].t, t1 = r[r.length - 1].t;
+  const x = d3.scaleUtc(r.length > 1 ? [t0, t1] : [d3.utcDay.offset(t0, -14), d3.utcDay.offset(t0, 14)], [m.l, W - m.r]);
+  const y = d3.scaleLinear([0, 100], [H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+  [[0, 20, 'var(--color-ok)', .1], [40, 60, 'var(--color-warn)', .07], [60, 80, 'var(--color-warn)', .14], [80, 100, 'var(--color-bad)', .12]].forEach(([a, b, c, o]) =>
+   svg.append('rect').attr('x', m.l).attr('width', W - m.l - m.r).attr('y', y(b)).attr('height', y(a) - y(b)).style('fill', c).style('fill-opacity', o));
+  const ga = svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([0, 20, 40, 60, 80, 100]).tickSize(-(W - m.l - m.r)));
+  ga.attr('font-size', null).attr('font-family', null); ga.select('.domain').remove();
+  ga.selectAll('line').style('stroke', 'var(--cds-chart-grid)'); muted(ga.selectAll('text'));
+  const gx = svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.min(6, Math.max(2, r.length))).tickFormat(d3.utcFormat('%-m/%-d')).tickSize(0).tickPadding(8));
+  gx.attr('font-size', null).attr('font-family', null); gx.select('.domain').style('stroke', 'var(--cds-chart-axis)'); muted(gx.selectAll('text'));
+  if (r.length > 1) svg.append('path').attr('d', d3.line().x(d => x(d.t)).y(d => y(d.score))(r)).style('fill', 'none').style('stroke', dash.colors[0]).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+  const tip = tipIn(el);
+  svg.append('g').selectAll('circle').data(r).join('circle').attr('cx', d => x(d.t)).attr('cy', d => y(d.score)).attr('r', (d, i) => i === r.length - 1 ? 5 : 3.5).style('fill', dash.colors[0])
+   .on('mousemove', (ev, d) => {
+    tip.replaceChildren(); [d.date + ' ' + d.time_kst, `점수 ${fmt1(d.score)} · ${d.stage}`, `메모리 ${d.mem_phase}단계`, d.note].forEach((l, i) => { const e = document.createElement('div'); if (i === 0) e.className = 'k'; e.textContent = l; tip.append(e); });
+    tip.hidden = false; const b = el.getBoundingClientRect(); let px = ev.clientX - b.left + 12; if (px + tip.offsetWidth > b.width) px = ev.clientX - b.left - tip.offsetWidth - 12;
+    tip.style.left = Math.max(0, px) + 'px'; tip.style.top = Math.max(0, ev.clientY - b.top - 10) + 'px';
+   }).on('mouseleave', () => { tip.hidden = true; });
+  const L = r[r.length - 1];
+  svg.append('text').attr('x', x(L.t) + 9).attr('y', y(L.score) + 4).style('fill', 'var(--color-fg)').style('font-size', 'var(--cds-font-size-caption)').style('font-weight', 600).text(fmt1(L.score));
+ }
+
+ dash.onData(() => {
+  const lt = dash.data('latest'), tr = dash.data('trend'), sl = dash.data('score_log');
+  if (lt.status === 'ok' && lt.data.length) { $('stDate').textContent = lt.data[0].date_ko; $('stTime').textContent = lt.data[0].time_ko; $('stAsof').textContent = lt.data[0].asof_ko; }
+  if (tr.status === 'ok' && tr.data.length) {
+   const d = tr.data[0];
+   $('trendWhy').textContent = d.runs < 2
+    ? `기록 ${d.runs}회: 첫 기록입니다. 다음 갱신부터 방향이 판정됩니다.`
+    : `기록 ${d.runs}회 · 직전 대비 ${d.delta > 0 ? '+' : ''}${fmt1(d.delta)}점 · 연속 하락 ${d.down_runs}회 · 메모리 ${d.mem_phase}단계 → ${d.signal}`;
+  }
+  if (sl.status === 'ok' && sl.data.length) drawTrend($('trendChart'), sl.data);
+ });
+})();
+</script>

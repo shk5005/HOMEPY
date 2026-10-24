@@ -1,0 +1,32 @@
+{
+ "rows": [
+  {
+   "quarter": "1Q26",
+   "low": 90,
+   "high": 95,
+   "kind": "실적 추정",
+   "source": "TrendForce via The Elec"
+  },
+  {
+   "quarter": "2Q26",
+   "low": 80,
+   "high": 80,
+   "kind": "실적 추정",
+   "source": "TrendForce via StockHub (사전 전망 58~63%)"
+  },
+  {
+   "quarter": "3Q26",
+   "low": 40,
+   "high": 40,
+   "kind": "실적 추정",
+   "source": "TrendForce via StockHub"
+  },
+  {
+   "quarter": "4Q26",
+   "low": 15,
+   "high": 20,
+   "kind": "전망",
+   "source": "TrendForce 9/30 (HBM 포함 15~20%), 10/20 보도 ~20%"
+  }
+ ]
+}

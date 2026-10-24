@@ -1,0 +1,193 @@
+{
+ "rows": [
+  {
+   "id": "ai00",
+   "lane": "AI 사이클",
+   "date": "2022-11-30",
+   "event": "ChatGPT 공개 (사이클 기점)",
+   "stage": "기점",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "ai01",
+   "lane": "AI 사이클",
+   "date": "2023-05-24",
+   "event": "엔비디아 매출 가이던스 쇼크, AI 반도체 랠리 본격화",
+   "stage": "Awareness",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "ai02",
+   "lane": "AI 사이클",
+   "date": "2025-01-21",
+   "event": "스타게이트 데이터센터 투자 발표",
+   "stage": "Mania",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "ai03",
+   "lane": "AI 사이클",
+   "date": "2025-01-27",
+   "event": "DeepSeek 쇼크, 엔비디아 하루 −17% (1차 매도)",
+   "stage": "1차 매도",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "ai04",
+   "lane": "AI 사이클",
+   "date": "2026-01-08",
+   "event": "삼성전자·SK하이닉스 신용잔고 역대 최대",
+   "stage": "Mania",
+   "source": "파이낸셜뉴스",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai05",
+   "lane": "AI 사이클",
+   "date": "2026-02-19",
+   "event": "DRAM 가격 3개월 새 4배, 1Q 계약가 QoQ +90~95%",
+   "stage": "Mania",
+   "source": "TrendForce·글로벌이코노믹",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai06",
+   "lane": "AI 사이클",
+   "date": "2026-03-31",
+   "event": "Shiller CAPE 39.8, 닷컴 이후 최고",
+   "stage": "Mania",
+   "source": "The Next Web",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai07",
+   "lane": "AI 사이클",
+   "date": "2026-06-30",
+   "event": "미국 신용융자 $1.50T 사상 최대",
+   "stage": "Mania",
+   "source": "FINRA 인용",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai08",
+   "lane": "AI 사이클",
+   "date": "2026-07-31",
+   "event": "신용융자 월간 −$84.8B, 1997년 이후 최대 감소",
+   "stage": "경고",
+   "source": "FINRA 차트 인용",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai09",
+   "lane": "AI 사이클",
+   "date": "2026-10-08",
+   "event": "BofA: 기술주 순비중 37%, 현금 3.9% 매도 신호",
+   "stage": "Mania",
+   "source": "BofA FMS 인용",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai10",
+   "lane": "AI 사이클",
+   "date": "2026-10-08",
+   "event": "황승진 교수 채찍효과 영상 공개",
+   "stage": "참고",
+   "source": "YouTube",
+   "confidence": "High"
+  },
+  {
+   "id": "ai11",
+   "lane": "AI 사이클",
+   "date": "2026-10-14",
+   "event": "KOSPI 6,008.81",
+   "stage": "Mania",
+   "source": "Investing.com",
+   "confidence": "Medium"
+  },
+  {
+   "id": "ai12",
+   "lane": "AI 사이클",
+   "date": "2026-10-21",
+   "event": "10월 1~20일 반도체 수출 +222.5% 발표",
+   "stage": "Mania",
+   "source": "관세청",
+   "confidence": "High"
+  },
+  {
+   "id": "ai13",
+   "lane": "AI 사이클",
+   "date": "2026-10-24",
+   "event": "현재 (분석 시점)",
+   "stage": "현재",
+   "source": "분석",
+   "confidence": "High"
+  },
+  {
+   "id": "ai14",
+   "lane": "AI 사이클",
+   "date": "2026-10-28",
+   "event": "하이퍼스케일러 실적·capex 가이던스 (예정)",
+   "stage": "예정",
+   "source": "일정 보도",
+   "confidence": "Medium"
+  },
+  {
+   "id": "dot15",
+   "lane": "닷컴 사이클",
+   "date": "1995-08-09",
+   "event": "넷스케이프 IPO (사이클 기점)",
+   "stage": "기점",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "dot16",
+   "lane": "닷컴 사이클",
+   "date": "1996-12-05",
+   "event": "그린스펀 '비이성적 과열' 경고",
+   "stage": "Awareness",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "dot17",
+   "lane": "닷컴 사이클",
+   "date": "1998-09-23",
+   "event": "LTCM 구제, 연준 금리 인하 (1차 매도 후 재상승)",
+   "stage": "1차 매도",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "dot18",
+   "lane": "닷컴 사이클",
+   "date": "1999-12-31",
+   "event": "Shiller CAPE 44.2 사상 최고",
+   "stage": "Mania",
+   "source": "Shiller 데이터",
+   "confidence": "High"
+  },
+  {
+   "id": "dot19",
+   "lane": "닷컴 사이클",
+   "date": "2000-03-10",
+   "event": "나스닥 정점 5,048.62",
+   "stage": "정점",
+   "source": "공개 기록",
+   "confidence": "High"
+  },
+  {
+   "id": "dot20",
+   "lane": "닷컴 사이클",
+   "date": "2002-10-09",
+   "event": "나스닥 바닥 1,114.11 (정점 대비 −78%)",
+   "stage": "절망",
+   "source": "공개 기록",
+   "confidence": "High"
+  }
+ ]
+}

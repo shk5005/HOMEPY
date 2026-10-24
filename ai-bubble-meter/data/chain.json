@@ -1,0 +1,24 @@
+{
+ "rows": [
+  {
+   "stage": "GDP (최종 경제)",
+   "pct": 2,
+   "order": 1
+  },
+  {
+   "stage": "PC 수요",
+   "pct": 5,
+   "order": 2
+  },
+  {
+   "stage": "반도체 수요",
+   "pct": 20,
+   "order": 3
+  },
+  {
+   "stage": "반도체 장비 수요",
+   "pct": 50,
+   "order": 4
+  }
+ ]
+}
