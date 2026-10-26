@@ -1,0 +1,22 @@
+# 이상거래 탐지 설정 — spec/2026-10-26-apt-anomaly-detection.md §6
+# 값을 바꾸면 version도 올린다. 실행 결과(run.json)에 이 값이 그대로 기록된다.
+version = "2026-10-26-draft"
+
+[thresholds]
+window_months = 6       # 비교 창 개월 수 (spec §6, 제안값)
+min_count = 3           # 최소 비교 건수 → 미만이면 F4 판정 보류 (제안값)
+mad_k = 3.0             # F3: |ln p − m| > k × 1.4826 × MAD (제안값)
+flat_pct = 0.15         # F3: MAD = 0일 때 ±15% (제안값)
+exclude_direct = true   # 직거래를 비교·기준 시세에서 제외 (제안값)
+unsettled_months = 2    # 미확정 기간: 신고 30일 + 해제 신고 30일
+
+[codes]
+# 미검증 — plan Task 0에서 data.go.kr 기술문서와 실제 응답으로 확인할 것
+cancelled = ["O"]       # cdealType: 해제 여부
+direct = ["직거래"]      # dealingGbn: 거래유형
+corporate = ["법인"]     # slerGbn / buyerGbn: 매도자·매수자 구분
+
+[api]
+# 미검증 — plan Task 0
+success_codes = ["00", "000"]
+page_size = 1000

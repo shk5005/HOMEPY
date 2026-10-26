@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homepy"
+version = "0.1.0"
+description = "아파트 실거래가 이상거래 탐지"
+requires-python = ">=3.11"
+dependencies = ["requests"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["homepy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
