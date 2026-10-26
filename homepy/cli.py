@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -15,9 +16,10 @@ from homepy.dates import month_end, month_range, months_before
 from homepy.flags import assign_flags
 from homepy.parse import ApiError, parse_page
 from homepy.report import write_groups_csv, write_run_json, write_trades_csv
-from homepy.trades import normalize
+from homepy.trades import BadItem, normalize
 
 KEY_ENV = "DATA_GO_KR_SERVICE_KEY"
+MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,6 +37,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _run(args: argparse.Namespace) -> int:
+    if not (MONTH_RE.match(args.start) and MONTH_RE.match(args.end)) or args.start > args.end:
+        print(f"--from/--to는 YYYY-MM 형식이고 --from ≤ --to여야 합니다: {args.start} ~ {args.end}",
+              file=sys.stderr)
+        return 2
     settings = load_settings(Path(args.config))
     key = None if args.offline else os.environ.get(KEY_ENV)
     if not args.offline and not key:
@@ -53,9 +59,14 @@ def _run(args: argparse.Namespace) -> int:
     except (ApiError, IncompleteCollection, RuntimeError, OSError) as e:
         print(f"수집 실패: {e}", file=sys.stderr)
         return 1
+    try:
+        trades = normalize(items, settings)
+    except BadItem as e:
+        print(f"정제 실패: {e}", file=sys.stderr)
+        return 1
 
     as_of = max(s.fetched_on for s in snaps)
-    flagged = assign_flags(normalize(items, settings), settings, as_of)
+    flagged = assign_flags(trades, settings, as_of)
     out_months = month_range(args.start, args.end)
     lo, hi = date.fromisoformat(f"{args.start}-01"), month_end(args.end)
     in_range = [f for f in flagged if lo <= f.trade.deal_date <= hi]

@@ -80,3 +80,16 @@ def test_output_sorted():
         raw(aptSeq="A", dealDay="1"),
     ], S)
     assert [(t.group_key, t.deal_date.day) for t in ts] == [("A|85", 1), ("A|85", 5), ("B|85", 2)]
+
+
+@pytest.mark.parametrize("field,value", [("dealAmount", ""), ("excluUseAr", ""), ("dealDay", "")])
+def test_malformed_item_raises_bad_item_with_context(field, value):
+    from homepy.trades import BadItem
+    with pytest.raises(BadItem, match=field):
+        normalize([raw(**{field: value})], S)
+
+
+def test_non_numeric_floor_is_none():
+    t, = normalize([raw(floor="B1")], S)
+    assert t.floor is None
+    assert normalize([raw(floor="-1")], S)[0].floor == -1

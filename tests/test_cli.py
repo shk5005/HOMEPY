@@ -99,3 +99,20 @@ def test_cli_network_error_exit_1(monkeypatch, tmp_path, capsys):
     code = main(["run", "--lawd", "11680", "--from", "2026-08", "--to", "2026-09",
                  "--config", CONFIG, "--raw", str(tmp_path / "raw"), "--out", str(tmp_path / "o")])
     assert code == 1 and "no route" in capsys.readouterr().err
+
+
+def test_cli_malformed_row_exit_1(tmp_path, capsys):
+    build_raw(tmp_path / "raw")
+    save_snapshot(tmp_path / "raw", Snapshot("11680", "2026-09", date(2026, 10, 27), (page([item((9, 1), "")]),)))
+    assert run(tmp_path, "a") == 1
+    assert "dealAmount" in capsys.readouterr().err
+
+
+import pytest  # noqa: E402
+
+
+@pytest.mark.parametrize("start,end", [("2026-09", "2026-01"), ("202601", "2026-09"), ("2026-13", "2026-12")])
+def test_cli_bad_month_args_exit_2(tmp_path, capsys, start, end):
+    code = main(["run", "--lawd", "11680", "--from", start, "--to", end, "--config", CONFIG,
+                 "--raw", str(tmp_path / "raw"), "--out", str(tmp_path / "o"), "--offline"])
+    assert code == 2 and "YYYY-MM" in capsys.readouterr().err

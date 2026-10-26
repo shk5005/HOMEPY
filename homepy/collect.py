@@ -121,12 +121,15 @@ def load_latest(root: Path, lawd_cd: str, month: str) -> Snapshot | None:
 
 def ensure_months(root: Path, lawd_cd: str, months: list[str], service_key: str | None,
                   get: Getter, settings: Settings, today: date) -> list[Snapshot]:
-    """스냅샷이 없거나 미확정 기간에 든 월은 다시 받는다. 오프라인이면 있는 스냅샷만 쓴다."""
-    cutoff = months_before(today, settings.unsettled_months)
+    """스냅샷이 없거나, 저장된 사본을 받을 때 그 월이 아직 미확정이었으면 다시 받는다.
+
+    지금 미확정인 월은 언제 받았든 다시 받는다. 오프라인이면 있는 스냅샷만 쓴다.
+    """
     out = []
     for month in months:
         existing = load_latest(root, lawd_cd, month)
-        needs_fetch = existing is None or month_end(month) >= cutoff
+        needs_fetch = existing is None or (
+            month_end(month) >= months_before(existing.fetched_on, settings.unsettled_months))
         if needs_fetch and service_key is not None:
             pages = fetch_month(lawd_cd, month, service_key, get, settings)
             snap = Snapshot(lawd_cd, month, today, pages)

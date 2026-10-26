@@ -14,6 +14,10 @@ from homepy.config import Settings
 UNKNOWN = "미상"
 
 
+class BadItem(ValueError):
+    """변환할 수 없는 원본 항목. 메시지에 문제 필드와 원본 항목을 담는다."""
+
+
 @dataclass(frozen=True)
 class Trade:
     trade_id: str
@@ -45,9 +49,19 @@ def _trade_id(item: dict[str, str]) -> str:
     return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:12]
 
 
+def _field(convert, name: str):
+    try:
+        return convert()
+    except ValueError as e:
+        raise ValueError(f"{name}: {e}") from e
+
+
 def _to_trade(item: dict[str, str], settings: Settings) -> Trade:
     get = lambda k: item.get(k, "").strip()  # noqa: E731
-    area = Decimal(get("excluUseAr"))
+    try:
+        area = Decimal(get("excluUseAr"))
+    except ArithmeticError as e:
+        raise ValueError(f"excluUseAr={get('excluUseAr')!r}") from e
     band = area_band(area)
     apt_seq = get("aptSeq")
     if apt_seq:
@@ -63,9 +77,10 @@ def _to_trade(item: dict[str, str], settings: Settings) -> Trade:
         umd_name=get("umdNm"),
         area_m2=area,
         area_band=band,
-        deal_date=date(int(get("dealYear")), int(get("dealMonth")), int(get("dealDay"))),
-        price_manwon=parse_amount(get("dealAmount")),
-        floor=int(floor) if floor else None,
+        deal_date=_field(lambda: date(int(get("dealYear")), int(get("dealMonth")), int(get("dealDay"))),
+                         "dealYear/dealMonth/dealDay"),
+        price_manwon=_field(lambda: parse_amount(get("dealAmount")), "dealAmount"),
+        floor=int(floor) if floor.lstrip("-").isdigit() else None,
         dealing_type=get("dealingGbn") or UNKNOWN,
         cancelled=get("cdealType") in settings.cancelled_codes,
         seller_type=get("slerGbn") or UNKNOWN,
@@ -77,6 +92,9 @@ def normalize(items: Iterable[dict[str, str]], settings: Settings) -> list[Trade
     """정제한다. 모든 원본 필드가 같은 행(같은 trade_id)만 중복으로 제거한다."""
     by_id: dict[str, Trade] = {}
     for item in items:
-        t = _to_trade(item, settings)
+        try:
+            t = _to_trade(item, settings)
+        except ValueError as e:
+            raise BadItem(f"잘못된 거래 항목 ({e}): {item}") from e
         by_id.setdefault(t.trade_id, t)
     return sorted(by_id.values(), key=lambda t: (t.group_key, t.deal_date, t.trade_id))

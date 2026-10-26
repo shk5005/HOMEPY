@@ -76,10 +76,17 @@ def test_load_latest_missing_is_none(tmp_path):
 
 
 def test_settled_month_not_refetched(tmp_path):
-    save_snapshot(tmp_path, snap("2026-01", date(2026, 2, 5)))
+    save_snapshot(tmp_path, snap("2026-01", date(2026, 4, 5)))
     get = FakeGetter({})
     out = ensure_months(tmp_path, "11680", ["2026-01"], "KEY", get, SETTINGS, date(2026, 10, 26))
-    assert get.calls == [] and out[0].fetched_on == date(2026, 2, 5)
+    assert get.calls == [] and out[0].fetched_on == date(2026, 4, 5)
+
+
+def test_copy_taken_while_unsettled_is_refetched_after_settling(tmp_path):
+    save_snapshot(tmp_path, snap("2026-08", date(2026, 9, 3)))
+    get = FakeGetter({1: page_xml(1, 1)})
+    out = ensure_months(tmp_path, "11680", ["2026-08"], "KEY", get, SETTINGS, date(2026, 12, 15))
+    assert len(get.calls) == 1 and out[0].fetched_on == date(2026, 12, 15)
 
 
 def test_unsettled_month_refetched(tmp_path):
