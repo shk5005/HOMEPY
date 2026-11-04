@@ -89,3 +89,49 @@ async def test_integer_columns_cast_and_index_type_key(tmp_path):
     vols = {r["index_type"]: r["trade_volume"] for r in recs}
     assert vols == {"sale": 5, "lease": None}
     assert isinstance(vols["sale"], int)
+
+
+async def test_trade_renames_price_units_and_synthetic_keys(tmp_path):
+    df = pd.DataFrame({
+        "ts": pd.to_datetime(["2026-01-01"], utc=True), "district_code": ["11680"],
+        "dong_code": ["10100"], "complex_name": ["A"], "floor": [5], "price": [85000],
+        "area_sqm": [84.9],
+    })
+    svc = FakeTimescale()
+    await load_to_timescale("price", save(df, tmp_path), svc)
+    table, recs = svc.calls[0]
+    assert table == "ts_real_trade"
+    r = recs[0]
+    assert r["price_krw"] == 850_000_000 and r["area_m2"] == 84.9
+    assert len(r["trade_id"]) <= 40 and len(r["complex_id"]) <= 20
+
+
+async def test_interest_rate_and_cycle_renames(tmp_path):
+    macro = pd.DataFrame({"ts": pd.to_datetime(["2026-01-01"], utc=True), "cd_rate_91d": [3.1],
+                          "cofix_rate": [3.5], "mortgage_rate_avg": [4.2]})
+    svc = FakeTimescale()
+    await load_to_timescale("macro", save(macro, tmp_path), svc)
+    assert {"cd_rate", "cofix", "mortgage_rate"} <= set(svc.calls[0][1][0])
+
+    reb = pd.DataFrame({"ts": pd.to_datetime(["2026-01-01"], utc=True), "region_code": ["11680"],
+                        "price_index": [100.0], "price_change_mom": [0.5], "price_change_yoy": [2.0]})
+    svc = FakeTimescale()
+    await load_to_timescale("cycle", save(reb, tmp_path, "reb.parquet"), svc)
+    rec = svc.calls[0][1][0]
+    assert rec["district_code"] == "11680" and rec["index_type"] == "price"
+    assert rec["index_value"] == 100.0 and rec["change_mom_pct"] == 0.5 and rec["change_yoy_pct"] == 2.0
+
+
+async def test_supply_unsold_sentiment_renames(tmp_path):
+    base = {"ts": pd.to_datetime(["2026-01-01"], utc=True), "district_code": ["11680"]}
+    sd = pd.DataFrame({**base, "permits_issued": [10.0], "construction_starts": [5.0], "unsold_total": [7.0]})
+    svc = FakeTimescale()
+    await load_to_timescale("supply_demand", save(sd, tmp_path), svc)
+    by = {t: r[0] for t, r in svc.calls}
+    assert by["ts_supply"]["permits"] == 10 and by["ts_supply"]["starts"] == 5
+    assert by["ts_unsold"]["total_unsold"] == 7
+
+    se = pd.DataFrame({**base, "search_trend_index": [60.0], "fear_greed_index": [40.0]})
+    svc = FakeTimescale()
+    await load_to_timescale("sentiment", save(se, tmp_path, "s.parquet"), svc)
+    assert svc.calls[0][1][0]["search_trend"] == 60.0 and svc.calls[0][1][0]["fear_greed"] == 40.0

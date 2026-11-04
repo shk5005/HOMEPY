@@ -19,8 +19,9 @@ SOURCE_RULES: dict[str, dict] = {
     "bok_ecos": {"dedup_keys": ["ts"], "schema": {"ts": "datetime"}},
     "molit_trade": {"dedup_keys": None, "schema": {"ts": "datetime", "district_code": "str"}},
     "reb_index": {"dedup_keys": ["ts", "region_code"],
-                  "schema": {"ts": "datetime", "region_code": "str", "price_index": "float"}},
-    "kosis": {"dedup_keys": ["ts", "region_code", "item_code"],
+                  "schema": {"ts": "datetime", "region_code": "str", "price_index": "float"},
+                  "rename": {"region_code": "district_code"}},
+    "kosis": {"post_clean": "kosis_pivot", "dedup_keys": ["ts", "region_code", "item_code"],
               "schema": {"ts": "datetime", "region_code": "str", "item_code": "str", "value": "float"}},
     "molit_supply": {"dedup_keys": ["ts", "district_code"],
                      "schema": {"ts": "datetime", "district_code": "str"}},
@@ -37,6 +38,18 @@ SOURCE_RULES: dict[str, dict] = {
                   "schema": {"ts": "datetime", "district_code": "str"}},
 }
 DEFAULT_RULES: dict = {"dedup_keys": None, "schema": {}}  # None -> all columns
+
+
+def _kosis_pivot(df: pd.DataFrame) -> pd.DataFrame:
+    """Long (ts, region_code, item_name, value) -> wide (ts, district_code, <item_name>...)."""
+    df = df.rename(columns={"region_code": "district_code"})
+    df = df.drop(columns=["region_name", "unit", "item_code"], errors="ignore")
+    names = df["item_name"].astype("string").str.strip().str.lower().str.replace(r"\s+", "_", regex=True)
+    df = df.assign(item_name=names)
+    wide = df.pivot_table(index=["ts", "district_code"], columns="item_name", values="value",
+                          aggfunc="last").reset_index()
+    wide.columns.name = None
+    return wide
 
 
 def _rules_for(source_name: str) -> dict:
@@ -127,6 +140,10 @@ def clean_source(
     report = gate.check(df, rules["schema"], duplicate_subset=subset)
 
     cleaned = df.drop_duplicates(subset=subset or None).reset_index(drop=True)
+    if rules.get("post_clean") == "kosis_pivot" and {"item_name", "value"} <= set(cleaned.columns):
+        cleaned = _kosis_pivot(cleaned)
+    if rules.get("rename"):
+        cleaned = cleaned.rename(columns=rules["rename"])
     cleaned = flag_outliers(cleaned)
 
     if data_dir is None:

@@ -1,6 +1,7 @@
 """ETL Stage 3: load transformed Parquet into TimescaleDB."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 from dataclasses import dataclass
@@ -86,6 +87,65 @@ DOMAIN_TABLES: dict[str, tuple[str, ...]] = {
 }
 
 
+# Collector/transform column name -> DB column name. Applied before matching
+# against TableSpec; a rename is skipped if the target column already exists.
+COLUMN_RENAMES: dict[str, str] = {
+    # molit_trade -> ts_real_trade
+    "price": "price_krw",  # value also converted 만원 -> won (see _prepare)
+    "area_sqm": "area_m2",
+    # bok_ecos -> ts_interest_rate
+    "cd_rate_91d": "cd_rate",
+    "cofix_rate": "cofix",
+    "mortgage_rate_avg": "mortgage_rate",
+    # reb_index -> ts_price_index
+    "region_code": "district_code",
+    "price_index": "index_value",
+    "price_change_mom": "change_mom_pct",
+    "price_change_yoy": "change_yoy_pct",
+    # molit_supply -> ts_supply / ts_unsold
+    "permits_issued": "permits",
+    "construction_starts": "starts",
+    "unsold_total": "total_unsold",
+    # sentiment / sentiment_composer -> ts_sentiment
+    "search_trend_index": "search_trend",
+    "fear_greed_index": "fear_greed",
+}
+
+MAN_WON = 10_000  # MOLIT reports prices in 만원
+
+
+def _hash(*parts, length: int) -> str:
+    raw = "|".join("" if p is None or (isinstance(p, float) and math.isnan(p)) else str(p) for p in parts)
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()[:length]
+
+
+def _prepare(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename collector columns to DB names and derive synthetic keys."""
+    df = df.copy()
+    if "price" in df.columns and "price_krw" not in df.columns:
+        df["price"] = pd.to_numeric(df["price"], errors="coerce") * MAN_WON
+    renames = {k: v for k, v in COLUMN_RENAMES.items() if k in df.columns and v not in df.columns}
+    df = df.rename(columns=renames)
+
+    if "index_value" in df.columns and "index_type" not in df.columns:
+        df["index_type"] = "price"
+
+    if "price_krw" in df.columns and "district_code" in df.columns:
+        cols = df.columns
+        get = lambda name: df[name] if name in cols else pd.Series([None] * len(df), index=df.index)  # noqa: E731
+        if "trade_id" not in cols:
+            df["trade_id"] = [
+                _hash(*vals, length=32)
+                for vals in zip(get("ts"), get("district_code"), get("dong_code"),
+                                get("floor"), get("price_krw"))
+            ]
+        if "complex_id" not in cols and "complex_name" in cols:
+            df["complex_id"] = [
+                _hash(n, d, length=16) for n, d in zip(df["complex_name"], df["district_code"])
+            ]
+    return df
+
+
 def _read(path: Path) -> pd.DataFrame:
     path = Path(path)
     if path.is_dir():
@@ -140,6 +200,7 @@ async def load_to_timescale(domain: str, transformed_path: Path, timescale_svc) 
     df = _read(transformed_path)
     if "ts" not in df.columns:
         raise ValueError(f"transformed data for {domain!r} has no 'ts' column")
+    df = _prepare(df)
     total = 0
     for table in DOMAIN_TABLES[domain]:
         records = _records_for(df, TABLES[table])

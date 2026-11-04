@@ -93,3 +93,27 @@ def test_null_ratio_is_overall_not_per_column():
     cols = {f"c{i}": [float(j) for j in range(10)] for i in range(25)}
     cols["optional"] = [None] * 10  # 100% null column, overall 1/26 ~ 3.8%
     assert QualityGate().check(pd.DataFrame(cols), {}).passed
+
+
+def test_reb_index_region_code_renamed_to_district_code(tmp_path):
+    df = pd.DataFrame({"ts": ["2026-01-01"], "region_code": ["11680"], "price_index": [100.5]})
+    out = pd.read_parquet(clean_source("reb_index", _write(tmp_path, df, "reb_index")).output_path)
+    assert "district_code" in out.columns and "region_code" not in out.columns
+
+
+def test_kosis_long_to_wide_pivot(tmp_path):
+    df = pd.DataFrame({
+        "ts": ["2026-01-01"] * 4,
+        "region_code": ["11680", "11680", "11650", "11650"],
+        "region_name": ["a", "a", "b", "b"],
+        "item_code": ["T1", "T2", "T1", "T2"],
+        "item_name": ["Total Pop", "Households", "Total Pop", "Households"],
+        "value": [100.0, 40.0, 200.0, 80.0],
+        "unit": ["p", "h", "p", "h"],
+    })
+    out = pd.read_parquet(clean_source("kosis", _write(tmp_path, df, "kosis")).output_path)
+    assert {"ts", "district_code", "total_pop", "households"} <= set(out.columns)
+    assert not {"region_code", "region_name", "unit", "item_code", "value"} & set(out.columns)
+    assert len(out) == 2
+    row = out[out.district_code == "11680"].iloc[0]
+    assert row.total_pop == 100.0 and row.households == 40.0
