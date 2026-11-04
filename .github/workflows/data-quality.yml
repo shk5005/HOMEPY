@@ -1,0 +1,62 @@
+name: Data Quality
+on:
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  data-quality:
+    runs-on: ubuntu-latest
+    services:
+      timescaledb:
+        image: timescale/timescaledb:latest-pg16
+        ports: ["5432:5432"]
+        env:
+          POSTGRES_DB: homepy
+          POSTGRES_USER: homepy
+          POSTGRES_PASSWORD: homepy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -e ".[dev]"
+      - name: Run freshness and drift checks
+        id: check
+        run: |
+          python - <<'PY'
+          import asyncio, json, os
+          from homepy.verification.data_monitor import DataMonitor, SOURCE_SCHEDULE as SOURCES
+          from homepy.storage.timescale_service import TimescaleService
+
+          async def main():
+              svc = TimescaleService()
+              monitor = DataMonitor(svc)
+              lines = []
+              for a in await monitor.check_freshness():
+                  if a.severity.upper() in ("WARNING", "ERROR", "CRITICAL"):
+                      lines.append(f"- [{a.severity}] freshness {a.source}: last seen {a.last_seen}")
+              for source in SOURCES:
+                  d = await monitor.check_distribution_drift(source)
+                  if d.drifted:
+                      lines.append(f"- [WARNING] drift {d.source}: KL={d.kl_divergence:.3f} ({d.window_days}d)")
+              bad = lines
+              with open("dq_report.md", "w") as f:
+                  f.write("\n".join(lines))
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"alerts={len(bad)}\n")
+
+          asyncio.run(main())
+          PY
+        env:
+          TIMESCALE_DSN: postgresql://homepy:homepy@localhost:5432/homepy
+      - name: Open issue on WARNING+ alerts
+        if: steps.check.outputs.alerts != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Data quality alerts $(date +%F)" \
+            --label data-quality \
+            --body-file dq_report.md
