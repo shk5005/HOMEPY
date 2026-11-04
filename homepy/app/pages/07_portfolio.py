@@ -22,9 +22,19 @@ def fetch_scores(ids: list[str]) -> dict[str, dict]:
         return {}
     try:
         return {s["complex_id"]: s for s in run(client.post_rank(ids))}
-    except ApiError as exc:
-        st.error(f"API 오류: {exc}")
-        return {}
+    except ApiError:
+        result: dict[str, dict] = {}
+        for cid in ids:
+            try:
+                scores_list = run(client.post_rank([cid]))
+                if scores_list:
+                    result[cid] = scores_list[0]
+            except ApiError:
+                pass
+        if len(result) < len(ids):
+            failed = set(ids) - set(result)
+            st.warning(f"일부 단지 점수 조회 실패: {', '.join(sorted(failed))}")
+        return result
 
 
 all_ids = sorted(set(st.session_state["watchlist"]) | set(st.session_state["holdings"]))
@@ -59,16 +69,24 @@ with tab_hold:
             st.session_state["holdings"][hid] = {"price": price, "date": bought, "current": current}
             st.rerun()
     rows = []
-    for cid, h in st.session_state["holdings"].items():
+    for cid, h in list(st.session_state["holdings"].items()):
         s = scores.get(cid)
         gain = h["current"] - h["price"]
         pct = gain / h["price"] * 100 if h["price"] else 0.0
-        weak = [f["name"] for f in (s or {}).get("factors", []) if f.get("normalized", 50) < 40]
-        rows.append({"단지": cid, "매입일": h["date"], "매입가": h["price"], "현재 시세": h["current"],
-                     "평가손익": gain, "수익률(%)": round(pct, 2),
-                     "등급": s["grade"] if s else "-", "부정 시그널": ", ".join(weak) or "-"})
+        weak = [f["name"] for f in (s or {}).get("factors", []) if f.get("normalized", 50) < ALERT_SCORE]
+        cols = st.columns([2, 1, 1, 1, 1, 1, 2, 1])
+        cols[0].write(f"**{cid}**")
+        cols[1].write(str(h["date"]))
+        cols[2].write(f"{h['price']:,.0f}")
+        cols[3].write(f"{h['current']:,.0f}")
+        cols[4].metric("손익", f"{gain:,.0f}", delta=f"{pct:.1f}%")
+        cols[5].write(s["grade"] if s else "-")
+        cols[6].write(", ".join(weak) or "-")
+        if cols[7].button("삭제", key=f"rmh_{cid}"):
+            del st.session_state["holdings"][cid]
+            st.rerun()
+        rows.append({"평가손익": gain})
     if rows:
-        st.dataframe(pd.DataFrame(rows), hide_index=True)
         total_gain = sum(r["평가손익"] for r in rows)
         st.metric("총 평가손익(만원)", f"{total_gain:,.0f}")
     else:
