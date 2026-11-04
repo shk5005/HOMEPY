@@ -1,0 +1,12 @@
+{
+  "response": {
+    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE"},
+    "body": {
+      "items": [
+        {"WRTTIME_IDTFR_ID": "202511", "REGION_CD": "11000", "PRICE_INDEX": "101.2", "MOM": "0.35", "YOY": "2.10", "JEONSE_INDEX": "99.8"},
+        {"WRTTIME_IDTFR_ID": "202512", "REGION_CD": "11000", "PRICE_INDEX": "101.6", "MOM": "0.40", "YOY": "2.30", "JEONSE_INDEX": "100.1"},
+        {"WRTTIME_IDTFR_ID": "202601", "REGION_CD": "11000", "PRICE_INDEX": "102.1", "MOM": "0.49", "YOY": "2.55", "JEONSE_INDEX": "100.4"}
+      ]
+    }
+  }
+}

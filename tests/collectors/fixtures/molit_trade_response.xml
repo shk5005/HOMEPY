@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<response>
+  <header>
+    <resultCode>000</resultCode>
+    <resultMsg>OK</resultMsg>
+  </header>
+  <body>
+    <items>
+      <item>
+        <sggCd>11680</sggCd>
+        <umdNm>역삼동</umdNm>
+        <umdCd>10100</umdCd>
+        <aptNm>래미안역삼</aptNm>
+        <excluUseAr>84.97</excluUseAr>
+        <floor>12</floor>
+        <dealAmount>185,000</dealAmount>
+        <dealYear>2026</dealYear>
+        <dealMonth>1</dealMonth>
+        <dealDay>15</dealDay>
+      </item>
+      <item>
+        <sggCd>11680</sggCd>
+        <umdNm>대치동</umdNm>
+        <umdCd>10600</umdCd>
+        <aptNm>은마</aptNm>
+        <excluUseAr>76.79</excluUseAr>
+        <floor>5</floor>
+        <dealAmount>243,500</dealAmount>
+        <dealYear>2026</dealYear>
+        <dealMonth>1</dealMonth>
+        <dealDay>22</dealDay>
+      </item>
+    </items>
+    <numOfRows>10</numOfRows>
+    <pageNo>1</pageNo>
+    <totalCount>2</totalCount>
+  </body>
+</response>

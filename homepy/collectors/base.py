@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from abc import ABC, abstractmethod
 from datetime import date
 from pathlib import Path
@@ -25,7 +26,11 @@ class BaseCollector(ABC):
         self.data_dir = Path(data_dir)
 
     async def _fetch(self, endpoint: str, params: dict | None = None) -> dict:
-        """GET ``api_base_url/endpoint`` with 3 attempts and exponential backoff."""
+        """GET and decode JSON (3 attempts, exponential backoff)."""
+        return json.loads(await self._fetch_text(endpoint, params))
+
+    async def _fetch_text(self, endpoint: str, params: dict | None = None) -> str:
+        """GET ``api_base_url/endpoint`` body as text, 3 attempts with exponential backoff."""
         url = f"{self.api_base_url}/{endpoint.lstrip('/')}"
         last_error = "unknown error"
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -33,7 +38,7 @@ class BaseCollector(ABC):
                 try:
                     resp = await client.get(url, params=params or {})
                     resp.raise_for_status()
-                    return resp.json()
+                    return resp.text
                 except httpx.HTTPStatusError as exc:
                     # Never include the URL: it may embed the API key.
                     last_error = f"HTTP {exc.response.status_code}"
@@ -43,10 +48,10 @@ class BaseCollector(ABC):
                     await asyncio.sleep(BACKOFF_BASE_SECONDS * 2**attempt)
         raise RuntimeError(f"{self.source_name} request failed: {last_error}") from None
 
-    def _save_raw(self, df: pd.DataFrame, date: date) -> Path:  # noqa: A002
+    def _save_raw(self, df: pd.DataFrame, date: date, filename: str = "data.parquet") -> Path:  # noqa: A002
         out_dir = self.data_dir / "raw" / self.source_name / date.isoformat()
         out_dir.mkdir(parents=True, exist_ok=True)
-        path = out_dir / "data.parquet"
+        path = out_dir / filename
         df.to_parquet(path, index=False)
         return path
 
