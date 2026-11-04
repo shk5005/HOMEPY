@@ -159,3 +159,52 @@ CREATE TABLE IF NOT EXISTS ts_signals (
 
 CREATE INDEX IF NOT EXISTS idx_ts_real_trade_district ON ts_real_trade (district_code, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_ts_signals_target ON ts_signals (target_id, ts DESC);
+
+-- ===== Plan D: verification & improvement layer =====
+
+-- Backtest results: verdict predictions vs realized price changes
+CREATE TABLE IF NOT EXISTS ts_backtest_results (
+    ts TIMESTAMPTZ NOT NULL,                -- verdict_date
+    verdict_id VARCHAR(60) NOT NULL,
+    complex_id VARCHAR(40) NOT NULL,
+    predicted_verdict VARCHAR(30),
+    predicted_score NUMERIC(6,2),
+    predicted_scenarios JSONB NOT NULL DEFAULT '{}'::jsonb,
+    actual_price_change_3m NUMERIC(8,4),
+    actual_price_change_6m NUMERIC(8,4),
+    actual_price_change_12m NUMERIC(8,4),
+    direction_correct BOOLEAN,
+    scenario_hit BOOLEAN,
+    factor_contributions JSONB NOT NULL DEFAULT '{}'::jsonb,
+    bias_warnings_issued INTEGER NOT NULL DEFAULT 0,
+    bias_warnings_valid INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (ts, verdict_id)
+);
+
+-- Calibration proposals log
+CREATE TABLE IF NOT EXISTS ts_calibration_log (
+    ts TIMESTAMPTZ NOT NULL,                -- created_at
+    proposal_id VARCHAR(60) NOT NULL,
+    category VARCHAR(40) NOT NULL,
+    current_values JSONB NOT NULL DEFAULT '{}'::jsonb,
+    proposed_values JSONB NOT NULL DEFAULT '{}'::jsonb,
+    rationale TEXT,
+    backtest_evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
+    expected_improvement TEXT,
+    risk_assessment TEXT,
+    rollback_plan TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'proposed',
+    PRIMARY KEY (ts, proposal_id)
+);
+
+-- System performance metrics
+CREATE TABLE IF NOT EXISTS ts_system_metrics (
+    ts TIMESTAMPTZ NOT NULL,
+    component TEXT NOT NULL,
+    metric_name TEXT NOT NULL,
+    metric_value DOUBLE PRECISION,
+    PRIMARY KEY (ts, component, metric_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ts_backtest_complex ON ts_backtest_results (complex_id, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_ts_system_metrics_component ON ts_system_metrics (component, metric_name, ts DESC);

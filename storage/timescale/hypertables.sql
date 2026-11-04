@@ -73,3 +73,16 @@ SELECT add_continuous_aggregate_policy('ts_real_trade_monthly',
     end_offset => INTERVAL '1 day',
     schedule_interval => INTERVAL '1 day',
     if_not_exists => TRUE);
+
+-- Plan D: verification & improvement hypertables
+SELECT create_hypertable('ts_backtest_results', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_backtest_results SET (timescaledb.compress, timescaledb.compress_segmentby = 'complex_id');
+SELECT add_compression_policy('ts_backtest_results', INTERVAL '180 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_calibration_log', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_calibration_log SET (timescaledb.compress, timescaledb.compress_segmentby = 'category');
+SELECT add_compression_policy('ts_calibration_log', INTERVAL '180 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_system_metrics', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_system_metrics SET (timescaledb.compress, timescaledb.compress_segmentby = 'component');
+SELECT add_compression_policy('ts_system_metrics', INTERVAL '180 days', if_not_exists => TRUE);
