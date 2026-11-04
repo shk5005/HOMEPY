@@ -78,6 +78,44 @@ async def test_anomaly_z_score(mock_timescale):
     assert abs(anomalies[0].z_score) > 3.0
 
 
+async def test_drift_detects_shifted_distribution(mock_timescale):
+    """The drifted=True path must be exercised with clearly shifted windows."""
+    class ShiftedMock(MockTimescale):
+        async def execute(self, query: str, *args):
+            if "metric_series" in query:
+                start_days = args[1] if len(args) > 1 else 0
+                if start_days > 30:  # previous window: centered around 3.0
+                    return [{"value": 3.0 + (i % 5) * 0.1} for i in range(60)]
+                # current window: centered around 10.0 — large shift
+                return [{"value": 10.0 + (i % 5) * 0.1} for i in range(60)]
+            return await super().execute(query, *args)
+
+    dm = DataMonitor(ShiftedMock())
+    result = await dm.check_distribution_drift("interest_rate")
+    assert result.drifted is True
+    assert result.kl_divergence > 0.1
+
+
+async def test_cross_source_consistency_detects_divergence(mock_timescale):
+    """Opposite trend directions for base_rate and cd_rate should raise an alert."""
+    class TrendMock(MockTimescale):
+        async def execute(self, query: str, *args):
+            if "trend_delta" in query:
+                metric = args[0]
+                if metric == "base_rate":
+                    return [{"trend_delta": 0.5}]   # rising
+                if metric == "cd_rate":
+                    return [{"trend_delta": -0.3}]  # falling
+                return []
+            return await super().execute(query, *args)
+
+    dm = DataMonitor(TrendMock())
+    alerts = await dm.check_cross_source_consistency()
+    assert len(alerts) == 1
+    assert alerts[0].severity == "WARNING"
+    assert "base_rate" in alerts[0].sources
+
+
 async def test_invalid_source_rejected(mock_timescale):
     dm = DataMonitor(mock_timescale)
     with pytest.raises(ValueError):
