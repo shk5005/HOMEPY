@@ -169,3 +169,35 @@ class PipelineStatusResponse(_ORM):
     collectors: list[dict]
     total_rows: int
     latest_ts: datetime | None = None
+
+
+class BacktestSummaryResponse(_ORM):
+    direction_accuracy: float
+    signal_hit_rate: float
+    total_verdicts: int
+    computed_at: datetime
+
+
+class CalibrationProposalResponse(_ORM):
+    proposal_id: str
+    created_at: datetime
+    category: str
+    current_values: dict
+    proposed_values: dict
+    rationale: str
+    status: str
+
+
+class SystemHealthResponse(_ORM):
+    components: list[dict]  # each: {name, status, latency_p95}
+    data_quality_alerts: int
+    recovery_events_24h: int
+
+
+class ImprovementRecordResponse(_ORM):
+    record_id: str
+    timestamp: datetime
+    category: str
+    component: str
+    trigger: str
+    impact_metrics: dict[str, float] | None = None

@@ -1,9 +1,24 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from homepy.api.dependencies import get_timescale
-from homepy.api.models.schemas import PipelineStatusResponse
+from homepy.api.models.schemas import (
+    BacktestSummaryResponse,
+    CalibrationProposalResponse,
+    ImprovementRecordResponse,
+    PipelineStatusResponse,
+    SystemHealthResponse,
+)
+from homepy.verification.backtester import Backtester
+from homepy.verification.calibrator import AutoCalibrator
+from homepy.verification.data_monitor import DataMonitor
+from homepy.verification.improvement_tracker import ImprovementTracker
+from homepy.verification.self_healer import SelfHealer
+from homepy.verification.system_monitor import SystemMonitor
 
 router = APIRouter()
 
@@ -29,3 +44,66 @@ async def status(ts=Depends(get_timescale)):
         if last is not None and (latest is None or last > latest):
             latest = last
     return PipelineStatusResponse(collectors=collectors, total_rows=total, latest_ts=latest)
+
+
+# ---- verification (Plan D) ------------------------------------------------
+RECOVERY_LOG_PATH = Path("data/catalog/recovery_log.jsonl")
+BACKTEST_LOOKBACK_MONTHS = 3
+SLOW_P95_MS = 1000.0
+
+
+def get_calibrator(request: Request) -> AutoCalibrator:
+    """Process-wide calibrator (proposals are held in memory on app.state)."""
+    state = request.app.state
+    cal = getattr(state, "calibrator", None)
+    if cal is None:
+        cal = AutoCalibrator(Backtester(state.timescale), state.timescale)
+        state.calibrator = cal
+    return cal
+
+
+@router.get("/verification/accuracy", response_model=BacktestSummaryResponse)
+async def verification_accuracy(ts=Depends(get_timescale)):
+    result = await Backtester(ts).run(BACKTEST_LOOKBACK_MONTHS)
+    return BacktestSummaryResponse(
+        direction_accuracy=result.direction_accuracy,
+        signal_hit_rate=result.signal_hit_rate,
+        total_verdicts=result.total_verdicts,
+        computed_at=datetime.now(timezone.utc),
+    )
+
+
+@router.get("/verification/proposals", response_model=list[CalibrationProposalResponse])
+async def verification_proposals(cal: AutoCalibrator = Depends(get_calibrator)):
+    return [CalibrationProposalResponse.model_validate(p) for p in cal.list_proposals("proposed")]
+
+
+@router.post("/verification/proposals/{proposal_id}/approve",
+             response_model=ImprovementRecordResponse)
+async def approve_proposal(proposal_id: str, cal: AutoCalibrator = Depends(get_calibrator),
+                           ts=Depends(get_timescale)):
+    try:
+        record = await cal.apply_proposal(proposal_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown proposal: {proposal_id}")
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    await ImprovementTracker(ts).record(record)
+    return ImprovementRecordResponse.model_validate(record)
+
+
+@router.get("/verification/health", response_model=SystemHealthResponse)
+async def verification_health(request: Request, ts=Depends(get_timescale)):
+    summary = await SystemMonitor(ts).get_performance_summary()
+    components = [
+        {"name": name, "status": "ok" if st.p95_ms < SLOW_P95_MS else "degraded",
+         "latency_p95": st.p95_ms}
+        for name, st in summary.components.items()
+    ]
+    alerts = await DataMonitor(ts).check_freshness()
+    healer = SelfHealer(ts, getattr(request.app.state, "typedb", None), RECOVERY_LOG_PATH)
+    return SystemHealthResponse(
+        components=components,
+        data_quality_alerts=len(alerts),
+        recovery_events_24h=len(healer.get_recovery_history(24)),
+    )

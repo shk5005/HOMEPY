@@ -229,6 +229,10 @@ class AutoCalibrator:
             raise ValueError(f"proposal {proposal_id} is {p.status}, not proposed")
         return p
 
+    def list_proposals(self, status: str | None = "proposed") -> list[CalibrationProposal]:
+        """Stored proposals, optionally filtered by status (None = all)."""
+        return [p for p in self._proposals.values() if status is None or p.status == status]
+
     async def apply_proposal(self, proposal_id: str) -> ImprovementRecord:
         p = self._get_open(proposal_id)
         cfg = self._load_config()

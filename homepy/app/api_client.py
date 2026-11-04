@@ -80,6 +80,19 @@ class ApiClient:
     async def get_pipeline_status(self) -> dict:
         return await self._request("GET", "/pipeline/status")
 
+    # verification
+    async def get_verification_accuracy(self) -> dict:
+        return await self._request("GET", "/pipeline/verification/accuracy")
+
+    async def get_verification_proposals(self) -> list[dict]:
+        return await self._request("GET", "/pipeline/verification/proposals")
+
+    async def approve_proposal(self, proposal_id: str) -> dict:
+        return await self._request("POST", f"/pipeline/verification/proposals/{proposal_id}/approve")
+
+    async def get_verification_health(self) -> dict:
+        return await self._request("GET", "/pipeline/verification/health")
+
 
 def run(coro):
     """Run an ApiClient coroutine from synchronous Streamlit code."""
