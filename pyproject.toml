@@ -16,6 +16,9 @@ dependencies = [
     "prefect>=3.0",
     "fastapi>=0.115",
     "uvicorn>=0.54.0",
+    "streamlit>=1.66.1",
+    "plotly>=7.1.0",
+    "folium>=0.20.0",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +28,7 @@ science = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.36.2",
     "respx>=0.21.0",
     "testcontainers>=4.0",
 ]
