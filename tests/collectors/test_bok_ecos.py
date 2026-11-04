@@ -66,16 +66,44 @@ async def test_fetch_raises_after_three_attempts(tmp_path, monkeypatch):
     collector = BokEcosCollector(api_key="test", data_dir=tmp_path)
     with respx.mock:
         route = respx.get(re.compile(r".*/StatisticSearch/.*")).respond(500)
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(RuntimeError):
             await collector._fetch("StatisticSearch/x", {})
     assert route.call_count == 3
 
 
-async def test_api_error_payload_raises(tmp_path):
+async def test_info_200_is_treated_as_no_data(tmp_path):
     collector = BokEcosCollector(api_key="test", data_dir=tmp_path)
     with respx.mock:
         respx.get(re.compile(r".*/StatisticSearch/.*")).respond(
             json={"RESULT": {"CODE": "INFO-200", "MESSAGE": "no data"}}
         )
+        path = await collector.collect(date(2026, 1, 1), date(2026, 1, 31))
+    assert len(pd.read_parquet(path)) == 0
+
+
+async def test_real_error_code_raises(tmp_path):
+    collector = BokEcosCollector(api_key="test", data_dir=tmp_path)
+    with respx.mock:
+        respx.get(re.compile(r".*/StatisticSearch/.*")).respond(
+            json={"RESULT": {"CODE": "ERROR-100", "MESSAGE": "bad key"}}
+        )
         with pytest.raises(ValueError):
             await collector.collect(date(2026, 1, 1), date(2026, 1, 31))
+
+
+async def test_missing_base_rate_direction_is_none(tmp_path):
+    df = BokEcosCollector._direction(pd.Series([2.5, None, 2.75]))
+    assert df.iloc[1] is None
+
+
+async def test_error_does_not_leak_api_key(tmp_path, monkeypatch):
+    async def no_sleep(_):
+        return None
+    monkeypatch.setattr("homepy.collectors.base.asyncio.sleep", no_sleep)
+    collector = BokEcosCollector(api_key="SECRETKEY", data_dir=tmp_path)
+    with respx.mock:
+        respx.get(re.compile(r".*/StatisticSearch/.*")).respond(500)
+        with pytest.raises(RuntimeError) as ei:
+            await collector.collect(date(2026, 1, 1), date(2026, 1, 31))
+    assert "SECRETKEY" not in str(ei.value)
+    assert "SECRETKEY" not in repr(ei.value.__cause__)

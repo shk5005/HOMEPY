@@ -27,19 +27,21 @@ class BaseCollector(ABC):
     async def _fetch(self, endpoint: str, params: dict | None = None) -> dict:
         """GET ``api_base_url/endpoint`` with 3 attempts and exponential backoff."""
         url = f"{self.api_base_url}/{endpoint.lstrip('/')}"
-        last_exc: Exception | None = None
+        last_error = "unknown error"
         async with httpx.AsyncClient(timeout=30.0) as client:
             for attempt in range(MAX_ATTEMPTS):
                 try:
                     resp = await client.get(url, params=params or {})
                     resp.raise_for_status()
                     return resp.json()
-                except (httpx.HTTPStatusError, httpx.TransportError) as exc:
-                    last_exc = exc
-                    if attempt < MAX_ATTEMPTS - 1:
-                        await asyncio.sleep(BACKOFF_BASE_SECONDS * 2**attempt)
-        assert last_exc is not None
-        raise last_exc
+                except httpx.HTTPStatusError as exc:
+                    # Never include the URL: it may embed the API key.
+                    last_error = f"HTTP {exc.response.status_code}"
+                except httpx.TransportError as exc:
+                    last_error = type(exc).__name__
+                if attempt < MAX_ATTEMPTS - 1:
+                    await asyncio.sleep(BACKOFF_BASE_SECONDS * 2**attempt)
+        raise RuntimeError(f"{self.source_name} request failed: {last_error}") from None
 
     def _save_raw(self, df: pd.DataFrame, date: date) -> Path:  # noqa: A002
         out_dir = self.data_dir / "raw" / self.source_name / date.isoformat()

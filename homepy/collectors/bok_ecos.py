@@ -41,7 +41,10 @@ class BokEcosCollector(BaseCollector):
         )
         payload = await self._fetch(endpoint, {})
         if "StatisticSearch" not in payload:
-            msg = payload.get("RESULT", {}).get("MESSAGE", "unexpected ECOS response")
+            result = payload.get("RESULT", {})
+            if result.get("CODE") == "INFO-200":  # no data for this window: skip
+                return pd.Series(dtype="float64")
+            msg = result.get("MESSAGE", "unexpected ECOS response")
             raise ValueError(f"ECOS error for {stat_code}/{item_code}: {msg}")
         rows = payload["StatisticSearch"].get("row", [])
         data = {
@@ -55,9 +58,12 @@ class BokEcosCollector(BaseCollector):
     def _direction(base_rate: pd.Series) -> pd.Series:
         """'up' / 'down' / 'flat' from the change in base rate over 3 months."""
         delta = base_rate - base_rate.shift(2).fillna(base_rate.iloc[0])
-        return delta.map(
-            lambda d: "up" if d > DIRECTION_THRESHOLD else "down" if d < -DIRECTION_THRESHOLD else "flat"
-        )
+        def label(d: float) -> str | None:
+            if pd.isna(d):
+                return None
+            return "up" if d > DIRECTION_THRESHOLD else "down" if d < -DIRECTION_THRESHOLD else "flat"
+
+        return pd.Series([label(d) for d in delta], index=delta.index, dtype=object)
 
     async def collect(self, start_date: date, end_date: date) -> Path:
         series = {
