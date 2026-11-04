@@ -36,7 +36,8 @@ TABLES: dict[str, TableSpec] = {
               "ts complex_id trade_id", "ts trade_id complex_id district_code price_krw"),
         _spec("ts_price_index",
               "ts district_code index_type index_value change_wow_pct change_mom_pct "
-              "change_yoy_pct trade_volume", "ts district_code", "ts district_code"),
+              "change_yoy_pct trade_volume", "ts district_code index_type",
+              "ts district_code"),
         _spec("ts_interest_rate",
               "ts base_rate cd_rate treasury_3y treasury_10y mortgage_rate jeonse_loan_rate cofix",
               "ts"),
@@ -63,6 +64,17 @@ TABLES: dict[str, TableSpec] = {
     )
 }
 
+# INTEGER/BIGINT/SMALLINT columns (pandas upcasts them to float when NaN is present).
+INT_COLUMNS: dict[str, tuple[str, ...]] = {
+    "ts_real_trade": ("price_krw", "floor", "build_year"),
+    "ts_price_index": ("trade_volume",),
+    "ts_population": ("total_pop", "households", "pop_change", "age_20_39_pop", "age_65_plus_pop"),
+    "ts_migration": ("net_migration", "in_migration", "out_migration"),
+    "ts_income": ("median_income", "avg_income"),
+    "ts_supply": ("permits", "starts", "completions", "planned_supply"),
+    "ts_unsold": ("total_unsold", "unsold_after_completion", "unsold_change"),
+}
+
 # Transformed domain -> candidate tables. A frame is split across every table
 # for which it carries at least one non-key column.
 DOMAIN_TABLES: dict[str, tuple[str, ...]] = {
@@ -84,7 +96,7 @@ def _read(path: Path) -> pd.DataFrame:
     return pd.read_parquet(path)
 
 
-def _py(value):
+def _py(value, as_int: bool = False):
     """Convert pandas/numpy scalars to plain Python values for asyncpg (NaN/NaT -> None)."""
     if value is None or value is pd.NaT:
         return None
@@ -92,8 +104,11 @@ def _py(value):
         return value.to_pydatetime()
     if hasattr(value, "item"):
         value = value.item()
-    if isinstance(value, float) and math.isnan(value):
-        return None
+    if isinstance(value, float):
+        if math.isnan(value):
+            return None
+        if value.is_integer() and as_int:
+            return int(value)
     return value
 
 
@@ -111,7 +126,8 @@ def _records_for(df: pd.DataFrame, spec: TableSpec) -> list[dict]:
     sub = sub.drop_duplicates(subset=list(spec.key), keep="last")
     payload = [c for c in cols if c not in spec.key]
     sub = sub.dropna(subset=payload, how="all")
-    return [{c: _py(v) for c, v in row.items()} for row in sub.to_dict("records")]
+    int_cols = {c for c in cols if c in INT_COLUMNS.get(spec.name, ())}
+    return [{c: _py(v, c in int_cols) for c, v in row.items()} for row in sub.to_dict("records")]
 
 
 async def load_to_timescale(domain: str, transformed_path: Path, timescale_svc) -> int:

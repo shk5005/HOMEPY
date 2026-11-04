@@ -39,7 +39,7 @@ async def sync_signals_to_timescale(typedb_svc, timescale_svc, db: str = DEFAULT
     ts = now or datetime.now(timezone.utc)
     rows: dict[tuple[str, str], dict] = {}  # dedupe on (signal_type, target_id)
     for s in signals:
-        for res in typedb_svc.execute_read(db, build_query(s)):
+        for res in typedb_svc.execute_read(db, build_query(s), infer=True):
             target_id = res.get("id")
             if target_id is None:
                 continue

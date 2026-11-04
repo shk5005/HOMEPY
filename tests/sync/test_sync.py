@@ -27,7 +27,7 @@ class FakeTypeDB:
         self.read_results = read_results or {}
         self.reads, self.writes = [], []
 
-    def execute_read(self, db, query):
+    def execute_read(self, db, query, infer=False):
         self.reads.append(query)
         for rel, res in self.read_results.items():
             if f"isa {rel};" in query:
@@ -120,3 +120,23 @@ def test_typedb_execute_write_many_live():
     from homepy.storage.typedb_service import TypeDBService
     with TypeDBService("localhost:1729") as svc:
         svc.execute_write_many("homepy_test", [])
+
+
+async def test_signals_read_with_inference():
+    calls = []
+
+    class T(FakeTypeDB):
+        def execute_read(self, db, query, infer=False):
+            calls.append(infer)
+            return []
+
+    await sync_signals_to_timescale(T(), FakeTimescale())
+    assert calls and all(calls)
+
+
+def test_lineage_numpy_types(tmp_path):
+    import numpy as np
+    t = LineageTracker(tmp_path / "l.jsonl")
+    t.record("s", "clean", "o", {"passed": np.bool_(True), "row_count": np.int64(7)})
+    r = t.read_all()[0]
+    assert r["quality_passed"] is True and r["row_count"] == 7

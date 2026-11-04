@@ -72,3 +72,20 @@ async def test_unknown_domain_and_missing_ts(tmp_path):
         await load_to_timescale("bogus", p, FakeTimescale())
     with pytest.raises(ValueError):
         await load_to_timescale("macro", p, FakeTimescale())
+
+
+async def test_integer_columns_cast_and_index_type_key(tmp_path):
+    df = pd.DataFrame({
+        "ts": pd.to_datetime(["2026-01-01"] * 3, utc=True),
+        "district_code": ["11680"] * 3,
+        "index_type": ["sale", "lease", "sale"],
+        "index_value": [1.0, 2.0, 3.0],
+        "trade_volume": [1000.0, np.nan, 5.0],
+    })
+    svc = FakeTimescale()
+    await load_to_timescale("cycle", save(df, tmp_path), svc)
+    recs = svc.calls[0][1]
+    assert len(recs) == 2  # sale (deduped, last) + lease
+    vols = {r["index_type"]: r["trade_volume"] for r in recs}
+    assert vols == {"sale": 5, "lease": None}
+    assert isinstance(vols["sale"], int)

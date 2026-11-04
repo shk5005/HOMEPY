@@ -31,7 +31,7 @@ MAPPINGS: tuple[AggregateMapping, ...] = (
         "complex_district_avg_price",
         "SELECT complex_id AS key, AVG(d.avg_price)::float8 AS value FROM ("
         "  SELECT DISTINCT complex_id, district_code FROM ts_real_trade) c "
-        "JOIN (SELECT district_code, AVG(price_krw) AS avg_price FROM ts_real_trade "
+        "JOIN (SELECT district_code, AVG(price_krw / NULLIF(area_m2, 0)) AS avg_price FROM ts_real_trade "
         "      WHERE NOT is_cancelled AND ts >= now() - interval '12 months' "
         "      GROUP BY district_code) d USING (district_code) GROUP BY complex_id",
         "complex", "complex-id", "district-avg-price"),

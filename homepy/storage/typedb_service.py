@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from typedb.driver import SessionType, TransactionType, TypeDB
+from typedb.driver import SessionType, TransactionType, TypeDB, TypeDBOptions
 
 
 def _concept_value(concept: Any) -> Any:
@@ -41,10 +41,11 @@ class TypeDBService:
             raise RuntimeError("TypeDBService is not connected; call connect() first")
         return self._driver
 
-    def execute_read(self, db: str, query: str) -> list[dict]:
+    def execute_read(self, db: str, query: str, infer: bool = False) -> list[dict]:
         driver = self._require_driver()
         with driver.session(db, SessionType.DATA) as session:
-            with session.transaction(TransactionType.READ) as tx:
+            options = TypeDBOptions(infer=True) if infer else None
+            with session.transaction(TransactionType.READ, options) as tx:
                 return [
                     {var: _concept_value(c) for var, c in cmap.map().items()}
                     for cmap in tx.query.get(query)

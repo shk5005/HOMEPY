@@ -2,10 +2,22 @@
 from __future__ import annotations
 
 import json
+
+import numpy as np
 from datetime import datetime, timezone
 from pathlib import Path
 
 DEFAULT_PATH = Path("data/catalog/lineage.jsonl")
+
+
+def _native(o):
+    if isinstance(o, np.integer):
+        return int(o)
+    if isinstance(o, np.floating):
+        return float(o)
+    if isinstance(o, np.bool_):
+        return bool(o)
+    return str(o)
 
 
 class LineageTracker:
@@ -36,7 +48,7 @@ class LineageTracker:
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            f.write(json.dumps(entry, ensure_ascii=False, default=_native) + "\n")
 
     def read_all(self) -> list[dict]:
         if not self.path.exists():
