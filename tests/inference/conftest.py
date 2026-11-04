@@ -76,3 +76,55 @@ def mock_typedb():
 @pytest.fixture
 def mock_timescale():
     return MockTimescaleService(TIMESCALE_DEFAULTS)
+
+
+# ---- Simulator fixtures -------------------------------------------------
+import copy
+from datetime import datetime, timezone
+
+from homepy.inference.scorer import FACTOR_WEIGHTS, FactorScore, InvestmentScore, grade_for, minmax
+from homepy.inference.simulator import FACTOR_RANGES
+
+MOCK_RAW_VALUES = {
+    "supply_demand_gap": 25.0,
+    "valuation_gap": 15.0,
+    "interest_rate_cycle": -20.0,
+    "transport_access": 450.0,
+    "price_momentum": 4.0,
+}
+
+
+class MockInvestmentScorer:
+    """Returns a configurable InvestmentScore; hands out a fresh copy per call.
+
+    ``overrides`` maps factor name -> raw value. Factors with known ranges are
+    normalized like the real scorer, others get 50. Total is the weighted sum,
+    so changing a raw value changes total_score predictably.
+    """
+
+    def __init__(self, overrides: dict[str, float] | None = None):
+        self.raw = dict(MOCK_RAW_VALUES)
+        if overrides:
+            self.raw.update(overrides)
+        self.calls: list[str] = []
+
+    async def score(self, complex_id: str) -> InvestmentScore:
+        self.calls.append(complex_id)
+        factors = []
+        for name, w in FACTOR_WEIGHTS.items():
+            if name in FACTOR_RANGES:
+                lo, hi, inv = FACTOR_RANGES[name]
+                raw = self.raw.get(name, (lo + hi) / 2)
+                norm = minmax(raw, lo, hi, invert=inv)
+            else:
+                raw, norm = 0.0, 50.0
+            factors.append(FactorScore(name, raw, norm, w, norm * w, [f"mock {name}"]))
+        total = round(sum(f.weighted_score for f in factors), 4)
+        return copy.deepcopy(
+            InvestmentScore(complex_id, total, grade_for(total), factors, datetime.now(timezone.utc))
+        )
+
+
+@pytest.fixture
+def mock_scorer():
+    return MockInvestmentScorer()
