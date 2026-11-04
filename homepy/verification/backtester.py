@@ -92,13 +92,16 @@ class Backtester:
         self._ts = timescale_svc
         self._now = now or (lambda: datetime.now(timezone.utc))
 
-    async def _price_as_of(self, complex_id: str, as_of: date) -> float | None:
+    async def _price_as_of(
+        self, complex_id: str, as_of: date,
+    ) -> tuple[float | None, datetime | None]:
+        """Return (price, trade_ts) as-of *as_of*, or (None, None)."""
         if as_of > self._now().date():
-            return None  # horizon not matured yet
+            return None, None  # horizon not matured yet
         rows = await self._ts.execute(_PRICE_AS_OF, complex_id, _as_dt(as_of))
         if not rows or rows[0]["price_per_pyeong"] is None:
-            return None
-        return float(rows[0]["price_per_pyeong"])
+            return None, None
+        return float(rows[0]["price_per_pyeong"]), rows[0].get("ts")
 
     async def _record_from_row(self, row: Any) -> BacktestRecord:
         meta = _meta(row)
@@ -118,15 +121,14 @@ class Backtester:
             bias_warnings_issued=len(meta.get("bias_warnings") or []),
         )
 
-        base = await self._price_as_of(complex_id, vday)
+        base, base_ts = await self._price_as_of(complex_id, vday)
         changes: dict[int, float | None] = {}
         for h in (3, 6, 12):
-            later = await self._price_as_of(complex_id, _add_months(vday, h))
-            changes[h] = (
-                round((later / base - 1.0) * 100.0, 4)
-                if base and later is not None
-                else None
-            )
+            later, later_ts = await self._price_as_of(complex_id, _add_months(vday, h))
+            if base and later is not None and later_ts is not None and later_ts != base_ts:
+                changes[h] = round((later / base - 1.0) * 100.0, 4)
+            else:
+                changes[h] = None
         record.actual_price_change_3m = changes[3]
         record.actual_price_change_6m = changes[6]
         record.actual_price_change_12m = changes[12]

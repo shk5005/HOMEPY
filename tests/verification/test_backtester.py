@@ -63,9 +63,12 @@ class MockTimescale:
             key = None if delta < 45 else "actual_3m" if delta < 135 else (
                 "actual_6m" if delta < 270 else "actual_12m")
             if key is None:
-                return [{"price_per_pyeong": 100.0}]
+                return [{"price_per_pyeong": 100.0, "ts": v["ts"]}]
             pct = v.get(key)
-            return [] if pct is None else [{"price_per_pyeong": 100.0 * (1 + pct / 100)}]
+            if pct is None:
+                return []
+            trade_ts = v["ts"] + timedelta(days=delta)
+            return [{"price_per_pyeong": 100.0 * (1 + pct / 100), "ts": trade_ts}]
         raise AssertionError(query)
 
     @staticmethod
