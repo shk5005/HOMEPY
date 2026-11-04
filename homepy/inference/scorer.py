@@ -8,6 +8,7 @@ interest rates) are flipped during normalization.
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
@@ -65,6 +66,16 @@ class InvestmentScore:
     computed_at: datetime
 
 
+_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _validate_id(complex_id: str) -> str:
+    """Reject IDs that could alter a TypeQL query when interpolated."""
+    if not isinstance(complex_id, str) or not _ID_RE.fullmatch(complex_id):
+        raise ValueError(f"invalid complex_id: {complex_id!r}")
+    return complex_id
+
+
 def minmax(value: float, lo: float, hi: float, invert: bool = False) -> float:
     """Min-max normalize to 0-100, clamped. ``invert`` flips direction."""
     if hi == lo:
@@ -109,7 +120,7 @@ def _make(name: str, raw: float, normalized: float, evidence: list[str]) -> Fact
 
 
 def _no_data(name: str, what: str) -> FactorScore:
-    return _make(name, 0.0, NEUTRAL, [f"No data for {what}; neutral score {NEUTRAL:.0f} applied"])
+    return _make(name, 0.0, NEUTRAL, [f"No data available for {what}; neutral score {NEUTRAL:.0f} applied"])
 
 
 class InvestmentScorer:
@@ -127,6 +138,7 @@ class InvestmentScorer:
 
     # ---- public API ------------------------------------------------------
     async def score(self, complex_id: str) -> InvestmentScore:
+        complex_id = _validate_id(complex_id)
         calcs: list[Callable[[str], Awaitable[FactorScore]]] = [
             getattr(self, f"_calc_{name}") for name in FACTOR_WEIGHTS
         ]
@@ -180,8 +192,7 @@ class InvestmentScorer:
             "(complex: $c, project: $p) isa near_development; get $stage_weight;"
         )
         if not rows:
-            return _make("development_upside", 0.0, 0.0,
-                         ["No nearby development projects found"])
+            return _no_data("development_upside", "development projects")
         weights = [w for w in (_num(r, "stage_weight") for r in rows) if w is not None]
         if not weights:
             return _no_data("development_upside", "development project stages")
@@ -197,7 +208,7 @@ class InvestmentScorer:
             "(complex: $c, regulation: $r) isa regulated_by; get $severity;"
         )
         if not rows:
-            return _make("regulation_impact", 0.0, 100.0, ["No active regulations apply"])
+            return _no_data("regulation_impact", "regulations")
         sev = [s for s in (_num(r, "severity") for r in rows) if s is not None]
         if not sev:
             return _no_data("regulation_impact", "regulation severity")

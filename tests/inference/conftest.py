@@ -12,6 +12,7 @@ class _MockBase:
         self.responses = dict(responses)
         self._override: list | None = None
         self.calls: list[str] = []
+        self.call_args: list[tuple] = []
 
     def set_response(self, rows: list) -> None:
         self._override = rows
@@ -19,8 +20,9 @@ class _MockBase:
     def set_response_for(self, substring: str, rows: list) -> None:
         self.responses[substring] = rows
 
-    def _lookup(self, query: str) -> list:
+    def _lookup(self, query: str, args: tuple = ()) -> list:
         self.calls.append(query)
+        self.call_args.append(args)
         if self._override is not None:
             return self._override
         for sub, rows in self.responses.items():
@@ -40,7 +42,7 @@ class MockTimescaleService(_MockBase):
     """Async, like the real TimescaleService."""
 
     async def execute(self, query: str, *args):
-        return self._lookup(query)
+        return self._lookup(query, args)
 
 
 TYPEDB_DEFAULTS = {

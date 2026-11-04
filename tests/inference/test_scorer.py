@@ -108,13 +108,13 @@ async def test_transport_access_closer_is_better(mock_typedb, mock_timescale):
 async def test_development_upside_more_is_better(mock_typedb, mock_timescale):
     mock_typedb.set_response_for("factor:development_upside", [{"stage_weight": 1.0}] * 3)
     g = await _factor(mock_typedb, mock_timescale, "development_upside")
-    mock_typedb.set_response_for("factor:development_upside", [])
+    mock_typedb.set_response_for("factor:development_upside", [{"stage_weight": 0.0}])
     b = await _factor(mock_typedb, mock_timescale, "development_upside")
     assert g.normalized > b.normalized
 
 
 async def test_regulation_impact_is_inverse(mock_typedb, mock_timescale):
-    mock_typedb.set_response_for("factor:regulation_impact", [])
+    mock_typedb.set_response_for("factor:regulation_impact", [{"severity": 0}])
     g = await _factor(mock_typedb, mock_timescale, "regulation_impact")
     mock_typedb.set_response_for("factor:regulation_impact", [{"severity": 3}, {"severity": 3}])
     b = await _factor(mock_typedb, mock_timescale, "regulation_impact")
@@ -154,3 +154,28 @@ async def test_weighted_score_and_total(mock_typedb, mock_timescale):
                                  (50, "C"), (49.9, "D"), (35, "D"), (34.9, "F"), (0, "F")])
 def test_grade_boundaries(s, g):
     assert grade_for(s) == g
+
+
+@pytest.mark.parametrize("name", ["regulation_impact", "development_upside"])
+async def test_empty_typedb_result_is_neutral(mock_typedb, mock_timescale, name):
+    mock_typedb.set_response_for(f"factor:{name}", [])
+    f = await _factor(mock_typedb, mock_timescale, name)
+    assert f.normalized == 50.0
+    assert "no data available" in " ".join(f.evidence).lower()
+
+
+@pytest.mark.parametrize("bad", ['C1" ; delete $x;', "", "C 1", "C001\n", "a'b"])
+async def test_invalid_complex_id_rejected(mock_typedb, mock_timescale, bad):
+    with pytest.raises(ValueError):
+        await InvestmentScorer(mock_typedb, mock_timescale).score(bad)
+    assert mock_typedb.calls == [] and mock_timescale.calls == []
+
+
+async def test_complex_id_propagates_to_queries(mock_typedb, mock_timescale):
+    await InvestmentScorer(mock_typedb, mock_timescale).score("C999")
+    assert mock_typedb.calls
+    assert all("C999" in q and "C001" not in q for q in mock_typedb.calls)
+    assert mock_timescale.call_args
+    assert all(a == ("C999",) for q, a in zip(mock_timescale.calls, mock_timescale.call_args)
+               if "$1" in q)
+    assert any("C999" in a for a in mock_timescale.call_args)
