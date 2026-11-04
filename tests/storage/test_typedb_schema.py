@@ -59,3 +59,39 @@ def test_all_relation_types_exist(typedb_client):
             for name in expected_relations:
                 concept = tx.concepts.get_relation_type(name).resolve()
                 assert concept is not None, f"Relation type '{name}' missing"
+
+
+def test_rules_load_without_error(typedb_client):
+    # schema.tql already loaded by earlier test in this module
+    with open("storage/typedb/rules.tql") as f:
+        rules = f.read()
+    with typedb_client.session(DB_NAME, SessionType.SCHEMA) as session:
+        with session.transaction(TransactionType.WRITE) as tx:
+            tx.query.define(rules)
+            tx.commit()
+
+
+def test_undervalued_rule_fires(typedb_client):
+    """Insert a complex near a subway with price below district avg;
+    verify undervalued-signal is inferred."""
+    with typedb_client.session(DB_NAME, SessionType.DATA) as session:
+        with session.transaction(TransactionType.WRITE) as tx:
+            tx.query.insert("""
+                insert
+                $d isa dong, has dong-code "11010", has dong-name "test-dong";
+                $c isa complex, has complex-id "C001", has complex-name "test",
+                    has price-per-sqm 15000000, has district-avg-price 20000000,
+                    has total-units 500, has built-year 2000,
+                    has floor-area-ratio 250.0, has building-coverage 60.0;
+                $inf isa infrastructure, has infra-id "S001",
+                    has infra-name "test-station", has infra-type "subway",
+                    has infra-status "operating";
+                (parent: $d, child: $c) isa spatial-hierarchy;
+                (location: $c, facility: $inf) isa accessibility,
+                    has distance-meter 300, has travel-time-min 5;
+            """)
+            tx.commit()
+        with session.transaction(TransactionType.READ) as tx:
+            result = tx.query.get("match (subject: $c) isa undervalued-signal; get $c;")
+            answers = list(result)
+            assert len(answers) >= 1

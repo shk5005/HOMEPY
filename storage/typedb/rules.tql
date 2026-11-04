@@ -1,0 +1,281 @@
+define
+
+  # ---------- Inferred relation types (produced by rules below) ----------
+  recovery-signal sub relation,
+    relates trigger,
+    relates amplifier;
+  interest-rate plays recovery-signal:trigger;
+  liquidity plays recovery-signal:amplifier;
+
+  downward-pressure sub relation,
+    relates pressure-source,
+    relates debt-risk;
+  interest-rate plays downward-pressure:pressure-source;
+  liquidity plays downward-pressure:debt-risk;
+
+  loan-blocked-signal sub relation,
+    relates blocked-area,
+    relates blocking-rule;
+  district plays loan-blocked-signal:blocked-area;
+  loan-regulation-rule plays loan-blocked-signal:blocking-rule;
+
+  purchasing-power-squeeze sub relation,
+    relates constrained-district,
+    relates cause;
+  district plays purchasing-power-squeeze:constrained-district;
+  loan-regulation-rule plays purchasing-power-squeeze:cause;
+
+  tax-lockin-signal sub relation,
+    relates locked-area,
+    relates locking-tax;
+  district plays tax-lockin-signal:locked-area;
+  cgt-rate-rule plays tax-lockin-signal:locking-tax;
+
+  holding-cost-pressure sub relation,
+    relates pressured-complex,
+    relates tax-cause;
+  complex plays holding-cost-pressure:pressured-complex;
+  crt-rate-rule plays holding-cost-pressure:tax-cause;
+
+  tax-relief-opportunity sub relation,
+    relates opportunity-area;
+  district plays tax-relief-opportunity:opportunity-area;
+
+  supply-demand-gap-up sub relation,
+    relates shortage-area;
+  district plays supply-demand-gap-up:shortage-area;
+
+  supply-demand-gap-down sub relation,
+    relates oversupplied-area;
+  district plays supply-demand-gap-down:oversupplied-area;
+
+  undervalued-signal sub relation,
+    relates subject;
+  complex plays undervalued-signal:subject;
+
+  strong-buy-signal sub relation,
+    relates buy-candidate,
+    relates macro-support,
+    relates tax-support;
+  complex plays strong-buy-signal:buy-candidate;
+  interest-rate plays strong-buy-signal:macro-support;
+  district plays strong-buy-signal:tax-support;
+
+  cycle-peak-danger sub relation,
+    relates warning-area,
+    relates cycle-risk;
+  district plays cycle-peak-danger:warning-area;
+  real-estate-cycle plays cycle-peak-danger:cycle-risk;
+
+  reverse-jeonse-danger sub relation,
+    relates risk-area;
+  district plays reverse-jeonse-danger:risk-area;
+
+  gap-risk-signal sub relation,
+    relates risky-area;
+  district plays gap-risk-signal:risky-area;
+
+  transport-premium sub relation,
+    relates candidate,
+    relates catalyst;
+  complex plays transport-premium:candidate;
+  development-project plays transport-premium:catalyst;
+
+  reconstruction-deep-value sub relation,
+    relates long-term-target,
+    relates regulated-dong;
+  complex plays reconstruction-deep-value:long-term-target;
+  dong plays reconstruction-deep-value:regulated-dong;
+
+  # ---------- Rules ----------
+
+  rule monetary-easing-signal:
+    when {
+      $ir isa interest-rate, has rate-direction "falling", has indicator-date $d1;
+      $lq isa liquidity, has m2-growth-rate $m2g, has indicator-date $d2;
+      $d1 == $d2; $m2g > 5.0;
+    } then {
+      (trigger: $ir, amplifier: $lq) isa recovery-signal;
+    };
+
+  rule rate-hike-pressure:
+    when {
+      $ir isa interest-rate, has base-rate $br, has rate-direction "rising";
+      $lq isa liquidity, has household-credit-growth $hcg;
+      $hcg > 6.0; $br > 3.0;
+    } then {
+      (pressure-source: $ir, debt-risk: $lq) isa downward-pressure;
+    };
+
+  rule multi-owner-loan-block:
+    when {
+      $zd isa zone-designation, has zone-type "adjusted-target", has is-active true;
+      $dist isa district;
+      (designation: $zd, target-district: $dist) isa zone-applied-to;
+      $lr isa loan-regulation-rule,
+        has target-area-type "adjusted-target",
+        has buyer-type "multi-owner",
+        has ltv-limit $ltv;
+      $ltv <= 0;
+    } then {
+      (blocked-area: $dist, blocking-rule: $lr) isa loan-blocked-signal;
+    };
+
+  rule dsr-purchasing-power:
+    when {
+      $lr isa loan-regulation-rule, has dsr-limit $dsr, has dsr-stress-rate $stress;
+      $ir isa interest-rate, has mortgage-rate-avg $mr;
+      $dist isa district;
+      (constraint-rule: $lr, constrained-area: $dist) isa loan-constraint;
+      $effective-rate = $mr + $stress;
+      $effective-rate > 5.5;
+    } then {
+      (constrained-district: $dist, cause: $lr) isa purchasing-power-squeeze;
+    };
+
+  rule cgt-lockin-effect:
+    when {
+      $cgt isa cgt-rate-rule, has area-type "adjusted-target",
+        has owner-count $oc, has surcharge-pct $sc;
+      $oc >= 2; $sc >= 20;
+      $dist isa district;
+      (cgt-rule: $cgt, taxed-area: $dist) isa cgt-applies-to;
+      $zd isa zone-designation, has zone-type "adjusted-target", has is-active true;
+      (designation: $zd, target-district: $dist) isa zone-applied-to;
+    } then {
+      (locked-area: $dist, locking-tax: $cgt) isa tax-lockin-signal;
+    };
+
+  rule crt-selling-pressure:
+    when {
+      $crt isa crt-rate-rule, has owner-count $oc, has tax-rate-pct $rate;
+      $oc >= 2; $rate >= 1.2;
+      $c isa complex;
+      (crt-rule: $crt, taxed-complex: $c) isa crt-applies-to;
+    } then {
+      (pressured-complex: $c, tax-cause: $crt) isa holding-cost-pressure;
+    };
+
+  rule acquisition-tax-relief:
+    when {
+      $at1 isa acquisition-tax-rate, has buyer-type "multi-owner",
+        has area-type "adjusted-target", has tax-rate-pct $old-rate;
+      $at2 isa acquisition-tax-rate, has buyer-type "multi-owner",
+        has area-type "non-regulated", has tax-rate-pct $new-rate;
+      $old-rate > $new-rate;
+      $dist isa district;
+      $zd isa zone-designation, has zone-type "adjusted-target", has is-active false;
+      (designation: $zd, target-district: $dist) isa zone-applied-to;
+    } then {
+      (opportunity-area: $dist) isa tax-relief-opportunity;
+    };
+
+  rule supply-shortage-pressure:
+    when {
+      $sd isa supply-data, has completions $comp;
+      $md isa migration-data, has net-migration $mig;
+      $dist isa district;
+      (supply-data: $sd, supply-area: $dist) isa supply-in-area;
+      (demand-data: $md, demand-area: $dist) isa demand-in-area;
+      $mig > 1000; $comp < 3000;
+    } then {
+      (shortage-area: $dist) isa supply-demand-gap-up;
+    };
+
+  rule oversupply-risk:
+    when {
+      $sd isa supply-data, has completions $comp;
+      $ui isa unsold-inventory, has unsold-total $unsold;
+      $md isa migration-data, has net-migration $mig;
+      $dist isa district;
+      (supply-data: $sd, supply-area: $dist) isa supply-in-area;
+      (supply-data: $ui, supply-area: $dist) isa supply-in-area;
+      (demand-data: $md, demand-area: $dist) isa demand-in-area;
+      $comp > 10000; $mig < 0; $unsold > 500;
+    } then {
+      (oversupplied-area: $dist) isa supply-demand-gap-down;
+    };
+
+  rule undervalued-complex:
+    when {
+      $c isa complex, has complex-id $cid;
+      $d isa dong;
+      (parent: $d, child: $c) isa spatial-hierarchy;
+      (location: $c, facility: $inf) isa accessibility, has distance-meter $dist;
+      $dist < 500;
+      $inf isa infrastructure, has infra-type "subway";
+      $c has price-per-sqm $price;
+      $c has district-avg-price $avg;
+      $price < $avg;
+    } then {
+      (subject: $c) isa undervalued-signal;
+    };
+
+  rule strong-buy-candidate:
+    when {
+      $c isa complex;
+      (subject: $c) isa undervalued-signal;
+      $dist isa district; $dong isa dong;
+      (parent: $dist, child: $dong) isa spatial-hierarchy;
+      (parent: $dong, child: $c) isa spatial-hierarchy;
+      (trigger: $ir, amplifier: $lq) isa recovery-signal;
+      (opportunity-area: $dist) isa tax-relief-opportunity;
+    } then {
+      (buy-candidate: $c, macro-support: $ir, tax-support: $dist) isa strong-buy-signal;
+    };
+
+  rule cycle-peak-warning:
+    when {
+      $rc isa real-estate-cycle, has cycle-phase "peak";
+      $ir isa interest-rate, has rate-direction "rising";
+      $co isa cycle-observation, has price-change-yoy $yoy;
+      $yoy > 15.0;
+      $dist isa district;
+      (observation: $co, observed-district: $dist) isa cycle-observed-at;
+    } then {
+      (warning-area: $dist, cycle-risk: $rc) isa cycle-peak-danger;
+    };
+
+  rule reverse-jeonse-risk:
+    when {
+      $ms isa market-sentiment, has jeonse-ratio $jr; $jr > 0.75;
+      $ir isa interest-rate, has rate-direction "rising";
+      $sd isa supply-data, has completions $comp; $comp > 5000;
+      $dist isa district;
+      (observed-area: $dist, sentiment-data: $ms) isa sentiment-observation;
+      (supply-data: $sd, supply-area: $dist) isa supply-in-area;
+    } then {
+      (risk-area: $dist) isa reverse-jeonse-danger;
+    };
+
+  rule gap-investment-risk:
+    when {
+      $dist isa district;
+      (observed-area: $dist, sentiment-data: $s) isa sentiment-observation;
+      $s isa market-sentiment, has jeonse-ratio $jr, has buyer-sentiment $bs;
+      $jr > 0.70; $bs < 40;
+    } then {
+      (risky-area: $dist) isa gap-risk-signal;
+    };
+
+  rule development-spillover:
+    when {
+      $dp isa development-project, has project-type "GTX";
+      $c isa complex;
+      (project: $dp, beneficiary: $c) isa development-influence,
+        has influence-radius-km $r;
+      $r <= 2.0;
+    } then {
+      (candidate: $c, catalyst: $dp) isa transport-premium;
+    };
+
+  rule land-permit-reconstruction-play:
+    when {
+      $dong isa dong, has land-transaction-permit true;
+      $c isa complex;
+      (parent: $dong, child: $c) isa spatial-hierarchy;
+      $c has reconstruction-eligible true;
+      $c has built-year $yr; $yr < 1990;
+    } then {
+      (long-term-target: $c, regulated-dong: $dong) isa reconstruction-deep-value;
+    };
