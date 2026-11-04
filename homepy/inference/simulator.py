@@ -10,15 +10,20 @@ recomputed. The base score object is never mutated.
 from __future__ import annotations
 
 import copy
+import logging
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
 from homepy.inference.scorer import (
+    FACTOR_RANGES,
     FactorScore,
     InvestmentScore,
     grade_for,
     minmax,
 )
+
+_log = logging.getLogger(__name__)
 
 DEFAULT_VARIABLES: list[str] = [
     "supply_demand_gap",
@@ -29,22 +34,6 @@ DEFAULT_VARIABLES: list[str] = [
 ]
 
 PERTURBATION_SIGMAS: list[float] = [-2.0, -1.0, 0.0, 1.0, 2.0]
-
-# (lo, hi, invert) -- mirrors the normalization ranges in scorer.py.
-FACTOR_RANGES: dict[str, tuple[float, float, bool]] = {
-    "valuation_gap": (-30, 30, False),
-    "price_momentum": (-10, 15, False),
-    "jeonse_ratio_trend": (-10, 10, False),
-    "interest_rate_cycle": (-100, 100, True),
-    "liquidity_trend": (-50, 50, False),
-    "supply_demand_gap": (-50, 50, False),
-    "unsold_risk": (0, 10, True),
-    "migration_momentum": (-1, 1, False),
-    "transport_access": (300, 1500, True),
-    "development_upside": (0, 3, False),
-    "regulation_impact": (0, 6, True),
-    "tax_burden": (0, 15, True),
-}
 
 # Fallback sigma (in raw units) when TimescaleDB has no history.
 DEFAULT_SIGMAS: dict[str, float] = {
@@ -129,6 +118,9 @@ class ScenarioSimulator:
         try:
             rows = await self.ts.execute(SIGMA_QUERY.format(var=variable), variable, complex_id)
         except Exception:
+            _log.warning(
+                "sigma query failed for %s/%s, using default", variable, complex_id, exc_info=True
+            )
             rows = []
         sigma = None
         if rows:
@@ -141,7 +133,7 @@ class ScenarioSimulator:
                     sigma = float(v)
                 except (TypeError, ValueError):
                     sigma = None
-        if sigma is None or sigma <= 0:
+        if sigma is None or not math.isfinite(sigma) or sigma <= 0:
             sigma = DEFAULT_SIGMAS[variable]
         return sigma
 
@@ -165,7 +157,9 @@ class ScenarioSimulator:
 
         sensitivity: list[SensitivityResult] = []
         for v in variables:
-            base_raw = by_name[v].raw_value if v in by_name else 0.0
+            if v not in by_name:
+                raise ValueError(f"variable {v!r} not found in base score factors")
+            base_raw = by_name[v].raw_value
             impacts: list[float] = []
             perts: list[float] = []
             for k in PERTURBATION_SIGMAS:

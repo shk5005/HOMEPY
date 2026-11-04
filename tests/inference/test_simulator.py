@@ -103,3 +103,23 @@ async def test_deep_copy_isolation(sigma_ts):
 async def test_unknown_variable_rejected(mock_scorer, sigma_ts):
     with pytest.raises(ValueError):
         await ScenarioSimulator(mock_scorer, sigma_ts).simulate("C001", variables=["nope"])
+
+
+def test_factor_ranges_match_scorer():
+    """Simulator's FACTOR_RANGES is the scorer's -- not a copy."""
+    from homepy.inference.scorer import FACTOR_RANGES as SCORER_RANGES
+    from homepy.inference.simulator import FACTOR_RANGES as SIM_RANGES
+
+    assert SIM_RANGES is SCORER_RANGES
+
+
+async def test_missing_factor_in_base_raises(sigma_ts):
+    class EmptyFactorScorer(MockInvestmentScorer):
+        async def score(self, complex_id):
+            score = await super().score(complex_id)
+            score.factors = []
+            return score
+
+    sim = ScenarioSimulator(EmptyFactorScorer(), sigma_ts)
+    with pytest.raises(ValueError, match="not found in base score"):
+        await sim.simulate("X1", variables=["supply_demand_gap"])

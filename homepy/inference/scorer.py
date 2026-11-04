@@ -33,6 +33,22 @@ FACTOR_WEIGHTS: dict[str, float] = {
     "sentiment_composite": 0.10,
 }
 
+# (lo, hi, invert) normalization ranges, shared with the simulator.
+FACTOR_RANGES: dict[str, tuple[float, float, bool]] = {
+    "valuation_gap": (-30, 30, False),
+    "price_momentum": (-10, 15, False),
+    "jeonse_ratio_trend": (-10, 10, False),
+    "interest_rate_cycle": (-100, 100, True),
+    "liquidity_trend": (-50, 50, False),
+    "supply_demand_gap": (-50, 50, False),
+    "unsold_risk": (0, 10, True),
+    "migration_momentum": (-1, 1, False),
+    "transport_access": (300, 1500, True),
+    "development_upside": (0, 3, False),
+    "regulation_impact": (0, 6, True),
+    "tax_burden": (0, 15, True),
+}
+
 GRADE_BOUNDARIES: list[tuple[float, str]] = [(80, "A"), (65, "B"), (50, "C"), (35, "D")]
 
 NEUTRAL = 50.0
