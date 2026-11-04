@@ -7,11 +7,11 @@ TITLE = "HOMEPY — 부동산 투자 의사결정 시스템"
 NAV = [
     ("시장 대시보드", "pages/01_market_dashboard.py"),
     ("시그널 보드", "pages/02_signal_board.py"),
-    ("단지 분석", None),
+    ("단지 분석", "pages/03_deep_analysis.py"),
     ("투자 판단", None),
-    ("시나리오 시뮬레이션", None),
-    ("세금 시뮬레이션", None),
-    ("대출 시뮬레이션", None),
+    ("시나리오 시뮬레이션", "pages/04_scenario_sim.py"),
+    ("세금 시뮬레이션", "pages/05_tax_calculator.py"),
+    ("대출 시뮬레이션", "pages/06_loan_calculator.py"),
     ("온톨로지 그래프", None),
     ("파이프라인 상태", None),
 ]
