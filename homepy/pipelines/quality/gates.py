@@ -48,11 +48,13 @@ class QualityGate:
         n = len(df)
 
         null_by_col = {c: float(df[c].isna().mean()) for c in df.columns} if n else {}
-        null_ratio = max(null_by_col.values(), default=0.0)
+        # Overall ratio (null cells / all cells): optional columns must not block the pipeline.
+        total_cells = n * len(df.columns)
+        null_ratio = float(df.isna().sum().sum() / total_cells) if total_cells else 0.0
         details["null_ratio_by_column"] = null_by_col
         if null_ratio > self.null_ratio_max:
-            bad = sorted(c for c, r in null_by_col.items() if r > self.null_ratio_max)
-            failures.append(f"null ratio {null_ratio:.3f} > {self.null_ratio_max} in {bad}")
+            bad = sorted(c for c, r in null_by_col.items() if r > 0)
+            failures.append(f"null ratio {null_ratio:.3f} > {self.null_ratio_max} (columns with nulls: {bad})")
 
         subset = [c for c in (duplicate_subset or []) if c in df.columns] or None
         dup_ratio = float(df.duplicated(subset=subset).mean()) if n else 0.0

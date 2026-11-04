@@ -71,3 +71,25 @@ def test_quality_gate_thresholds():
     assert QualityGate(0.05, 0.01, True).check(df, {"a": "float"}).passed
     assert not QualityGate(0.05, 0.01, True).check(df, {"b": "float"}).passed
     assert QualityGate(0.05, 0.01, False).check(df, {"b": "float"}).passed
+
+
+def test_mixed_naive_and_offset_timestamps_do_not_crash(tmp_path):
+    p = _write(tmp_path, pd.DataFrame({
+        "ts": ["2026-01-01 09:00:00", "2026-01-01 09:00:00+09:00", "2026-01-01 00:00:00+00:00"],
+        "v": [1.0, 2.0, 3.0],
+    }))
+    df = pd.read_parquet(clean_source("test", p).output_path)
+    assert str(df["ts"].dt.tz) == "UTC"
+    assert (df["ts"] == pd.Timestamp("2026-01-01 00:00", tz="UTC")).all()
+
+
+def test_registry_uses_collector_source_names():
+    from homepy.pipelines.stages.clean import SOURCE_RULES
+    assert "regulation_monitor" in SOURCE_RULES and "tax_rule_monitor" in SOURCE_RULES
+    assert "regulation" not in SOURCE_RULES and "tax_rule" not in SOURCE_RULES
+
+
+def test_null_ratio_is_overall_not_per_column():
+    cols = {f"c{i}": [float(j) for j in range(10)] for i in range(25)}
+    cols["optional"] = [None] * 10  # 100% null column, overall 1/26 ~ 3.8%
+    assert QualityGate().check(pd.DataFrame(cols), {}).passed

@@ -29,9 +29,9 @@ SOURCE_RULES: dict[str, dict] = {
                              "schema": {"ts": "datetime", "district_code": "str", "official_price": "float"}},
     "loan_rates": {"dedup_keys": ["ts", "loan_type", "lender_type", "interest_type"],
                    "schema": {"ts": "datetime", "rate_min": "float", "rate_max": "float"}},
-    "regulation": {"dedup_keys": ["ts", "zone_type", "district_code", "action"],
+    "regulation_monitor": {"dedup_keys": ["ts", "zone_type", "district_code", "action"],
                    "schema": {"ts": "datetime", "zone_type": "str"}},
-    "tax_rule": {"dedup_keys": ["ts", "law_name", "article", "change_type"],
+    "tax_rule_monitor": {"dedup_keys": ["ts", "law_name", "article", "change_type"],
                  "schema": {"ts": "datetime", "law_name": "str"}},
     "sentiment": {"dedup_keys": ["ts", "district_code"],
                   "schema": {"ts": "datetime", "district_code": "str"}},
@@ -43,14 +43,37 @@ def _rules_for(source_name: str) -> dict:
     return SOURCE_RULES.get(source_name, DEFAULT_RULES)
 
 
+def _one_ts_to_utc(value) -> pd.Timestamp:
+    try:
+        t = pd.Timestamp(value)
+    except (ValueError, TypeError):
+        return pd.NaT
+    if pd.isna(t):
+        return pd.NaT
+    if t.tzinfo is None:
+        try:
+            t = t.tz_localize(SOURCE_TIMEZONE, ambiguous="NaT", nonexistent="NaT")
+        except (ValueError, TypeError):
+            return pd.NaT
+        if pd.isna(t):
+            return pd.NaT
+    return t.tz_convert("UTC")
+
+
 def _ts_to_utc(series: pd.Series) -> pd.Series:
     """Parse to datetime; naive values are KST, tz-aware are converted; result is UTC."""
-    parsed = pd.to_datetime(series, errors="coerce", utc=False)
-    if not pd.api.types.is_datetime64_any_dtype(parsed):  # e.g. all-None / mixed offsets
-        parsed = pd.to_datetime(series, errors="coerce", utc=True)
-    if parsed.dt.tz is None:
-        parsed = parsed.dt.tz_localize(SOURCE_TIMEZONE, ambiguous="NaT", nonexistent="NaT")
-    return parsed.dt.tz_convert("UTC")
+    try:
+        parsed = pd.to_datetime(series, errors="coerce", utc=False)
+        if not pd.api.types.is_datetime64_any_dtype(parsed):  # e.g. all-None
+            parsed = pd.to_datetime(series, errors="coerce", utc=True)
+        if parsed.isna().sum() > series.isna().sum():
+            raise ValueError("values coerced to NaT; retry per value")
+        if parsed.dt.tz is None:
+            parsed = parsed.dt.tz_localize(SOURCE_TIMEZONE, ambiguous="NaT", nonexistent="NaT")
+        return parsed.dt.tz_convert("UTC")
+    except ValueError:  # mixed naive/offset-bearing values: convert one by one
+        converted = [_one_ts_to_utc(v) for v in series]
+        return pd.Series(pd.to_datetime(converted, utc=True), index=series.index, name=series.name)
 
 
 def _standardize_codes(df: pd.DataFrame) -> pd.DataFrame:
