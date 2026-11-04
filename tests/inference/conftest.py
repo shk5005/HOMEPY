@@ -107,18 +107,24 @@ class MockInvestmentScorer:
         if overrides:
             self.raw.update(overrides)
         self.calls: list[str] = []
+        self.missing_factors = 0
+
+    def set_sparse_data(self, missing_factors: int) -> None:
+        """Mark the first N factors as having no data in their evidence."""
+        self.missing_factors = missing_factors
 
     async def score(self, complex_id: str) -> InvestmentScore:
         self.calls.append(complex_id)
         factors = []
-        for name, w in FACTOR_WEIGHTS.items():
+        for i, (name, w) in enumerate(FACTOR_WEIGHTS.items()):
             if name in FACTOR_RANGES:
                 lo, hi, inv = FACTOR_RANGES[name]
                 raw = self.raw.get(name, (lo + hi) / 2)
                 norm = minmax(raw, lo, hi, invert=inv)
             else:
                 raw, norm = 0.0, 50.0
-            factors.append(FactorScore(name, raw, norm, w, norm * w, [f"mock {name}"]))
+            ev = f"no data for {name}" if i < self.missing_factors else f"mock {name}"
+            factors.append(FactorScore(name, raw, norm, w, norm * w, [ev]))
         total = round(sum(f.weighted_score for f in factors), 4)
         return copy.deepcopy(
             InvestmentScore(complex_id, total, grade_for(total), factors, datetime.now(timezone.utc))
