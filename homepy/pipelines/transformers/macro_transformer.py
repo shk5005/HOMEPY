@@ -21,6 +21,7 @@ class MacroTransformer:
             direction = pd.Series("flat", index=out.index, dtype="object")
             direction[delta > FLAT_EPS] = "up"
             direction[delta < -FLAT_EPS] = "down"
+            direction[delta.isna()] = None  # no prior rate -> unknown
             out["rate_direction"] = direction
             if self.cpi_col in out.columns:
                 # cpi column is the CPI inflation rate (%, YoY)

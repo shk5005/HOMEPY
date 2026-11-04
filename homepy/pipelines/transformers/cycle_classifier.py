@@ -78,11 +78,11 @@ class CycleClassifier:
         if "real_interest_rate" not in m.columns and {"base_rate", "cpi"} <= set(m.columns):
             m["real_interest_rate"] = m["base_rate"] - m["cpi"]
         cols = [c for c in ("liquidity_growth_rate", "real_interest_rate") if c in m.columns]
-        if not cols:
+        if len(cols) < 2:
             return nan
         m = m.drop_duplicates("ts").set_index("ts")[cols]
         aligned = m.reindex(out["ts"]).reset_index(drop=True)
         aligned.index = out.index
-        liq = aligned["liquidity_growth_rate"] if "liquidity_growth_rate" in aligned else 0.0
-        real = aligned["real_interest_rate"] if "real_interest_rate" in aligned else 0.0
-        return 100.0 + liq - real
+        if len(cols) < 2:  # any missing component -> NaN, never substitute zero
+            return nan
+        return 100.0 + aligned["liquidity_growth_rate"] - aligned["real_interest_rate"]

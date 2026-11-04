@@ -57,7 +57,7 @@ def test_macro_transformer():
         "m2": [1000.0, 1010.0, 1010.0, 1000.0],
     })
     r = MacroTransformer().transform(df)
-    assert list(r["rate_direction"]) == ["flat", "up", "flat", "down"]
+    assert list(r["rate_direction"]) == [None, "up", "flat", "down"]
     assert list(r["real_interest_rate"]) == pytest.approx([1.0, 1.25, 0.75, 1.0])
     assert pd.isna(r.loc[0, "liquidity_growth_rate"])
     assert r.loc[1, "liquidity_growth_rate"] == pytest.approx(1.0)
@@ -170,3 +170,58 @@ def test_transform_domain_errors(tmp_path):
     p = _cleaned(tmp_path, "other", pd.DataFrame({"a": [1]}))
     with pytest.raises(ValueError):
         transform_domain("macro", {"other": p})
+
+
+def _sd_supply():
+    return pd.DataFrame({"ts": ["2025-01"], "district_code": ["A"],
+                         "supply_units": [100], "unsold_units": [10]})
+
+
+def test_supply_demand_partial_inputs():
+    pop = pd.DataFrame({"ts": ["2025-01"], "district_code": ["A"], "new_households": [80]})
+    mig = pd.DataFrame({"ts": ["2025-01"], "district_code": ["A"], "net_migration": [30]})
+    t = SupplyDemandTransformer()
+    assert "supply_demand_gap" not in t.transform(_sd_supply()).columns
+    assert t.transform(_sd_supply(), pop).iloc[0]["supply_demand_gap"] == -20
+    assert t.transform(_sd_supply(), None, mig).iloc[0]["supply_demand_gap"] == -70
+
+
+def test_price_transformer_aggregates_transactions_to_months():
+    df = pd.DataFrame({
+        "ts": pd.to_datetime(["2025-01-05", "2025-01-20", "2025-02-10", "2025-03-01"], utc=True),
+        "district_code": ["A"] * 4,
+        "price": [100.0, 300.0, 400.0, 600.0],
+        "area_sqm": [1.0] * 4,
+    })
+    r = PriceTransformer().transform(df)
+    assert len(r) == 3
+    assert r["price_per_sqm"].tolist() == pytest.approx([200.0, 400.0, 600.0])
+    assert r.loc[2, "ma_3m"] == pytest.approx(400.0)  # 3 months, not 3 trades
+    assert r["n_trades"].tolist() == [2, 1, 1]
+    assert r.loc[1, "mom_change"] == pytest.approx(100.0)
+
+
+def test_macro_first_row_direction_none():
+    df = pd.DataFrame({"base_rate": [3.0, 3.25]})
+    assert MacroTransformer().transform(df)["rate_direction"].tolist() == [None, "up"]
+
+
+def test_leading_index_nan_when_component_missing():
+    df = pd.DataFrame({"ts": pd.date_range("2025-01", periods=4, freq="MS"), "price_index": range(100, 104)})
+    macro = pd.DataFrame({"ts": df["ts"], "liquidity_growth_rate": [1.0] * 4})
+    assert CycleClassifier().classify(df, macro)["leading_index"].isna().all()
+
+
+def test_sentiment_unalignable_component_warns(caplog):
+    s = pd.DataFrame({"ts": ["2025-01"], "buyer_sentiment": [50]})
+    v = pd.DataFrame({"volume_change": [0.0]})
+    with caplog.at_level("WARNING"):
+        SentimentComposer().compose(s, volume_df=v)
+    assert "dropped" in caplog.text
+
+
+def test_transform_domain_output_date_is_max(tmp_path):
+    a = _cleaned(tmp_path, "bok_ecos", pd.DataFrame({"base_rate": [3.0]}), date="2026-01-01")
+    b = _cleaned(tmp_path, "other", pd.DataFrame({"x": [1]}), date="2026-01-09")
+    out = transform_domain("macro", {"other": b, "bok_ecos": a})
+    assert out.parent.name == "2026-01-09"

@@ -7,7 +7,47 @@ import pandas as pd
 MA_WINDOWS = (3, 6, 12)
 
 
+SUM_HINTS = ("count", "volume", "units")
+
+
 class PriceTransformer:
+    @staticmethod
+    def _aggregate_monthly(df: pd.DataFrame) -> pd.DataFrame:
+        """Collapse transaction-level rows to one row per (district, calendar month).
+
+        No-op when ts is absent or each (district, month) already has one row.
+        Numeric columns are averaged (count/volume/units columns summed); others take the first value.
+        """
+        if "ts" not in df.columns or df.empty:
+            return df
+        ts = pd.to_datetime(df["ts"])
+        tz = ts.dt.tz
+        month = (ts.dt.tz_localize(None) if tz is not None else ts).dt.to_period("M")
+        keys = ["district_code"] if "district_code" in df.columns else []
+        work = df.drop(columns=["ts"]).assign(_month=month.to_numpy())
+        group_cols = keys + ["_month"]
+        if not work.duplicated(group_cols).any():
+            return df
+        agg: dict[str, str] = {}
+        for c in work.columns:
+            if c in group_cols:
+                continue
+            if pd.api.types.is_bool_dtype(work[c]):
+                agg[c] = "max"  # e.g. _outlier: any flagged trade flags the month
+            elif pd.api.types.is_numeric_dtype(work[c]):
+                agg[c] = "sum" if any(h in c.lower() for h in SUM_HINTS) else "mean"
+            else:
+                agg[c] = "first"
+        g = work.groupby(group_cols, sort=False)
+        res = g.agg(agg)
+        res["n_trades"] = g.size()
+        res = res.reset_index()
+        new_ts = pd.PeriodIndex(res.pop("_month"), freq="M").to_timestamp()
+        if tz is not None:
+            new_ts = new_ts.tz_localize(tz)
+        res.insert(0, "ts", new_ts)
+        return res
+
     def transform(self, df: pd.DataFrame) -> pd.DataFrame:
         out = df.copy()
         if "price" in out.columns and "area_sqm" in out.columns:
@@ -17,6 +57,7 @@ class PriceTransformer:
         if "price_per_sqm" not in out.columns:
             return out
 
+        out = self._aggregate_monthly(out)
         if "ts" in out.columns:
             out = out.sort_values("ts", kind="stable").reset_index(drop=True)
 

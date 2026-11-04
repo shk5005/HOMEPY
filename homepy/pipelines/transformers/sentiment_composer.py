@@ -1,8 +1,12 @@
 """Sentiment composer: fear/greed index (0 = extreme fear, 100 = extreme greed)."""
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 WEIGHTS = {"buyer_sentiment": 0.35, "jeonse_ratio": 0.25, "volume_change": 0.25, "search_trend": 0.15}
 JEONSE_FEAR, JEONSE_GREED = 0.9, 0.4   # ratio (fraction) mapped to score 0 / 100
@@ -32,7 +36,10 @@ class SentimentComposer:
                 continue
             keys = [k for k in ("ts", "district_code") if k in out.columns and k in other.columns]
             new = [c for c in other.columns if c in WEIGHTS and c not in out.columns]
-            if keys and new:
+            if not keys:
+                logger.warning("sentiment component frame dropped: no shared keys (ts/district_code) "
+                               "with sentiment_df; columns=%s", list(other.columns))
+            elif new:
                 out = out.merge(other[keys + new].drop_duplicates(keys), on=keys, how="left")
 
         total = pd.Series(0.0, index=out.index)

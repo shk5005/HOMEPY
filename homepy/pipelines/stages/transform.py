@@ -54,14 +54,21 @@ def _check_gate(df: pd.DataFrame, label: str) -> None:
 
 
 def _output_dir(domain: str, cleaned_paths: dict[str, Path], data_dir: Path | str | None) -> Path:
-    first = Path(next(iter(cleaned_paths.values())))
+    paths = sorted(Path(p) for p in cleaned_paths.values())  # deterministic order
+    first = paths[0]
     if data_dir is None:
         data_dir = first.parents[3] if first.parent.parent.parent.name == "cleaned" else first.parent
-    date_str = first.parent.name
-    try:
-        date.fromisoformat(date_str)
-    except ValueError:
+    dates = []
+    for p in paths:
+        try:
+            dates.append(date.fromisoformat(p.parent.name))
+        except ValueError:
+            continue
+    if dates:
+        date_str = max(dates).isoformat()
+    else:
         date_str = date.today().isoformat()
+        logger.warning("no date parsed from cleaned paths for %s; using today (%s)", domain, date_str)
     out = Path(data_dir) / "transformed" / domain / date_str
     out.mkdir(parents=True, exist_ok=True)
     return out

@@ -39,8 +39,11 @@ class SupplyDemandTransformer:
                                      if "district_code" in out.columns else hh.diff())
 
         if "supply_units" in out.columns and ("new_households" in out.columns or "net_migration" in out.columns):
-            demand = (pd.to_numeric(out.get("new_households", 0), errors="coerce").fillna(0)
-                      + pd.to_numeric(out.get("net_migration", 0), errors="coerce").fillna(0))
+            zeros = pd.Series(0.0, index=out.index)
+            hh = out["new_households"] if "new_households" in out.columns else zeros
+            mig = out["net_migration"] if "net_migration" in out.columns else zeros
+            demand = (pd.to_numeric(hh, errors="coerce").fillna(0)
+                      + pd.to_numeric(mig, errors="coerce").fillna(0))
             out["demand"] = demand
             out["supply_demand_gap"] = demand - pd.to_numeric(out["supply_units"], errors="coerce")
         if {"median_price", "median_income"} <= set(out.columns):
