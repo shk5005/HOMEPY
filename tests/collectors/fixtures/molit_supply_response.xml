@@ -1,0 +1,5 @@
+<response><header><resultCode>000</resultCode><resultMsg>OK</resultMsg></header>
+<body><items>
+<item><sggCd>11680</sggCd><dealYm>202601</dealYm><permits>120</permits><starts>95</starts><completions>80</completions><presale>60</presale><unsoldTotal>1,200</unsoldTotal><unsoldAfterCompletion>300</unsoldAfterCompletion></item>
+<item><sggCd>11680</sggCd><dealYm>202602</dealYm><permits>110</permits><starts>90</starts><completions>85</completions><presale>55</presale><unsoldTotal>1,150</unsoldTotal><unsoldAfterCompletion>290</unsoldAfterCompletion></item>
+</items><totalCount>2</totalCount></body></response>

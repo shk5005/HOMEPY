@@ -1,0 +1,5 @@
+<response><header><resultCode>00</resultCode><resultMsg>OK</resultMsg></header>
+<body><items>
+<item><sigunguCd>11680</sigunguCd><bjdongCd>10300</bjdongCd><bldNm>래미안A</bldNm><mainPurpsCdNm>공동주택</mainPurpsCdNm><totArea>45210.55</totArea><grndFlrCnt>25</grndFlrCnt><ugrndFlrCnt>3</ugrndFlrCnt><hhldCnt>420</hhldCnt><useAprDay>20150310</useAprDay></item>
+<item><sigunguCd>11680</sigunguCd><bjdongCd>10300</bjdongCd><bldNm>은마</bldNm><mainPurpsCdNm>공동주택</mainPurpsCdNm><totArea>100000</totArea><grndFlrCnt>14</grndFlrCnt><ugrndFlrCnt>1</ugrndFlrCnt><hhldCnt>4424</hhldCnt><useAprDay>19790801</useAprDay></item>
+</items><totalCount>2</totalCount></body></response>
