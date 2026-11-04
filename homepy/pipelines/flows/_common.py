@@ -10,9 +10,10 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
+from zoneinfo import ZoneInfo
 
 from homepy.pipelines.stages.clean import clean_source
 from homepy.pipelines.stages.load import load_to_timescale
@@ -21,6 +22,8 @@ from homepy.sync.timescale_to_typedb import SyncReport, sync_aggregates_to_typed
 from homepy.sync.typedb_to_timescale import sync_signals_to_timescale
 
 logger = logging.getLogger(__name__)
+
+KST = ZoneInfo("Asia/Seoul")
 
 try:  # pragma: no cover - exercised only when prefect is installed
     from prefect import flow as _prefect_flow
@@ -135,8 +138,8 @@ def _spec(clean_key: str, fn) -> SourceSpec:
     return SourceSpec(clean_key, lambda: fn)
 
 
-# flow-level source name -> spec. interest_rate/exchange_rate/liquidity/macro_index
-# are all series served by the BOK ECOS collector.
+# flow-level source name -> spec. interest_rate/exchange_rate/liquidity
+# are series served by the BOK ECOS collector; macro_index is a KOSIS series.
 SOURCES: dict[str, SourceSpec] = {
     "real_trade": _spec("molit_trade", _trade),
     "interest_rate": _spec("bok_ecos", _bok),
@@ -146,7 +149,7 @@ SOURCES: dict[str, SourceSpec] = {
     "sentiment": _spec("sentiment", _sentiment),
     "complex_info": _spec("molit_building", _building),
     "liquidity": _spec("bok_ecos", _bok),
-    "macro_index": _spec("bok_ecos", _bok),
+    "macro_index": _spec("kosis", _kosis("KOSIS_MACRO_INDEX_STAT_ID")),
     "population": _spec("kosis", _kosis("KOSIS_POPULATION_STAT_ID")),
     "migration": _spec("kosis", _kosis("KOSIS_MIGRATION_STAT_ID")),
     "supply": _spec("molit_supply", _supply),
@@ -218,45 +221,83 @@ async def collect_sources(names: list[str], start: date, end: date, collectors: 
     return raw
 
 
-async def clean_sources(raw: dict[str, Path], clean_keys: dict[str, str], result: FlowResult) -> dict[str, Path]:
-    """Sequentially clean; returns clean_key -> cleaned path for sources that pass the gate."""
+async def clean_sources(raw: dict[str, Path], clean_keys: dict[str, str],
+                        result: FlowResult) -> tuple[dict[str, Path], set[str]]:
+    """Sequentially clean. Returns ``(cleaned, gate_failed)``, both keyed by flow-level source name.
+
+    Sources sharing a clean key but with different raw files are each cleaned. Sources
+    sharing the same raw file are cleaned once and the outcome is reused. ``gate_failed``
+    holds sources whose clean step errored or failed the quality gate in this run.
+    """
     cleaned: dict[str, Path] = {}
-    done: set[Path] = set()
+    gate_failed: set[str] = set()
+    outcomes: dict[Path, Optional[Path]] = {}  # raw path -> cleaned path (None = failed)
     for name, path in raw.items():
         key = clean_keys[name]
-        if key in cleaned or path in done:
-            continue
-        done.add(path)
-        try:
-            res = await clean_task(key, path)
-        except Exception as exc:  # noqa: BLE001
-            logger.error("clean %s failed: %s", key, exc)
-            result.errors.append(f"clean:{key}: {type(exc).__name__}: {exc}")
-            continue
-        result.cleaned_count += 1
-        if not res.passed:
-            logger.error("quality gate failed for %s; excluded from load", key)
-            result.errors.append(f"quality_gate:{key}: failed, load stopped for this source")
-            continue
-        cleaned[key] = Path(res.output_path)
-    return cleaned
+        if path in outcomes:
+            out = outcomes[path]
+        else:
+            out = None
+            try:
+                res = await clean_task(key, path)
+            except Exception as exc:  # noqa: BLE001
+                logger.error("clean %s failed: %s", key, exc)
+                result.errors.append(f"clean:{key}: {type(exc).__name__}: {exc}")
+            else:
+                result.cleaned_count += 1
+                if res.passed:
+                    out = Path(res.output_path)
+                else:
+                    logger.error("quality gate failed for %s; excluded from load", key)
+                    result.errors.append(f"quality_gate:{key}: failed, load stopped for this source")
+            outcomes[path] = out
+        if out is None:
+            gate_failed.add(name)
+        else:
+            cleaned[name] = out
+    return cleaned, gate_failed
 
 
 async def transform_and_load(domains: dict[str, list[str]], cleaned: dict[str, Path], timescale_svc,
-                             result: FlowResult, data_dir: Path | str = "data") -> int:
-    """Transform domains in parallel, then load each. ``domains``: domain -> required+optional clean keys.
+                             result: FlowResult, data_dir: Path | str = "data",
+                             gate_failed: Optional[set[str]] = None,
+                             clean_keys: Optional[dict[str, str]] = None) -> int:
+    """Transform domains in parallel, then load each. ``domains``: domain -> required+optional inputs.
 
-    Keys absent from ``cleaned`` fall back to the latest cleaned file on disk; a domain
-    with no usable input is skipped with an error. Returns rows loaded.
+    ``cleaned`` / ``gate_failed`` are keyed by source name. An input is a source name or a
+    clean key (matching any source with that clean key). Inputs with no fresh file fall back
+    to the latest cleaned file on disk, except that a domain with an input that failed the
+    gate in this run is skipped entirely (no stale fallback). A domain with no freshly
+    cleaned input is skipped with an error. Returns rows loaded.
     """
+    gate_failed = gate_failed or set()
+    if clean_keys is None:
+        clean_keys = {n: s.clean_key for n, s in SOURCES.items()}
+
+    def matches(k: str, names) -> list[str]:
+        return [n for n in names if n == k or clean_keys.get(n) == k]
+
     inputs: dict[str, dict[str, Path]] = {}
     for domain, keys in domains.items():
-        paths = {}
+        paths: dict[str, Path] = {}
+        fresh = False
+        blocked: list[str] = []
         for k in keys:
-            p = cleaned.get(k) or _latest_cleaned(k, data_dir)
-            if p is not None:
-                paths[k] = p
-        if not any(k in cleaned for k in keys):
+            if matches(k, gate_failed):
+                blocked.append(k)
+                continue
+            hit = matches(k, cleaned)
+            if hit:
+                paths[k] = cleaned[hit[0]]
+                fresh = True
+            else:
+                p = _latest_cleaned(clean_keys.get(k, k), data_dir)
+                if p is not None:
+                    paths[k] = p
+        if blocked:
+            result.errors.append(f"transform:{domain}: input failed quality gate ({', '.join(blocked)}), skipped")
+            continue
+        if not fresh:
             result.errors.append(f"transform:{domain}: no freshly cleaned input, skipped")
             continue
         inputs[domain] = paths
@@ -327,13 +368,15 @@ async def run_scheduled(source_names: list[str], domains: dict[str, list[str]], 
     result = FlowResult()
     collectors = collectors or {}
     raw = await collect_sources(source_names, start, end, collectors, result)
-    cleaned = await clean_sources(raw, {n: SOURCES[n].clean_key for n in raw}, result)
+    clean_keys = {n: SOURCES[n].clean_key for n in raw}
+    cleaned, gate_failed = await clean_sources(raw, clean_keys, result)
     async with _Services(timescale_svc, typedb_svc) as svc:
-        await transform_and_load(domains, cleaned, svc.timescale_svc, result, data_dir)
+        await transform_and_load(domains, cleaned, svc.timescale_svc, result, data_dir,
+                                 gate_failed=gate_failed, clean_keys=clean_keys)
         await run_syncs(svc.timescale_svc, svc.typedb_svc, result)
     return result
 
 
 def window(end: date | None, days: int) -> tuple[date, date]:
-    end = end or date.today()
+    end = end or datetime.now(KST).date()
     return end - timedelta(days=days), end

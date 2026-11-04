@@ -7,10 +7,13 @@ from datetime import date
 from homepy.pipelines.flows._common import FlowResult, flow, run_scheduled, window
 
 SOURCE_NAMES = ["liquidity", "population", "migration", "supply", "unsold", "macro_index"]
+# Inputs are source names (population/migration, both KOSIS but distinct raw files) or
+# clean keys. macro_index (KOSIS) is cleaned and loaded with no domain consumer yet:
+# MacroTransformer only accepts bok_ecos input.
 # cycle reclassify also needs reb_index, taken from the latest cleaned file on disk.
 DOMAINS = {
     "macro": ["bok_ecos"],
-    "supply_demand": ["molit_supply", "kosis"],
+    "supply_demand": ["molit_supply", "population", "migration"],
     "cycle": ["reb_index", "bok_ecos"],
 }
 SCHEDULE_CRON = "0 8 15 * *"  # timezone Asia/Seoul

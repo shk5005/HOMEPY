@@ -26,10 +26,10 @@ async def event_pipeline(event_type: str, date: date | None = None, collectors=N
     result = FlowResult()
     start, end = window(date, 1)
     raw = await collect_sources([event_type], start, end, collectors or {}, result)
-    cleaned = await clean_sources(raw, {event_type: SOURCES[event_type].clean_key}, result)
+    cleaned, _ = await clean_sources(raw, {event_type: SOURCES[event_type].clean_key}, result)
     if not cleaned:
         return result
-    path = cleaned[SOURCES[event_type].clean_key]
+    path = cleaned[event_type]
 
     approved = False
     if approve is not None:

@@ -148,3 +148,63 @@ async def test_event_flow_loads_when_approved(tmp_path, services):
 async def test_event_flow_rejects_unknown_type():
     with pytest.raises(ValueError):
         await event_pipeline("bogus")
+
+
+# --- regression: shared clean key / gate-failure leakage -------------------
+
+KOSIS_DF = pd.DataFrame({"ts": TS, "region_code": ["11680", "11680"], "item_code": ["a", "a"],
+                         "value": [1.0, 2.0]})
+
+
+def named_raw(tmp_path, source, filename, df):
+    p = tmp_path / "raw" / source / "2026-01-15" / filename
+    p.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(p, index=False)
+    return p
+
+
+@pytest.fixture
+def spy_transform(monkeypatch, tmp_path):
+    """Record transform inputs per domain; stub transform output and load."""
+    calls = {}
+
+    def fake(domain, paths, *a, **k):
+        calls[domain] = dict(paths)
+        return tmp_path / f"{domain}.parquet"
+
+    monkeypatch.setattr("homepy.pipelines.flows._common.transform_domain", fake)
+    monkeypatch.setattr("homepy.pipelines.flows._common.load_to_timescale", AsyncMock(return_value=1))
+    return calls
+
+
+async def test_monthly_cleans_both_population_and_migration(services, tmp_path, spy_transform):
+    ts, tdb, _ = services
+    supply = named_raw(tmp_path, "molit_supply", "supply.parquet", pd.DataFrame({
+        "ts": TS, "district_code": ["11680", "11680"], "supply": [1, 2]}))
+    pop = named_raw(tmp_path, "kosis", "pop.parquet", KOSIS_DF)
+    mig = named_raw(tmp_path, "kosis", "mig.parquet", KOSIS_DF)
+    c = {n: AsyncMock(side_effect=RuntimeError("x")) for n in ("liquidity", "macro_index")}
+    c.update(supply=AsyncMock(return_value=supply), unsold=AsyncMock(return_value=supply),
+             population=AsyncMock(return_value=pop), migration=AsyncMock(return_value=mig))
+    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    assert result.cleaned_count == 3  # supply (shared by unsold) + population + migration
+    got = spy_transform["supply_demand"]
+    assert got["population"].name == "pop.parquet"
+    assert got["migration"].name == "mig.parquet"
+    assert got["molit_supply"].name == "supply.parquet"
+
+
+async def test_gate_failed_input_does_not_load_stale_data(services, tmp_path, spy_transform):
+    ts, tdb, _ = services
+    # Stale cleaned reb_index exists on disk; bok_ecos (liquidity) fails the gate this run.
+    stale = tmp_path / "cleaned" / "reb_index" / "2025-12-15" / "old.parquet"
+    stale.parent.mkdir(parents=True)
+    pd.DataFrame({"ts": TS}).to_parquet(stale, index=False)
+    bad_bok = named_raw(tmp_path, "bok_ecos", "bad.parquet", pd.DataFrame({"ts": [None, None]}))
+    c = {n: AsyncMock(side_effect=RuntimeError("x"))
+         for n in ("population", "migration", "supply", "unsold", "macro_index")}
+    c["liquidity"] = AsyncMock(return_value=bad_bok)
+    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    assert any(e.startswith("quality_gate:bok_ecos") for e in result.errors)
+    assert "cycle" not in spy_transform and "macro" not in spy_transform
+    assert any(e.startswith("transform:cycle") and "quality gate" in e for e in result.errors)
