@@ -1,0 +1,382 @@
+define
+
+  # ---------- Attributes ----------
+  region-code sub attribute, value string;
+  region-name sub attribute, value string;
+  district-code sub attribute, value string;
+  district-name sub attribute, value string;
+  regulation-zone-type sub attribute, value string;
+  dong-code sub attribute, value string;
+  dong-name sub attribute, value string;
+  complex-id sub attribute, value string;
+  complex-name sub attribute, value string;
+  safety-grade sub attribute, value string;
+  rate-direction sub attribute, value string;
+  capital-flow-direction sub attribute, value string;
+  cycle-phase sub attribute, value string;
+  cycle-sub-phase sub attribute, value string;
+  local-cycle-phase sub attribute, value string;
+  loan-id sub attribute, value string;
+  loan-name sub attribute, value string;
+  loan-type sub attribute, value string;
+  lender-type sub attribute, value string;
+  interest-type sub attribute, value string;
+  regulation-id sub attribute, value string;
+  regulation-name sub attribute, value string;
+  regulation-type sub attribute, value string;
+  rule-id sub attribute, value string;
+  target-area-type sub attribute, value string;
+  target-housing-type sub attribute, value string;
+  buyer-type sub attribute, value string;
+  tax-id sub attribute, value string;
+  tax-name sub attribute, value string;
+  acq-tax-description sub attribute, value string;
+  rate-id sub attribute, value string;
+  housing-price-bracket sub attribute, value string;
+  area-type sub attribute, value string;
+  cgt-description sub attribute, value string;
+  exemption-conditions sub attribute, value string;
+  crt-description sub attribute, value string;
+  owner-type sub attribute, value string;
+  taxable-base-bracket sub attribute, value string;
+  inh-description sub attribute, value string;
+  gift-description sub attribute, value string;
+  relationship-type sub attribute, value string;
+  taxable-bracket sub attribute, value string;
+  pt-description sub attribute, value string;
+  policy-id sub attribute, value string;
+  policy-name sub attribute, value string;
+  policy-category sub attribute, value string;
+  policy-type sub attribute, value string;
+  policy-description sub attribute, value string;
+  designation-id sub attribute, value string;
+  zone-type sub attribute, value string;
+  control-id sub attribute, value string;
+  control-type sub attribute, value string;
+  control-detail sub attribute, value string;
+  subscription-id sub attribute, value string;
+  residency-requirement sub attribute, value string;
+  ownership-restriction sub attribute, value string;
+  age-distribution-json sub attribute, value string;
+  infra-id sub attribute, value string;
+  infra-name sub attribute, value string;
+  infra-type sub attribute, value string;
+  infra-status sub attribute, value string;
+  project-id sub attribute, value string;
+  project-name sub attribute, value string;
+  project-type sub attribute, value string;
+  project-stage sub attribute, value string;
+  total-units sub attribute, value long;
+  built-year sub attribute, value long;
+  room-count sub attribute, value long;
+  unit-count sub attribute, value long;
+  max-term-years sub attribute, value long;
+  holding-period sub attribute, value long;
+  residence-period sub attribute, value long;
+  owner-count sub attribute, value long;
+  required-saving-period sub attribute, value long;
+  total-population sub attribute, value long;
+  household-count sub attribute, value long;
+  net-migration sub attribute, value long;
+  in-migration sub attribute, value long;
+  out-migration sub attribute, value long;
+  permits-issued sub attribute, value long;
+  construction-starts sub attribute, value long;
+  completions sub attribute, value long;
+  presale-volume sub attribute, value long;
+  unsold-total sub attribute, value long;
+  unsold-after-completion sub attribute, value long;
+  redevelopment-units sub attribute, value long;
+  reconstruction-units sub attribute, value long;
+  expected-year sub attribute, value long;
+  transaction-volume sub attribute, value long;
+  floor-area-ratio sub attribute, value double;
+  building-coverage sub attribute, value double;
+  price-per-sqm sub attribute, value double;
+  district-avg-price sub attribute, value double;
+  area-sqm sub attribute, value double;
+  base-rate sub attribute, value double;
+  cd-rate-91d sub attribute, value double;
+  cofix-rate sub attribute, value double;
+  treasury-3y sub attribute, value double;
+  treasury-10y sub attribute, value double;
+  mortgage-rate-avg sub attribute, value double;
+  usd-krw sub attribute, value double;
+  usd-krw-change-pct sub attribute, value double;
+  m2-supply sub attribute, value double;
+  m2-growth-rate sub attribute, value double;
+  household-credit sub attribute, value double;
+  household-credit-growth sub attribute, value double;
+  mortgage-balance-total sub attribute, value double;
+  cpi sub attribute, value double;
+  cpi-change-yoy sub attribute, value double;
+  gdp-growth-rate sub attribute, value double;
+  unemployment-rate sub attribute, value double;
+  leading-index sub attribute, value double;
+  coincident-index sub attribute, value double;
+  lagging-index sub attribute, value double;
+  volume-yoy-change sub attribute, value double;
+  price-momentum sub attribute, value double;
+  inventory-months sub attribute, value double;
+  price-change-mom sub attribute, value double;
+  price-change-yoy sub attribute, value double;
+  jeonse-price-change sub attribute, value double;
+  sale-to-list-ratio sub attribute, value double;
+  current-rate-min sub attribute, value double;
+  current-rate-max sub attribute, value double;
+  target-price-threshold sub attribute, value double;
+  ltv-limit sub attribute, value double;
+  dti-limit sub attribute, value double;
+  dsr-limit sub attribute, value double;
+  dsr-stress-rate sub attribute, value double;
+  tax-rate-pct sub attribute, value double;
+  surtax-rate-pct sub attribute, value double;
+  base-rate-pct sub attribute, value double;
+  surcharge-pct sub attribute, value double;
+  long-term-deduction-pct sub attribute, value double;
+  deduction-threshold sub attribute, value double;
+  deduction-amount sub attribute, value double;
+  household-growth-rate sub attribute, value double;
+  avg-household-size sub attribute, value double;
+  median-household-income sub attribute, value double;
+  pir sub attribute, value double;
+  income-growth-rate sub attribute, value double;
+  unsold-change-mom sub attribute, value double;
+  buyer-sentiment sub attribute, value double;
+  seller-sentiment sub attribute, value double;
+  jeonse-ratio sub attribute, value double;
+  fear-greed-index sub attribute, value double;
+  search-trend-index sub attribute, value double;
+  indicator-date sub attribute, value datetime;
+  cycle-date sub attribute, value datetime;
+  observation-date sub attribute, value datetime;
+  effective-date sub attribute, value datetime;
+  expiry-date sub attribute, value datetime;
+  announcement-date sub attribute, value datetime;
+  designation-date sub attribute, value datetime;
+  release-date sub attribute, value datetime;
+  data-date sub attribute, value datetime;
+  expected-completion sub attribute, value datetime;
+  sentiment-date sub attribute, value datetime;
+  land-transaction-permit sub attribute, value boolean;
+  reconstruction-eligible sub attribute, value boolean;
+  is-active sub attribute, value boolean;
+
+  # ---------- Entities ----------
+
+  # Domain 1: 공간 계층
+  region sub entity,
+    owns region-code, owns region-name;
+
+  district sub entity,
+    owns district-code, owns district-name,
+    owns regulation-zone-type;
+
+  dong sub entity,
+    owns dong-code, owns dong-name,
+    owns land-transaction-permit;
+
+  complex sub entity,
+    owns complex-id, owns complex-name,
+    owns total-units, owns built-year,
+    owns floor-area-ratio, owns building-coverage,
+    owns reconstruction-eligible,
+    owns safety-grade,
+    owns price-per-sqm,
+    owns district-avg-price;
+
+  unit-type sub entity,
+    owns area-sqm, owns room-count, owns unit-count;
+
+  # Domain 2: 거시경제
+  macro-indicator sub entity, abstract;
+
+  interest-rate sub macro-indicator,
+    owns indicator-date,
+    owns base-rate,
+    owns cd-rate-91d,
+    owns cofix-rate,
+    owns treasury-3y,
+    owns treasury-10y,
+    owns mortgage-rate-avg,
+    owns rate-direction;
+
+  exchange-rate sub macro-indicator,
+    owns indicator-date,
+    owns usd-krw,
+    owns usd-krw-change-pct,
+    owns capital-flow-direction;
+
+  liquidity sub macro-indicator,
+    owns indicator-date,
+    owns m2-supply,
+    owns m2-growth-rate,
+    owns household-credit,
+    owns household-credit-growth,
+    owns mortgage-balance-total;
+
+  price-index sub macro-indicator,
+    owns indicator-date,
+    owns cpi,
+    owns cpi-change-yoy,
+    owns gdp-growth-rate,
+    owns unemployment-rate;
+
+  # Domain 3: 부동산 사이클
+  real-estate-cycle sub entity,
+    owns cycle-date,
+    owns cycle-phase,
+    owns cycle-sub-phase,
+    owns leading-index,
+    owns coincident-index,
+    owns lagging-index,
+    owns transaction-volume,
+    owns volume-yoy-change,
+    owns price-momentum,
+    owns inventory-months;
+
+  cycle-observation sub entity,
+    owns observation-date,
+    owns local-cycle-phase,
+    owns price-change-mom,
+    owns price-change-yoy,
+    owns jeonse-price-change,
+    owns sale-to-list-ratio;
+
+  # Domain 4: 금융/대출
+  loan-product sub entity,
+    owns loan-id, owns loan-name,
+    owns loan-type,
+    owns lender-type,
+    owns interest-type,
+    owns current-rate-min,
+    owns current-rate-max,
+    owns max-term-years;
+
+  loan-regulation sub entity,
+    owns regulation-id, owns regulation-name,
+    owns regulation-type,
+    owns effective-date, owns expiry-date;
+
+  loan-regulation-rule sub entity,
+    owns rule-id,
+    owns target-area-type,
+    owns target-housing-type,
+    owns target-price-threshold,
+    owns buyer-type,
+    owns ltv-limit,
+    owns dti-limit,
+    owns dsr-limit,
+    owns dsr-stress-rate;
+
+  # Domain 5: 세제
+  tax-regime sub entity, abstract,
+    owns tax-id, owns tax-name,
+    owns effective-date, owns expiry-date;
+
+  acquisition-tax sub tax-regime,
+    owns acq-tax-description;
+
+  acquisition-tax-rate sub entity,
+    owns rate-id, owns buyer-type,
+    owns housing-price-bracket, owns area-type,
+    owns tax-rate-pct, owns surtax-rate-pct;
+
+  capital-gains-tax sub tax-regime,
+    owns cgt-description;
+
+  cgt-rate-rule sub entity,
+    owns rule-id, owns holding-period,
+    owns residence-period, owns owner-count,
+    owns area-type, owns base-rate-pct,
+    owns surcharge-pct, owns long-term-deduction-pct,
+    owns exemption-conditions;
+
+  comprehensive-re-tax sub tax-regime,
+    owns crt-description;
+
+  crt-rate-rule sub entity,
+    owns rule-id, owns owner-type,
+    owns owner-count, owns taxable-base-bracket,
+    owns tax-rate-pct, owns deduction-threshold;
+
+  inheritance-tax sub tax-regime,
+    owns inh-description;
+
+  gift-tax sub tax-regime,
+    owns gift-description;
+
+  gift-tax-rate sub entity,
+    owns rate-id, owns relationship-type,
+    owns taxable-bracket, owns tax-rate-pct,
+    owns deduction-amount;
+
+  property-tax sub tax-regime,
+    owns pt-description;
+
+  # Domain 6: 규제/정책
+  policy sub entity,
+    owns policy-id, owns policy-name,
+    owns policy-category,
+    owns policy-type,
+    owns announcement-date,
+    owns effective-date, owns expiry-date,
+    owns policy-description;
+
+  zone-designation sub entity,
+    owns designation-id, owns zone-type,
+    owns designation-date, owns release-date,
+    owns is-active;
+
+  price-control sub entity,
+    owns control-id, owns control-type,
+    owns control-detail, owns effective-date;
+
+  subscription-regulation sub entity,
+    owns subscription-id, owns target-area-type,
+    owns required-saving-period,
+    owns residency-requirement,
+    owns ownership-restriction;
+
+  # Domain 7: 수요/공급
+  population-data sub entity,
+    owns data-date, owns total-population,
+    owns household-count, owns household-growth-rate,
+    owns avg-household-size, owns age-distribution-json;
+
+  migration-data sub entity,
+    owns data-date, owns net-migration,
+    owns in-migration, owns out-migration;
+
+  income-data sub entity,
+    owns data-date, owns median-household-income,
+    owns pir, owns income-growth-rate;
+
+  supply-data sub entity,
+    owns data-date, owns permits-issued,
+    owns construction-starts, owns completions,
+    owns presale-volume;
+
+  unsold-inventory sub entity,
+    owns data-date, owns unsold-total,
+    owns unsold-after-completion, owns unsold-change-mom;
+
+  reconstruction-supply sub entity,
+    owns data-date, owns redevelopment-units,
+    owns reconstruction-units, owns expected-year;
+
+  # 인프라 + 개발호재 + 시장심리
+  infrastructure sub entity,
+    owns infra-id, owns infra-name,
+    owns infra-type, owns infra-status;
+
+  development-project sub entity,
+    owns project-id, owns project-name,
+    owns project-type, owns project-stage,
+    owns expected-completion;
+
+  market-sentiment sub entity,
+    owns sentiment-date,
+    owns buyer-sentiment, owns seller-sentiment,
+    owns jeonse-ratio, owns fear-greed-index,
+    owns search-trend-index;
