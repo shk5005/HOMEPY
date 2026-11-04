@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path
 
 from homepy.api.dependencies import get_simulator, get_tax_engine
 from homepy.api.models.schemas import (
+    COMPLEX_ID_PATTERN,
     LoanSimulationRequest, LoanSimulationResponse, ScenarioResultResponse,
     TaxSimulationRequest, TaxSimulationResponse,
 )
@@ -16,7 +19,10 @@ FIRST_TIME_LTV = 0.70
 
 
 @router.post("/scenario/{complex_id}", response_model=ScenarioResultResponse)
-async def scenario(complex_id: str, simulator=Depends(get_simulator)):
+async def scenario(
+    complex_id: Annotated[str, Path(pattern=COMPLEX_ID_PATTERN)],
+    simulator=Depends(get_simulator),
+):
     try:
         return await simulator.simulate(complex_id)
     except ValueError as exc:

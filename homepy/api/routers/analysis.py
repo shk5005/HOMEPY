@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path
 
 from homepy.api.dependencies import get_scorer, get_verdict_builder
 from homepy.api.models.schemas import (
+    COMPLEX_ID_PATTERN,
     InvestmentScoreResponse, InvestmentVerdictResponse, ScoreRequest,
 )
 
@@ -19,7 +22,10 @@ async def score(body: ScoreRequest, scorer=Depends(get_scorer)):
 
 
 @router.post("/verdict/{complex_id}", response_model=InvestmentVerdictResponse)
-async def verdict(complex_id: str, builder=Depends(get_verdict_builder)):
+async def verdict(
+    complex_id: Annotated[str, Path(pattern=COMPLEX_ID_PATTERN)],
+    builder=Depends(get_verdict_builder),
+):
     try:
         return await builder.build(complex_id)
     except ValueError as exc:

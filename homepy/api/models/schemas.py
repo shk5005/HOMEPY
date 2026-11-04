@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+COMPLEX_ID_PATTERN = r"^[A-Za-z0-9_-]+$"
+ComplexId = Annotated[str, Field(pattern=COMPLEX_ID_PATTERN)]
+BuyerType = Literal["individual", "corporate"]
+AreaType = Literal["regulated", "non_regulated"]
 
 
 class _ORM(BaseModel):
@@ -29,7 +35,7 @@ class InvestmentScoreResponse(_ORM):
 
 
 class ScoreRequest(BaseModel):
-    complex_ids: list[str] = Field(min_length=1, max_length=50)
+    complex_ids: list[ComplexId] = Field(min_length=1, max_length=50)
 
 
 class BiasWarningResponse(_ORM):
@@ -100,9 +106,9 @@ class TaxSimulationRequest(BaseModel):
     price: int = Field(gt=0, description="KRW purchase price")
     sale_price: int | None = Field(default=None, gt=0)
     holding_years: float = Field(default=0, ge=0)
-    buyer_type: str = "individual"
+    buyer_type: BuyerType = "individual"
     owner_count: int = Field(default=1, ge=1)
-    area_type: str = "non_regulated"
+    area_type: AreaType = "non_regulated"
     assessed_values: list[int] = Field(default_factory=list)
 
 
@@ -118,7 +124,7 @@ class LoanSimulationRequest(BaseModel):
     price: int = Field(gt=0)
     income: int = Field(gt=0, description="Annual income, KRW")
     existing_debt: int = Field(default=0, ge=0, description="Annual debt service on existing loans, KRW")
-    area_type: str = "non_regulated"
+    area_type: AreaType = "non_regulated"
     interest_rate: float = Field(default=0.045, gt=0, lt=1)
     term_years: int = Field(default=30, ge=1, le=50)
     first_time_buyer: bool = False
