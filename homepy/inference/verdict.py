@@ -56,7 +56,7 @@ class VerdictBuilder:
 
         high_bias = any(b.severity == "high" for b in biases)
         total = score.total_score
-        if total >= 65 and not high_bias:
+        if total >= 65 and not high_bias and confidence != "Low":
             verdict = BUY
         elif total < 35:
             verdict = SELL
@@ -81,7 +81,8 @@ class VerdictBuilder:
         core_facts.append(f"Data coverage: {len(factors) - len(missing)}/{len(factors)} factors")
 
         bull = f"Strongest support: {fmt(best)}"
-        bear = f"Strongest drag: {fmt(worst)}"
+        bear_label = "Strongest drag" if worst and _contribution(worst) < 0 else "Weakest support"
+        bear = f"{bear_label}: {fmt(worst)}"
         primary_risk = (
             f"{worst.name} is the weakest contributor" if worst else "Insufficient factor data"
         )
