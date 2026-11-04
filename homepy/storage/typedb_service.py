@@ -59,6 +59,26 @@ class TypeDBService:
                     pass
                 tx.commit()
 
+    def execute_write_many(self, db: str, statements: list[tuple[str, str]]) -> None:
+        """Run ``("insert"|"delete", query)`` statements in ONE write transaction.
+
+        Callers are responsible for keeping batches small (sync layer uses 500).
+        """
+        if not statements:
+            return
+        driver = self._require_driver()
+        with driver.session(db, SessionType.DATA) as session:
+            with session.transaction(TransactionType.WRITE) as tx:
+                for kind, query in statements:
+                    if kind == "insert":
+                        for _ in tx.query.insert(query):
+                            pass
+                    elif kind == "delete":
+                        tx.query.delete(query).resolve()
+                    else:
+                        raise ValueError(f"unknown statement kind: {kind!r}")
+                tx.commit()
+
     def load_schema(self, db: str, tql_path: str) -> None:
         driver = self._require_driver()
         tql = Path(tql_path).read_text(encoding="utf-8")
