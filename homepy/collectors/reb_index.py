@@ -36,9 +36,9 @@ class RebIndexCollector(BaseCollector):
             "KEY": self.api_key, "Type": "json",
             "START_WRTTIME": f"{start_date:%Y%m}", "END_WRTTIME": f"{end_date:%Y%m}",
         })
-        response = payload.get("response", {})
+        response = (payload or {}).get("response") or {}
         code = str(response.get("header", {}).get("resultCode", ""))
-        if code not in OK_CODES:
+        if code and code not in OK_CODES:
             msg = response.get("header", {}).get("resultMsg", "unexpected REB response")
             raise ValueError(f"REB error {code}: {msg}")
         items = response.get("body", {}).get("items") or []  # empty = skip

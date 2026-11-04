@@ -1,6 +1,7 @@
 """MOLIT (Ministry of Land) apartment real-trade collector. The API returns XML."""
 from __future__ import annotations
 
+import calendar
 import os
 import xml.etree.ElementTree as ET
 from datetime import date
@@ -15,6 +16,8 @@ ENDPOINT = "getRTMSDataSvcAptTrade"
 COLUMNS = ["ts", "district_code", "dong_code", "complex_name",
            "area_sqm", "floor", "price", "trade_type"]
 OK_CODES = {"00", "000"}
+NO_DATA_CODES = {"03", "003"}
+NUM_OF_ROWS = 1000
 
 
 def _months(start_ym: str, end_ym: str) -> list[str]:
@@ -41,14 +44,24 @@ class MolitTradeCollector(BaseCollector):
         self.api_key = key
 
     @staticmethod
-    def _parse(xml_text: str, region_code: str) -> list[dict]:
+    def _parse(xml_text: str, region_code: str) -> tuple[list[dict], int, int]:
+        """Return (rows, totalCount, raw item count)."""
+        if not xml_text.strip():
+            return [], 0, 0
         root = ET.fromstring(xml_text)
         code = (root.findtext("header/resultCode") or "").strip()
+        if code in NO_DATA_CODES:
+            return [], 0, 0
         if code not in OK_CODES:
             msg = (root.findtext("header/resultMsg") or "unexpected MOLIT response").strip()
             raise ValueError(f"MOLIT error {code}: {msg}")
         rows = []
-        for item in root.findall("body/items/item"):
+        raw_items = root.findall("body/items/item")
+        try:
+            total = int((root.findtext("body/totalCount") or "").strip() or len(raw_items))
+        except ValueError:
+            total = len(raw_items)
+        for item in raw_items:
             try:
                 ts = pd.Timestamp(year=int(_text(item, "dealYear")),
                                   month=int(_text(item, "dealMonth")),
@@ -68,16 +81,25 @@ class MolitTradeCollector(BaseCollector):
                 "price": price,
                 "trade_type": "sale",
             })
-        return rows
+        return rows, total, len(raw_items)
 
     async def collect(self, region_code: str, start_ym: str, end_ym: str) -> Path:  # type: ignore[override]
         """Collect apartment trades for ``region_code`` (LAWD_CD) from start_ym to end_ym (YYYYMM)."""
         rows: list[dict] = []
         for ym in _months(start_ym, end_ym):
-            text = await self._fetch_text(ENDPOINT, {
-                "serviceKey": self.api_key, "LAWD_CD": region_code,
-                "DEAL_YMD": ym, "numOfRows": 1000, "pageNo": 1,
-            })
-            rows.extend(self._parse(text, region_code))
+            page, seen = 1, 0
+            while True:
+                text = await self._fetch_text(ENDPOINT, {
+                    "serviceKey": self.api_key, "LAWD_CD": region_code,
+                    "DEAL_YMD": ym, "numOfRows": NUM_OF_ROWS, "pageNo": page,
+                })
+                page_rows, total, raw = self._parse(text, region_code)
+                rows.extend(page_rows)
+                seen += raw
+                if raw == 0 or seen >= total:
+                    break
+                page += 1
         df = pd.DataFrame(rows, columns=COLUMNS)
-        return self._save_raw(df, date.today())
+        y, m = int(end_ym[:4]), int(end_ym[4:6])
+        end_date = date(y, m, calendar.monthrange(y, m)[1])
+        return self._save_raw(df, end_date, filename=f"{region_code}_{start_ym}_{end_ym}.parquet")

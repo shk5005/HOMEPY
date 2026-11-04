@@ -45,14 +45,20 @@ class KosisCollector(BaseCollector):
         if stat_id not in STATS:
             raise ValueError(f"unknown KOSIS stat_id {stat_id!r}; known: {sorted(STATS)}")
         spec = STATS[stat_id]
-        fmt = "%Y" if spec["prdSe"] == "Y" else "%Y%m"
+        def bound(d: date) -> str:
+            if spec["prdSe"] == "Y":
+                return f"{d:%Y}"
+            if spec["prdSe"] == "Q":
+                return f"{d.year}Q{(d.month - 1) // 3 + 1}"
+            return f"{d:%Y%m}"
+
         payload = await self._fetch(ENDPOINT, {
             "method": "getList", "apiKey": self.api_key, "format": "json", "jsonVD": "Y",
-            **spec, "startPrdDe": start_date.strftime(fmt), "endPrdDe": end_date.strftime(fmt),
+            **spec, "startPrdDe": bound(start_date), "endPrdDe": bound(end_date),
         })
         if isinstance(payload, dict):
             err = str(payload.get("err", ""))
-            if err in NO_DATA_ERRS:
+            if err in NO_DATA_ERRS or not err:
                 payload = []
             else:
                 raise ValueError(f"KOSIS error {err}: {payload.get('errMsg', 'unexpected response')}")

@@ -27,7 +27,8 @@ class BaseCollector(ABC):
 
     async def _fetch(self, endpoint: str, params: dict | None = None) -> dict:
         """GET and decode JSON (3 attempts, exponential backoff)."""
-        return json.loads(await self._fetch_text(endpoint, params))
+        text = await self._fetch_text(endpoint, params)
+        return json.loads(text) if text.strip() else {}
 
     async def _fetch_text(self, endpoint: str, params: dict | None = None) -> str:
         """GET ``api_base_url/endpoint`` body as text, 3 attempts with exponential backoff."""
@@ -38,7 +39,7 @@ class BaseCollector(ABC):
                 try:
                     resp = await client.get(url, params=params or {})
                     resp.raise_for_status()
-                    return resp.text
+                    return resp.text if resp.text.strip() else ""
                 except httpx.HTTPStatusError as exc:
                     # Never include the URL: it may embed the API key.
                     last_error = f"HTTP {exc.response.status_code}"

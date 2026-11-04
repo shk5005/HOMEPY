@@ -54,3 +54,20 @@ def test_reb_requires_key(monkeypatch):
     monkeypatch.delenv("REB_API_KEY", raising=False)
     with pytest.raises(ValueError):
         RebIndexCollector()
+
+
+@pytest.mark.parametrize("body", [{}, {"response": {}}, {"response": {"header": {}, "body": {}}}])
+async def test_reb_empty_json_is_no_data(tmp_path, body):
+    collector = RebIndexCollector(api_key="test", data_dir=tmp_path)
+    with respx.mock:
+        respx.get(URL).respond(json=body)
+        path = await collector.collect(date(2026, 1, 1), date(2026, 1, 31))
+    assert len(pd.read_parquet(path)) == 0
+
+
+async def test_reb_blank_body_is_no_data(tmp_path):
+    collector = RebIndexCollector(api_key="test", data_dir=tmp_path)
+    with respx.mock:
+        respx.get(URL).respond(text="")
+        path = await collector.collect(date(2026, 1, 1), date(2026, 1, 31))
+    assert len(pd.read_parquet(path)) == 0
