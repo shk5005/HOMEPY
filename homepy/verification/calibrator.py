@@ -97,8 +97,11 @@ class AutoCalibrator:
 
     # ---- weights -------------------------------------------------------
     async def propose_weight_update(self) -> CalibrationProposal:
-        # Train IC over the rolling window; validation IC over its last 6 months.
-        train_ic = await self._bt.factor_ic_analysis(ROLLING_WINDOW_MONTHS)
+        # Train IC: 36-month window excluding last 6 months (30-month train)
+        # Validation IC: last 6 months only
+        train_ic = await self._bt.factor_ic_analysis(
+            ROLLING_WINDOW_MONTHS, skip_recent_months=VALIDATION_MONTHS,
+        )
         val_ic = await self._bt.factor_ic_analysis(VALIDATION_MONTHS)
 
         current = self._current_weights()

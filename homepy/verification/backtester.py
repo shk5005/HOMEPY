@@ -172,13 +172,16 @@ class Backtester:
             raise KeyError(f"verdict not found: {verdict_id}")
         return await self._record_from_row(rows[0])
 
-    async def _evaluate_window(self, months: int) -> tuple[date, date, list[BacktestRecord]]:
-        end = self._now().date()
-        start = _add_months(end, -months)
+    async def _evaluate_window(
+        self, months: int, skip_recent_months: int = 0,
+    ) -> tuple[date, date, list[BacktestRecord]]:
+        end_date = _add_months(self._now().date(), -skip_recent_months) if skip_recent_months else self._now().date()
+        start = _add_months(self._now().date(), -months)
+        end_dt = _as_dt(end_date)
         rows = await self._ts.execute(
-            _VERDICTS_IN_WINDOW, _as_dt(start).replace(hour=0, minute=0, second=0), self._now()
+            _VERDICTS_IN_WINDOW, _as_dt(start).replace(hour=0, minute=0, second=0), end_dt
         )
-        return start, end, [await self._record_from_row(r) for r in rows]
+        return start, end_date, [await self._record_from_row(r) for r in rows]
 
     @staticmethod
     def _ic_from_records(records: list[BacktestRecord]) -> dict[str, float]:
@@ -198,8 +201,10 @@ class Backtester:
             ic[factor] = 0.0 if math.isnan(rho) else rho
         return ic
 
-    async def factor_ic_analysis(self, months: int = 12) -> dict[str, float]:
-        _, _, records = await self._evaluate_window(months)
+    async def factor_ic_analysis(
+        self, months: int = 12, skip_recent_months: int = 0,
+    ) -> dict[str, float]:
+        _, _, records = await self._evaluate_window(months, skip_recent_months)
         return self._ic_from_records(records)
 
     async def run(self, lookback_months: int = 3) -> BacktestResult:

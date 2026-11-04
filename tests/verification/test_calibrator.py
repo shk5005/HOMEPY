@@ -22,9 +22,13 @@ class MockBacktester:
     def set_ic_split(self, in_sample: dict, out_of_sample: dict) -> None:
         self.in_sample, self.out_of_sample = in_sample, out_of_sample
 
-    async def factor_ic_analysis(self, months: int = 12) -> dict[str, float]:
-        self.calls.append(months)
-        return dict(self.in_sample if months > 6 else self.out_of_sample)
+    async def factor_ic_analysis(
+        self, months: int = 12, skip_recent_months: int = 0,
+    ) -> dict[str, float]:
+        self.calls.append((months, skip_recent_months))
+        if skip_recent_months > 0:
+            return dict(self.in_sample)
+        return dict(self.out_of_sample if months <= 6 else self.in_sample)
 
 
 class MockTimescale:
@@ -59,7 +63,7 @@ async def test_weight_proposal_uses_rolling_window(cal, mock_backtester):
     assert proposal.category == "weight"
     assert proposal.status == "proposed"
     assert "36" in proposal.rationale or "rolling" in proposal.rationale.lower()
-    assert 36 in mock_backtester.calls and 6 in mock_backtester.calls
+    assert (36, 6) in mock_backtester.calls and (6, 0) in mock_backtester.calls
 
 
 async def test_weight_proposal_flags_overfit(cal, mock_backtester):
