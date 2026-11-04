@@ -162,6 +162,23 @@ define
   reconstruction-eligible sub attribute, value boolean;
   is-active sub attribute, value boolean;
 
+  # ---------- Relation-owned attributes ----------
+  distance-meter sub attribute, value double;
+  travel-time-min sub attribute, value double;
+  correlation-strength sub attribute, value double;
+  lag-months sub attribute, value long;
+  rate-pass-through-pct sub attribute, value double;
+  applicable-area-type sub attribute, value string;
+  max-borrowable-pct sub attribute, value double;
+  effective-rate-pct sub attribute, value double;
+  impact-channel sub attribute, value string;
+  impact-direction sub attribute, value string;
+  impact-strength sub attribute, value double;
+  expected-lag-months sub attribute, value long;
+  influence-radius-km sub attribute, value double;
+  expected-premium-pct sub attribute, value double;
+  similarity-score sub attribute, value double;
+
   # ---------- Entities ----------
 
   # Domain 1: 공간 계층
@@ -380,3 +397,132 @@ define
     owns buyer-sentiment, owns seller-sentiment,
     owns jeonse-ratio, owns fear-greed-index,
     owns search-trend-index;
+
+  # ---------- Relations ----------
+  # 공간 계층
+  spatial-hierarchy sub relation,
+    relates parent, relates child;
+  region plays spatial-hierarchy:parent;
+  district plays spatial-hierarchy:child;
+  district plays spatial-hierarchy:parent;
+  dong plays spatial-hierarchy:child;
+  dong plays spatial-hierarchy:parent;
+  complex plays spatial-hierarchy:child;
+
+  has-unit-type sub relation,
+    relates complex-owner, relates type-spec;
+  complex plays has-unit-type:complex-owner;
+  unit-type plays has-unit-type:type-spec;
+
+  # 인프라 접근성
+  accessibility sub relation,
+    relates location, relates facility,
+    owns distance-meter, owns travel-time-min;
+  complex plays accessibility:location;
+  dong plays accessibility:location;
+  infrastructure plays accessibility:facility;
+
+  # 거시경제 → 사이클
+  macro-drives-cycle sub relation,
+    relates macro-factor, relates cycle-state,
+    owns correlation-strength, owns lag-months;
+  macro-indicator plays macro-drives-cycle:macro-factor;
+  real-estate-cycle plays macro-drives-cycle:cycle-state;
+
+  rate-affects-loan sub relation,
+    relates rate-change, relates affected-loan,
+    owns rate-pass-through-pct;
+  interest-rate plays rate-affects-loan:rate-change;
+  loan-product plays rate-affects-loan:affected-loan;
+
+  # 지역 지정/해제
+  zone-applied-to sub relation,
+    relates designation, relates target-district;
+  zone-designation plays zone-applied-to:designation;
+  district plays zone-applied-to:target-district;
+  dong plays zone-applied-to:target-district;
+
+  # 대출규제 적용
+  regulation-applies sub relation,
+    relates rule-source, relates rule-detail,
+    owns applicable-area-type;
+  loan-regulation plays regulation-applies:rule-source;
+  loan-regulation-rule plays regulation-applies:rule-detail;
+
+  loan-constraint sub relation,
+    relates constraint-rule, relates constrained-area,
+    owns max-borrowable-pct;
+  loan-regulation-rule plays loan-constraint:constraint-rule;
+  district plays loan-constraint:constrained-area;
+
+  # 세제 적용
+  tax-applies-to sub relation,
+    relates tax-rule, relates taxed-area,
+    owns effective-rate-pct;
+  acquisition-tax-rate plays tax-applies-to:tax-rule;
+  district plays tax-applies-to:taxed-area;
+
+  cgt-applies-to sub relation,
+    relates cgt-rule, relates taxed-area;
+  cgt-rate-rule plays cgt-applies-to:cgt-rule;
+  district plays cgt-applies-to:taxed-area;
+
+  crt-applies-to sub relation,
+    relates crt-rule, relates taxed-complex;
+  crt-rate-rule plays crt-applies-to:crt-rule;
+  complex plays crt-applies-to:taxed-complex;
+
+  # 정책 영향
+  policy-impact sub relation,
+    relates regulation, relates affected-area,
+    owns impact-channel, owns impact-direction,
+    owns impact-strength, owns expected-lag-months;
+  policy plays policy-impact:regulation;
+  district plays policy-impact:affected-area;
+
+  policy-targets-tax sub relation,
+    relates policy-source, relates modified-tax;
+  policy plays policy-targets-tax:policy-source;
+  tax-regime plays policy-targets-tax:modified-tax;
+
+  # 수요/공급
+  demand-in-area sub relation,
+    relates demand-data, relates demand-area;
+  population-data plays demand-in-area:demand-data;
+  migration-data plays demand-in-area:demand-data;
+  income-data plays demand-in-area:demand-data;
+  district plays demand-in-area:demand-area;
+
+  supply-in-area sub relation,
+    relates supply-data, relates supply-area;
+  supply-data plays supply-in-area:supply-data;
+  unsold-inventory plays supply-in-area:supply-data;
+  reconstruction-supply plays supply-in-area:supply-data;
+  district plays supply-in-area:supply-area;
+
+  # 사이클 관측
+  cycle-observed-at sub relation,
+    relates observation, relates observed-district;
+  cycle-observation plays cycle-observed-at:observation;
+  district plays cycle-observed-at:observed-district;
+
+  # 개발호재
+  development-influence sub relation,
+    relates project, relates beneficiary,
+    owns influence-radius-km, owns expected-premium-pct;
+  development-project plays development-influence:project;
+  complex plays development-influence:beneficiary;
+  dong plays development-influence:beneficiary;
+
+  # 심리
+  sentiment-observation sub relation,
+    relates observed-area, relates sentiment-data;
+  district plays sentiment-observation:observed-area;
+  market-sentiment plays sentiment-observation:sentiment-data;
+
+  # 비교 대상
+  comparable sub relation,
+    relates subject, relates comparison,
+    owns similarity-score;
+  complex plays comparable:subject;
+  complex plays comparable:comparison;

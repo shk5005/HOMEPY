@@ -41,3 +41,21 @@ def test_all_entity_types_exist(typedb_client):
             for name in expected:
                 concept = tx.concepts.get_entity_type(name).resolve()
                 assert concept is not None, f"Entity type '{name}' missing"
+
+
+def test_all_relation_types_exist(typedb_client):
+    with typedb_client.session(DB_NAME, SessionType.SCHEMA) as session:
+        with session.transaction(TransactionType.READ) as tx:
+            expected_relations = [
+                "spatial-hierarchy", "has-unit-type", "accessibility",
+                "macro-drives-cycle", "rate-affects-loan",
+                "zone-applied-to", "regulation-applies", "loan-constraint",
+                "tax-applies-to", "cgt-applies-to", "crt-applies-to",
+                "policy-impact", "policy-targets-tax",
+                "demand-in-area", "supply-in-area",
+                "cycle-observed-at", "development-influence",
+                "sentiment-observation", "comparable",
+            ]
+            for name in expected_relations:
+                concept = tx.concepts.get_relation_type(name).resolve()
+                assert concept is not None, f"Relation type '{name}' missing"
