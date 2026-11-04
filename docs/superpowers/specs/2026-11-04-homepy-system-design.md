@@ -1341,3 +1341,430 @@ class ImprovementRecord:
 | Phase 4 | 규칙 기반 → ML 하이브리드 | 백테스트 정확도 정체 |
 | Phase 4 | REST API → GraphQL | 프론트엔드 쿼리 패턴 복잡화 |
 | Phase 4 | Streamlit → Next.js | 동시 사용자 100+ |
+
+---
+
+## 11. 고가용성 및 재해 복구 (Phase 2)
+
+### 11.1 아키텍처 개요
+
+단일 장애점(SPOF)을 제거하고, 데이터 유실 없는 복구를 보장합니다.
+
+```
+                    ┌──────────────────────┐
+                    │   Load Balancer       │
+                    │   (Nginx/Traefik)     │
+                    └──────┬───────────────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+         ┌────┴────┐ ┌────┴────┐ ┌────┴────┐
+         │ FastAPI  │ │ FastAPI  │ │Streamlit│
+         │ Node 1   │ │ Node 2   │ │ (단일)  │
+         └────┬────┘ └────┬────┘ └────┬────┘
+              │            │            │
+    ┌─────────┴────────────┴────────────┴──────────┐
+    │                   Redis Cache                  │
+    └────────────┬──────────────────┬───────────────┘
+                 │                  │
+    ┌────────────┴──┐     ┌────────┴────────┐
+    │  TypeDB        │     │  TimescaleDB     │
+    │  Primary       │     │  Primary         │
+    │  (Read/Write)  │     │  (Read/Write)    │
+    ├────────────────┤     ├─────────────────┤
+    │  TypeDB        │     │  TimescaleDB     │
+    │  Standby       │     │  Replica         │
+    │  (Read-only)   │     │  (Streaming)     │
+    └────────────────┘     └─────────────────┘
+```
+
+### 11.2 DB 이중화
+
+| DB | 이중화 방식 | 페일오버 | 데이터 손실 |
+|----|-----------|---------|-----------|
+| TimescaleDB | PostgreSQL Streaming Replication + pg_basebackup | 자동 (Patroni) | 0 (동기 복제) |
+| TypeDB | Export/Import 기반 warm standby (TypeDB는 네이티브 복제 미지원) | 수동 (5분 RTO) | 최대 5분 RPO |
+| Redis | Redis Sentinel (master-replica) | 자동 | 최대 1초 |
+
+### 11.3 백업 전략
+
+| 대상 | 방법 | 주기 | 보존 | RPO | RTO |
+|------|------|------|------|-----|-----|
+| TimescaleDB | pg_dump + WAL 아카이브 | WAL: 연속, Full: 일 1회 | 30일 | 0 (WAL) | 10분 |
+| TypeDB | `typedb server export` | 6시간 | 7일 | 6시간 | 5분 |
+| 설정/코드 | Git | 커밋 시 | 영구 | 0 | 즉시 |
+| Raw 데이터 | Parquet → Object Storage (MinIO) | ETL 완료 시 | 1년 | 0 | 30분 |
+| Redis 캐시 | RDB 스냅샷 | 15분 | 1일 | 15분 | 1분 |
+
+### 11.4 시장 모니터링 / 조기경보 시스템
+
+#### 이상 탐지 엔진
+
+| 알고리즘 | 적용 대상 | 목적 |
+|----------|---------|------|
+| Z-score (|Z| > 3) | 가격, 거래량, 금리 | 급변 감지 |
+| Isolation Forest | 다변량 시계열 조합 | 복합 이상 탐지 |
+| CUSUM | 가격 추세 | 추세 전환점 감지 |
+| Bollinger Band | 가격지수 | 과열/과냉 구간 |
+
+#### 조기경보 TypeDB 규칙 (추가)
+
+```typeql
+define
+
+rule smart-money-detection:
+  when {
+    $co isa cycle-observation, has price-change-mom $mom, has sale-to-list-ratio $slr;
+    $mom < 0; $slr > 1.05;
+    $dist isa district;
+    (observation: $co, observed-district: $dist) isa cycle-observed-at;
+  } then {
+    (detected-area: $dist) isa smart-money-signal;
+  };
+
+rule jeonse-gap-narrowing:
+  when {
+    $ms isa market-sentiment, has jeonse-ratio $jr1;
+    $ms2 isa market-sentiment, has jeonse-ratio $jr2;
+    $jr2 - $jr1 > 0.05;
+    $dist isa district;
+    (observed-area: $dist, sentiment-data: $ms) isa sentiment-observation;
+  } then {
+    (narrowing-area: $dist) isa gap-narrowing-signal;
+  };
+```
+
+#### 4단계 경보 체계
+
+| 단계 | 조건 | 알림 채널 | 대응 |
+|------|------|----------|------|
+| WATCH | 단일 지표 이상 | 대시보드 표시 | 자동 모니터링 |
+| ADVISORY | 복수 지표 이상 또는 TypeDB 시그널 발생 | Slack + 대시보드 | 분석가 검토 |
+| WARNING | 이상 지속 3일+ 또는 급변 (Z > 4) | Slack + 카카오톡 + 이메일 | 즉시 검토 |
+| CRITICAL | 시스템적 리스크 또는 복수 WARNING 동시 | 전체 채널 + SMS | 긴급 대응 |
+
+#### 알림 전송
+
+```python
+ALERT_CHANNELS = {
+    "slack": {"webhook_url": "env:SLACK_WEBHOOK_URL"},
+    "kakao": {"api_key": "env:KAKAO_API_KEY", "template_id": "env:KAKAO_TEMPLATE_ID"},
+    "email": {"smtp_host": "env:SMTP_HOST", "from": "env:ALERT_EMAIL_FROM"},
+}
+
+ALERT_ROUTING = {
+    "WATCH": [],
+    "ADVISORY": ["slack"],
+    "WARNING": ["slack", "kakao"],
+    "CRITICAL": ["slack", "kakao", "email"],
+}
+```
+
+---
+
+## 12. 멀티유저 및 실시간 데이터 (Phase 3)
+
+### 12.1 인증 및 인가
+
+#### 인증 스택
+
+| 컴포넌트 | 기술 | 설명 |
+|----------|------|------|
+| 인증 서버 | Keycloak (또는 Auth0) | OAuth2 + OIDC 표준 |
+| 토큰 | JWT (RS256) | access_token (15분) + refresh_token (7일) |
+| FastAPI 통합 | `fastapi-security` + `python-jose` | Bearer 토큰 검증 미들웨어 |
+| 세션 관리 | Redis | 토큰 블랙리스트, 세션 캐시 |
+
+#### 역할 기반 접근 제어 (RBAC)
+
+| 역할 | 권한 | 설명 |
+|------|------|------|
+| `admin` | 전체 | 시스템 설정, 사용자 관리, 교정 승인 |
+| `analyst` | 분석/시뮬레이션 | 투자 분석, 시나리오, 포트폴리오 관리 |
+| `viewer` | 읽기 전용 | 대시보드 조회, 시그널 확인 |
+| `pipeline_operator` | 파이프라인 관리 | 수집기/ETL 모니터링, 데이터 품질 |
+
+#### API 접근 제어 매핑
+
+```python
+ENDPOINT_PERMISSIONS = {
+    "/api/v1/ontology/*": ["viewer", "analyst", "admin"],
+    "/api/v1/analysis/*": ["analyst", "admin"],
+    "/api/v1/simulation/*": ["analyst", "admin"],
+    "/api/v1/market/*": ["viewer", "analyst", "admin"],
+    "/api/v1/portfolio/*": ["analyst", "admin"],  # 본인 포트폴리오만
+    "/api/v1/pipeline/*": ["pipeline_operator", "admin"],
+    "/api/v1/pipeline/verification/proposals/*/approve": ["admin"],
+}
+```
+
+### 12.2 멀티테넌시
+
+#### 데이터 격리 모델
+
+| 데이터 | 격리 수준 | 구현 |
+|--------|---------|------|
+| 포트폴리오 | 사용자별 완전 격리 | `user_id` 컬럼 + RLS (Row-Level Security) |
+| 워치리스트 | 사용자별 격리 | 동일 |
+| 투자 판정 이력 | 사용자별 격리 | 동일 |
+| 시장 데이터 | 공유 (읽기 전용) | 별도 격리 불필요 |
+| 온톨로지 | 공유 (읽기 전용) | 별도 격리 불필요 |
+| 교정 제안 | 관리자만 접근 | 역할 기반 |
+
+#### TimescaleDB RLS 설정
+
+```sql
+ALTER TABLE ts_portfolio ENABLE ROW LEVEL SECURITY;
+CREATE POLICY portfolio_isolation ON ts_portfolio
+    USING (user_id = current_setting('app.current_user_id')::uuid);
+```
+
+### 12.3 실시간 데이터 파이프라인
+
+#### 이벤트 기반 아키텍처
+
+```
+정부 API (배치)  ───┐
+                    ├──→ Prefect 스케줄러 (기존)
+크롤러 (배치)   ───┘
+
+증권사 API (실시간) ──→ WebSocket Collector ──→ Redis Pub/Sub
+                                                    │
+네이버 호가 (실시간) ──→ WebSocket Collector ──→     │
+                                                    ↓
+                                            Event Processor
+                                                    │
+                                    ┌───────────────┼───────────────┐
+                                    ↓               ↓               ↓
+                              TimescaleDB     TypeDB (스냅샷)   WebSocket Server
+                              (시계열 저장)    (온톨로지 갱신)    (클라이언트 푸시)
+```
+
+#### 실시간 수집 대상
+
+| 데이터 | 소스 | 프로토콜 | 주기 |
+|--------|------|---------|------|
+| 아파트 호가/체결 | 증권사 API (키움/한투) | WebSocket | 실시간 |
+| 매물 수 변동 | 네이버 부동산 | HTTP Polling (5분) | 준실시간 |
+| 금리 변동 | 한국은행 RSS | HTTP Polling (1시간) | 준실시간 |
+| 뉴스/정책 발표 | 정부 보도자료 RSS | HTTP Polling (30분) | 준실시간 |
+
+#### WebSocket 서버
+
+```python
+# FastAPI WebSocket endpoint
+@app.websocket("/ws/signals/{district_code}")
+async def signal_stream(ws: WebSocket, district_code: str):
+    await ws.accept()
+    async for event in redis_pubsub.listen(f"signals:{district_code}"):
+        await ws.send_json(event)
+```
+
+### 12.4 정책 시뮬레이션 엔진
+
+#### 정책 영향 전파 그래프
+
+```
+정책 변경 입력
+    │
+    ├──→ 직접 영향 (1차): 해당 규제/세제 TypeDB 엔티티 수정
+    │
+    ├──→ 간접 영향 (2차): TypeDB 추론 규칙이 관련 시그널 재계산
+    │
+    ├──→ 파급 영향 (3차): 투자 스코어 → 시나리오 → 판정 재생성
+    │
+    └──→ 시각화: 영향 체인 그래프 (Pyvis)
+```
+
+#### 시뮬레이션 유형
+
+| 시뮬레이션 | 입력 | 출력 |
+|-----------|------|------|
+| 세제 변경 | 가상 세율 변경안 | 포트폴리오 영향 (보유비용, 매도부담 변화) |
+| 규제 지정/해제 | 지역 + 규제 유형 | 대출한도 변화, 투자 스코어 변화 |
+| 금리 시나리오 | 목표 금리 경로 | 구매력 변화, 사이클 위상 예측 |
+| 공급 충격 | 대규모 입주 물량 | 수급 갭 변화, 가격 압력 방향 |
+
+#### 정책 백테스팅
+
+과거 정책(예: 2020년 7.10 대책)을 재현하여 HOMEPY의 추론이 실제 시장 반응을 얼마나 정확히 예측했는지 검증합니다.
+
+```python
+@dataclass
+class PolicyBacktest:
+    policy_date: date
+    policy_name: str
+    simulated_impact: dict           # HOMEPY가 예측한 영향
+    actual_market_response: dict     # 실제 시장 반응 (3/6/12개월)
+    accuracy_score: float            # 예측 정확도
+    missed_factors: list[str]        # 놓친 변수
+```
+
+---
+
+## 13. 인프라 현대화 및 고급 분석 (Phase 4)
+
+### 13.1 Kubernetes 마이그레이션
+
+#### Docker Compose → K8s 전환
+
+| 컴포넌트 | Docker Compose | Kubernetes |
+|----------|---------------|------------|
+| TypeDB | 단일 컨테이너 | StatefulSet (Primary + Standby) |
+| TimescaleDB | 단일 컨테이너 | StatefulSet + PVC (PersistentVolumeClaim) |
+| Redis | 단일 컨테이너 | Deployment + Redis Sentinel |
+| FastAPI | 단일 컨테이너 | Deployment (2+ replicas) + HPA |
+| Streamlit | 단일 컨테이너 | Deployment (1 replica) |
+| Prefect | docker-compose service | Prefect Cloud 또는 Prefect Server on K8s |
+| Ingress | Nginx reverse proxy | Ingress Controller (Nginx/Traefik) |
+
+#### Helm Chart 구조
+
+```
+charts/homepy/
+├── Chart.yaml
+├── values.yaml
+├── values-dev.yaml
+├── values-prod.yaml
+└── templates/
+    ├── typedb-statefulset.yaml
+    ├── timescaledb-statefulset.yaml
+    ├── redis-deployment.yaml
+    ├── fastapi-deployment.yaml
+    ├── streamlit-deployment.yaml
+    ├── ingress.yaml
+    ├── configmap.yaml
+    ├── secrets.yaml
+    └── hpa.yaml
+```
+
+#### 자동 스케일링 (HPA)
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fastapi-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: homepy-fastapi
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+### 13.2 TypeDB Cloud 평가 기준
+
+| 평가 항목 | TypeDB Core (현재) | TypeDB Cloud | 전환 조건 |
+|----------|-------------------|-------------|----------|
+| 복제 | 수동 export/import | 네이티브 복제 | 가용 시 |
+| 스케일 | 단일 노드 (16GB 메모리 한계) | 분산 클러스터 | 온톨로지 > 10M triples |
+| 관리 | 자체 운영 | 관리형 서비스 | 운영 부담 증가 시 |
+| 비용 | $0 | 유료 (용량 기반) | ROI 양수 시 |
+| 추론 성능 | 복잡 쿼리 > 10초 | 분산 추론 | 복합 규칙 체인 > 3단계 |
+
+### 13.3 ML 가격 예측
+
+#### 피처 엔지니어링
+
+```
+TypeDB 관계 피처 (온톨로지 기반)
+├── 인접 단지 수 (500m 이내)
+├── 연결된 개발 호재 수
+├── 적용 규제 강도 지수
+├── 세금 부담 실효율
+└── 사이클 위상 원-핫 인코딩
+
+TimescaleDB 시계열 피처 (시간 기반)
+├── 가격 이동평균 (3/6/12M)
+├── 거래량 변화율
+├── 금리 변화 누적
+├── 전세가율 추이
+└── 검색량 z-score
+
+결합 → LightGBM 앙상블
+      → SHAP 설명력 (각 피처 기여도)
+      → InvestmentScorer의 15번째 팩터로 통합
+```
+
+#### ML 모델 운영
+
+| 항목 | 설정 |
+|------|------|
+| 학습 주기 | 월 1회 (12개월 rolling window) |
+| 검증 | 최근 3개월 out-of-sample |
+| 성능 기준 | MAPE < 15%, 방향 정확도 > 60% |
+| 배포 | MLflow 모델 레지스트리 → FastAPI 서빙 |
+| 모니터링 | 예측 vs 실제 drift 추적 (Plan D DataMonitor 확장) |
+| 폴백 | ML 모델 성능 저하 시 규칙 기반 스코어링으로 자동 전환 |
+
+### 13.4 자연어 인터페이스
+
+#### 자연어 → TypeQL 변환
+
+```
+사용자 입력: "강남구에서 역세권이면서 저평가된 단지 찾아줘"
+    ↓
+LLM (Claude API) 변환
+    ↓
+TypeQL:
+  match
+    $dist isa district, has district-name "강남구";
+    $dong isa dong;
+    (parent: $dist, child: $dong) isa spatial-hierarchy;
+    $c isa complex;
+    (parent: $dong, child: $c) isa spatial-hierarchy;
+    (location: $c, facility: $inf) isa accessibility, has distance-meter $d;
+    $inf isa infrastructure, has infra-type "subway";
+    $d < 500;
+    (subject: $c) isa undervalued-signal;
+  get $c;
+```
+
+#### 리포트 자동생성
+
+```
+InvestmentVerdict
+    ↓
+LLM (Claude API) 변환
+    ↓
+구조화된 분석 리포트 (PDF/HTML)
+├── 투자 요약 (1페이지)
+├── 14팩터 상세 분석 (2-3페이지)
+├── 시나리오 분석 (1페이지)
+├── 편향 경고 및 리스크 (1페이지)
+└── 근거 데이터 부록
+```
+
+### 13.5 멀티에이전트 분석
+
+4개 전문 에이전트가 독립적으로 분석한 후 토론하여 최종 판정을 도출합니다.
+
+| 에이전트 | 역할 | 관점 |
+|----------|------|------|
+| Bull Agent | 상승 논리 전문 | 모든 긍정적 데이터와 기회를 극대화 |
+| Bear Agent | 하락 논리 전문 | 모든 부정적 데이터와 리스크를 극대화 |
+| Behavioral Agent | 행동경제학 전문 | 다른 에이전트의 편향을 탐지 |
+| Policy Agent | 규제/정책 전문 | 규제 변화의 2차·3차 파급 효과 분석 |
+
+#### 토론 프로세스
+
+```
+Round 1: 각 에이전트 독립 분석 (병렬)
+    ↓
+Round 2: 교차 반박 (Bull ↔ Bear, Behavioral이 편향 지적)
+    ↓
+Round 3: Policy Agent가 규제 시나리오별 재평가 요청
+    ↓
+Round 4: 합의 도출 또는 불합의 명시 (강제 합의 금지)
+    ↓
+최종: VerdictBuilder가 4개 관점을 통합하여 InvestmentVerdict 생성
+```
