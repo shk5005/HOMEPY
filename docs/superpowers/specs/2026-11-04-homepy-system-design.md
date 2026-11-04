@@ -1041,7 +1041,303 @@ homepy/
 │   ├── transformed/
 │   └── catalog/
 │
+├── verification/                   # 검증 및 개선 시스템
+│   ├── backtester.py               # 추론 정확도 백테스팅
+│   ├── calibrator.py               # 팩터 가중치 자동 교정
+│   ├── data_monitor.py             # 데이터 품질 실시간 모니터링
+│   ├── system_monitor.py           # 시스템 성능 모니터링
+│   ├── self_healer.py              # 에러 복구 및 자동 치유
+│   └── improvement_tracker.py      # 개선 이력 추적
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                  # CI 파이프라인
+│       ├── data-quality.yml        # 데이터 품질 정기 검사
+│       └── dependency-audit.yml    # 의존성 보안 감사
+│
 ├── docker-compose.yml
 ├── pyproject.toml
 └── README.md
 ```
+
+---
+
+## 10. 지속적 검증 및 개선 시스템
+
+### 10.1 설계 원칙
+
+시스템 자체에 Red Team Protocol을 적용합니다. HOMEPY가 투자 판단을 의심하듯, 개선 시스템은 HOMEPY 자체를 의심합니다.
+
+- **자기 의심 (Self-Doubt)**: 모든 추론 결과의 정확도를 사후 검증
+- **증거 기반 교정 (Evidence-Based Calibration)**: 가중치/임계값 변경은 백테스팅 근거 필수
+- **무결적 저하 방지 (No Silent Degradation)**: 정확도·품질 저하 즉시 감지 및 경보
+- **인간 승인 게이트 (Human-in-the-Loop)**: 자동 교정은 제안만 하고, 적용은 사용자가 승인
+- **변경 역추적 (Change Traceability)**: 모든 시스템 변경사항 이력 보존
+
+### 10.2 추론 정확도 검증 (Backtesting Engine)
+
+과거 투자 판정(InvestmentVerdict)을 실제 시장 결과와 비교하여 시스템의 정확도를 정량적으로 측정합니다.
+
+#### 검증 지표
+
+| 지표 | 산식 | 목표 |
+|------|------|------|
+| 방향 정확도 | (올바른 방향 예측 수 / 전체 판정 수) × 100 | ≥ 65% |
+| 시그널 적중률 | (실현된 시그널 / 발생 시그널) × 100 | ≥ 60% |
+| 시나리오 포착률 | 실제 결과가 Bull/Base/Bear 중 어디에 해당하는지 | Base ≥ 50% |
+| 편향 탐지 유효율 | (유효 경고 / 전체 경고) × 100 — false positive 배제 | ≥ 70% |
+| 팩터별 기여도 | 각 팩터의 예측력 (Sharpe-like ratio) | 양수 |
+
+#### 백테스팅 주기
+
+| 주기 | 대상 | 검증 방법 |
+|------|------|----------|
+| 월간 | 직전 3개월 판정 vs 실제 가격 변동 | 방향 정확도 + 오차율 |
+| 분기 | 직전 12개월 시나리오 vs 실제 | 시나리오 포착률 |
+| 반기 | 전체 팩터 기여도 분석 | 팩터별 IC (Information Coefficient) |
+| 연간 | 전체 시스템 종합 감사 | 모든 지표 + 기술 스택 검토 |
+
+#### 백테스트 데이터 구조
+
+```python
+@dataclass
+class BacktestRecord:
+    verdict_id: str
+    complex_id: str
+    verdict_date: date
+    predicted_verdict: str          # 매수 검토 / 관망 / 매도 검토
+    predicted_score: float
+    predicted_scenarios: dict       # bull/base/bear
+    actual_price_change_3m: float | None
+    actual_price_change_6m: float | None
+    actual_price_change_12m: float | None
+    direction_correct: bool | None
+    scenario_hit: str | None        # bull/base/bear 중 실제
+    factor_contributions: dict[str, float]
+    bias_warnings_issued: list[str]
+    bias_warnings_valid: list[bool] | None
+```
+
+### 10.3 자동 교정 시스템 (Auto-Calibrator)
+
+백테스팅 결과를 기반으로 팩터 가중치, 편향 탐지 임계값, 정규화 범위를 자동으로 제안합니다.
+
+#### 교정 대상
+
+| 대상 | 현재 값 | 교정 방법 | 승인 |
+|------|---------|----------|------|
+| `FACTOR_WEIGHTS` (14개) | 고정 가중치 | IC (Information Coefficient) 기반 재배분 | 사용자 승인 필수 |
+| 편향 탐지 임계값 (9개) | 고정 임계값 | F1-score 최적화 (precision-recall tradeoff) | 사용자 승인 필수 |
+| 정규화 범위 (min/max) | 도메인 고정값 | 36개월 rolling percentile (5th/95th) | 자동 적용 |
+| 시나리오 σ 값 | 36개월 표준편차 | rolling window 자동 갱신 | 자동 적용 |
+| Grade 경계값 | A≥80, B≥65... | 백테스트 최적 분류 경계 | 사용자 승인 필수 |
+
+#### 교정 프로세스
+
+```
+[백테스트 실행]
+    ↓
+[팩터별 IC 계산] → IC < 0인 팩터 경고
+    ↓
+[최적 가중치 제안] → diff 리포트 생성
+    ↓
+[사용자 리뷰 & 승인] ← Red Team: "이 변경의 반대 논리는?"
+    ↓
+[A/B 테스트 기간 (3개월)] → 신규 vs 기존 가중치 병행 운영
+    ↓
+[성과 비교] → 승인 시 적용, 아니면 롤백
+```
+
+#### 교정 제안 출력 형식
+
+```python
+@dataclass
+class CalibrationProposal:
+    proposal_id: str
+    created_at: datetime
+    category: str                   # "weight" | "threshold" | "normalization"
+    current_values: dict
+    proposed_values: dict
+    rationale: str                  # 변경 근거
+    backtest_evidence: dict         # 관련 백테스트 결과
+    expected_improvement: dict      # 예상 개선 효과
+    risk_assessment: str            # 변경 위험 평가
+    rollback_plan: str              # 롤백 방법
+    status: str                     # "proposed" | "approved" | "testing" | "applied" | "rejected"
+```
+
+### 10.4 데이터 품질 자동 모니터링
+
+파이프라인의 데이터 품질을 실시간으로 감시하고, 이상 징후를 조기에 감지합니다.
+
+#### 모니터링 항목
+
+| 항목 | 탐지 방법 | 임계값 | 대응 |
+|------|----------|--------|------|
+| 데이터 신선도 | 마지막 수집 시각 vs 스케줄 | 예정 시각 + 2시간 | WARNING 알림 |
+| 분포 드리프트 | KL-divergence (30일 vs 직전 30일) | KL > 0.1 | ADVISORY 알림 |
+| 급변 감지 | Z-score (최신값 vs 90일 평균) | \|Z\| > 3.0 | 수동 검증 트리거 |
+| 소스 간 불일치 | 동일 지표 교차 검증 | 차이 > 10% | ADVISORY 알림 |
+| 결측 패턴 변화 | 결측률 추이 (30일 rolling) | 결측률 50% 증가 | 수집기 점검 |
+| API 응답 스키마 변경 | JSON 스키마 diff | 새로운 필드 or 필드 삭제 | 수집기 업데이트 알림 |
+
+#### 알림 체계
+
+```
+WATCH    → 로그 기록만 (자동 해소 가능)
+ADVISORY → Slack/카카오톡 알림 + 대시보드 표시
+WARNING  → 해당 데이터 파이프라인 일시 중지 + 관리자 알림
+CRITICAL → 해당 도메인 추론 결과에 "데이터 품질 미달" 워터마크 부착
+```
+
+### 10.5 시스템 성능 최적화
+
+#### 성능 모니터링 대상
+
+| 대상 | 지표 | 임계값 | 최적화 방법 |
+|------|------|--------|-----------|
+| TypeDB 쿼리 | 응답 시간 | p95 < 2초 | 쿼리 패턴 캐싱 (Redis) |
+| TimescaleDB 집계 | 응답 시간 | p95 < 1초 | Continuous Aggregates 확장 |
+| API 엔드포인트 | 응답 시간 | p95 < 3초 | 결과 캐싱 (TTL=5분) |
+| 추론 엔진 | 단지별 스코어링 | < 5초 | 팩터 병렬 계산 |
+| ETL 파이프라인 | 일일 완료 시간 | < 30분 | 병렬 수집기 실행 |
+| 디스크 사용량 | 증가율 | < 1GB/월 | 압축 정책 + 아카이브 |
+
+#### 캐싱 전략
+
+```python
+CACHE_POLICY = {
+    "macro_summary": {"ttl_seconds": 3600, "invalidate_on": "daily_flow_complete"},
+    "investment_score": {"ttl_seconds": 300, "invalidate_on": "score_recalculated"},
+    "ontology_graph": {"ttl_seconds": 1800, "invalidate_on": "schema_update"},
+    "cycle_status": {"ttl_seconds": 3600, "invalidate_on": "weekly_flow_complete"},
+}
+```
+
+#### 쿼리 최적화 자동 감지
+
+느린 쿼리 (>1초)를 자동 수집하고, 반복 패턴을 식별하여 인덱스 추가 또는 쿼리 재작성을 제안합니다.
+
+### 10.6 에러 복구 및 자동 치유 (Self-Healing)
+
+#### 장애 유형별 자동 복구
+
+| 장애 유형 | 탐지 | 자동 복구 | 수동 개입 조건 |
+|----------|------|----------|-------------|
+| 수집기 API 오류 | HTTP 4xx/5xx | 지수 백오프 재시도 (3회) | 3회 실패 |
+| DB 연결 끊김 | Connection refused | 자동 재연결 (5회) | 5분간 복구 안 됨 |
+| 데이터 품질 실패 | QualityGate FAIL | 이전 정상 데이터 유지 | 3일 연속 실패 |
+| TypeDB 추론 타임아웃 | 30초 초과 | 배치 크기 축소 후 재시도 | 축소 후에도 타임아웃 |
+| 디스크 공간 부족 | 사용률 > 90% | 90일 이전 raw 데이터 아카이브 | 아카이브 후에도 > 85% |
+| 스키마 불일치 | 마이그레이션 실패 | 롤백 to 마지막 성공 버전 | 롤백 불가 |
+
+#### 복구 기록
+
+모든 자동 복구 이벤트는 `data/catalog/recovery_log.jsonl`에 기록:
+
+```python
+@dataclass
+class RecoveryEvent:
+    event_id: str
+    timestamp: datetime
+    failure_type: str
+    component: str
+    auto_action: str
+    success: bool
+    human_escalated: bool
+    resolution_time_seconds: float
+```
+
+### 10.7 CI/CD 및 품질 게이트
+
+#### CI 파이프라인 (GitHub Actions)
+
+```
+Push/PR → Lint (ruff) → Type Check (mypy) → Unit Tests → Integration Tests
+                                                              ↓
+                                               [Docker Compose 기반]
+                                                              ↓
+                                                  TypeDB + TimescaleDB 실제 연동
+                                                              ↓
+                                                  E2E 테스트 → Coverage ≥ 80%
+```
+
+#### 품질 게이트 (PR 머지 조건)
+
+| 게이트 | 기준 | 실패 시 |
+|--------|------|--------|
+| 린트 | ruff 경고 0개 | PR 블록 |
+| 타입 체크 | mypy strict 통과 | PR 블록 |
+| 단위 테스트 | 100% 통과 | PR 블록 |
+| 통합 테스트 | 100% 통과 | PR 블록 |
+| 커버리지 | ≥ 80% (신규 코드 ≥ 90%) | PR 블록 |
+| 보안 스캔 | Critical 0, High 0 | PR 블록 |
+| 의존성 감사 | 알려진 취약점 0 | WARNING |
+
+#### 의존성 관리
+
+| 주기 | 작업 |
+|------|------|
+| 주간 | `pip-audit` 보안 취약점 스캔 |
+| 월간 | 마이너 버전 업데이트 제안 + 테스트 |
+| 분기 | 메이저 버전 업그레이드 검토 (TypeDB, TimescaleDB, Prefect 등) |
+| 수시 | Dependabot / Renovate 알림 대응 |
+
+### 10.8 개선 이력 추적 (Improvement Tracker)
+
+#### 개선 기록 구조
+
+모든 시스템 변경 (가중치 변경, 임계값 조정, 기술 스택 변경, 버그 수정)을 구조화하여 추적합니다.
+
+```python
+@dataclass
+class ImprovementRecord:
+    record_id: str
+    timestamp: datetime
+    category: str       # "calibration" | "bugfix" | "optimization" |
+                        # "tech_upgrade" | "new_feature"
+    component: str      # 변경된 컴포넌트
+    before_state: dict  # 변경 전 상태
+    after_state: dict   # 변경 후 상태
+    trigger: str        # 변경을 유발한 원인
+    evidence: dict      # 변경 근거 (백테스트, 모니터링 등)
+    impact_metrics: dict | None  # 변경 후 효과 측정
+    approved_by: str    # 승인자
+    rollback_possible: bool
+```
+
+#### 개선 대시보드 (Streamlit Page 10)
+
+기존 9페이지 대시보드에 10번째 페이지 추가:
+
+1. **시스템 건강도 요약**: 각 컴포넌트 상태 (정상/주의/경고), 마지막 점검 시각
+2. **추론 정확도 추이**: 방향 정확도, 시그널 적중률 시계열 차트
+3. **교정 제안 목록**: 현재 대기 중인 CalibrationProposal 목록 + 승인/거부 UI
+4. **데이터 품질 히트맵**: 소스별 × 날짜별 품질 점수 히트맵
+5. **성능 대시보드**: API 응답시간 p50/p95, 쿼리 프로파일링
+6. **에러 복구 이력**: 최근 자동 복구 이벤트 + 수동 개입 건
+7. **개선 이력 타임라인**: 전체 변경사항 시간순 기록
+8. **기술 스택 건강도**: 의존성 취약점, 버전 현황
+
+### 10.9 기술 진화 관리
+
+#### 기술 스택 검토 체크리스트 (분기별)
+
+| 컴포넌트 | 현재 | 검토 항목 |
+|----------|------|----------|
+| TypeDB | 2.28+ | 새 버전 기능, 성능 벤치마크, 마이그레이션 경로 |
+| TimescaleDB | 2.x | 새 압축 알고리즘, 연속 집계 개선, PostgreSQL 메이저 |
+| Prefect | 2.x | Prefect 3.x 마이그레이션 적시성, 워크플로우 패턴 |
+| FastAPI | 0.115+ | 새 미들웨어, 성능 개선, 보안 패치 |
+| Streamlit | 1.38+ | 새 위젯, 성능, 커스텀 컴포넌트 |
+| Python | 3.11+ | 3.12/3.13 성능 개선 (JIT 등), 호환성 |
+
+#### 확장 기술 후보 (Phase별)
+
+| Phase | 현재 → 후보 | 전환 조건 |
+|-------|-----------|----------|
+| Phase 2+ | 로컬 캐시 → Redis | API 응답시간 p95 > 3초 |
+| Phase 3+ | 단순 집계 → Apache Spark | 데이터 10GB 초과 |
+| Phase 4 | 규칙 기반 → ML 하이브리드 | 백테스트 정확도 정체 |
+| Phase 4 | REST API → GraphQL | 프론트엔드 쿼리 패턴 복잡화 |
+| Phase 4 | Streamlit → Next.js | 동시 사용자 100+ |
