@@ -12,8 +12,9 @@ NAV = [
     ("시나리오 시뮬레이션", "pages/04_scenario_sim.py"),
     ("세금 시뮬레이션", "pages/05_tax_calculator.py"),
     ("대출 시뮬레이션", "pages/06_loan_calculator.py"),
-    ("온톨로지 그래프", None),
-    ("파이프라인 상태", None),
+    ("포트폴리오", "pages/07_portfolio.py"),
+    ("온톨로지 그래프", "pages/08_knowledge_graph.py"),
+    ("파이프라인 상태", "pages/09_pipeline_monitor.py"),
 ]
 
 
