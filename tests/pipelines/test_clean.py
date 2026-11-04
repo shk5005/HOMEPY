@@ -107,9 +107,9 @@ def test_kosis_long_to_wide_pivot(tmp_path):
         "region_code": ["11680", "11680", "11650", "11650"],
         "region_name": ["a", "a", "b", "b"],
         "item_code": ["T1", "T2", "T1", "T2"],
-        "item_name": ["Total Pop", "Households", "Total Pop", "Households"],
+        "item_name": ["총인구수", "세대수", "총인구수", "세대수"],
         "value": [100.0, 40.0, 200.0, 80.0],
-        "unit": ["p", "h", "p", "h"],
+        "unit": ["명", "세대", "명", "세대"],
     })
     out = pd.read_parquet(clean_source("kosis", _write(tmp_path, df, "kosis")).output_path)
     assert {"ts", "district_code", "total_pop", "households"} <= set(out.columns)

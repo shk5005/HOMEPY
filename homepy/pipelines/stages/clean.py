@@ -40,12 +40,42 @@ SOURCE_RULES: dict[str, dict] = {
 DEFAULT_RULES: dict = {"dedup_keys": None, "schema": {}}  # None -> all columns
 
 
+KOSIS_ITEM_MAP: dict[str, str] = {
+    "총인구수": "total_pop",
+    "총인구": "total_pop",
+    "세대수": "households",
+    "가구수": "households",
+    "인구변동": "pop_change",
+    "인구증감": "pop_change",
+    "20~39세인구": "age_20_39_pop",
+    "20-39세": "age_20_39_pop",
+    "65세이상인구": "age_65_plus_pop",
+    "65세이상": "age_65_plus_pop",
+    "평균가구원수": "avg_household_size",
+    "순이동": "net_migration",
+    "전입": "in_migration",
+    "전출": "out_migration",
+    "중위소득": "median_income",
+    "평균소득": "avg_income",
+    "소득증가율": "growth_rate",
+    "PIR": "pir",
+    "소비자물가지수": "cpi",
+    "소비자물가등락률": "cpi_change_yoy_pct",
+    "경제성장률": "gdp_growth",
+    "실업률": "unemployment",
+    "선행종합지수": "leading_index",
+    "건설공사비지수": "construction_cost_index",
+}
+
+
 def _kosis_pivot(df: pd.DataFrame) -> pd.DataFrame:
     """Long (ts, region_code, item_name, value) -> wide (ts, district_code, <item_name>...)."""
     df = df.rename(columns={"region_code": "district_code"})
     df = df.drop(columns=["region_name", "unit", "item_code"], errors="ignore")
-    names = df["item_name"].astype("string").str.strip().str.lower().str.replace(r"\s+", "_", regex=True)
-    df = df.assign(item_name=names)
+    raw_names = df["item_name"].astype("string").str.strip()
+    mapped = raw_names.map(KOSIS_ITEM_MAP)
+    fallback = raw_names.str.lower().str.replace(r"\s+", "_", regex=True)
+    df = df.assign(item_name=mapped.fillna(fallback))
     wide = df.pivot_table(index=["ts", "district_code"], columns="item_name", values="value",
                           aggfunc="last").reset_index()
     wide.columns.name = None
