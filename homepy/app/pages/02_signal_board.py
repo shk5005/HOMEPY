@@ -14,7 +14,6 @@ with st.sidebar:
     ids_text = st.text_input("단지 ID (쉼표 구분)", "C001")
     types = st.multiselect("시그널 유형", ["opportunity", "risk", "neutral"],
                            default=["opportunity", "risk", "neutral"])
-    district = st.text_input("지역 필터 (부분 일치)", "")
     min_conf = st.slider("최소 신뢰도(점수)", 0, 100, 0)
 
 
@@ -26,7 +25,6 @@ def to_signals(scores: list[dict]) -> list[dict]:
             out.append({
                 "type": "opportunity" if n >= 0.66 else "risk" if n <= 0.33 else "neutral",
                 "target": f"{s['complex_id']} · {f['name']}",
-                "district": s.get("district", ""),
                 "score": n * 100,
                 "evidence": f.get("evidence", []),
             })
@@ -41,8 +39,7 @@ if ids:
     except ApiError as exc:
         st.error(f"API 연결 실패: {exc}")
 
-signals = [s for s in signals if s["type"] in types and s["score"] >= min_conf
-           and district.lower() in s["district"].lower()]
+signals = [s for s in signals if s["type"] in types and s["score"] >= min_conf]
 if not signals:
     st.info("조건에 맞는 시그널이 없습니다.")
 for row in range(0, len(signals), 3):

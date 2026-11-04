@@ -29,7 +29,10 @@ class ApiClient:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     resp = await client.request(method, url, json=json)
                 resp.raise_for_status()
-                return resp.json()
+                try:
+                    return resp.json()
+                except ValueError as exc:
+                    raise ApiError(f"Non-JSON response from {url}") from exc
             except httpx.HTTPStatusError as exc:
                 raise ApiError(f"{exc.response.status_code} from {url}: {exc.response.text[:200]}") from exc
             except httpx.TransportError as exc:  # connect/timeout/network: retry
