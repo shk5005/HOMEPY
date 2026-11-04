@@ -108,6 +108,11 @@ class ImprovementTracker:
         original = _row_to_record(rows[0])
         if not original.rollback_possible:
             raise ValueError(f"record {record_id} is not rollback-capable")
+        # Mark original as no longer rollback-capable to prevent double-rollback
+        await self._db.execute(
+            "UPDATE ts_calibration_log SET rollback_possible = FALSE WHERE record_id = $1",
+            record_id,
+        )
         reverse = replace(
             original,
             record_id=uuid.uuid4().hex,

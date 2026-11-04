@@ -31,7 +31,8 @@ jobs:
           from homepy.storage.timescale_service import TimescaleService
 
           async def main():
-              svc = TimescaleService()
+              svc = TimescaleService(os.environ["TIMESCALE_DSN"])
+              await svc.connect()
               monitor = DataMonitor(svc)
               lines = []
               for a in await monitor.check_freshness():

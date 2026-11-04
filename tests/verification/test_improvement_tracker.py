@@ -19,6 +19,12 @@ class MockTimescale:
 
     async def execute(self, query: str, *args: Any) -> list[dict[str, Any]]:
         q = query.strip().upper()
+        if q.startswith("UPDATE"):
+            rid = args[0]
+            for r in self.rows:
+                if r["record_id"] == rid:
+                    r["rollback_possible"] = False
+            return []
         if q.startswith("INSERT"):
             (rid, ts, category, component, before, after, trigger, evidence,
              impact, approved_by, rollback_possible) = args
