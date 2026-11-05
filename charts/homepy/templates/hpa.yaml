@@ -3,6 +3,9 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ .Release.Name }}-fastapi
+  labels:
+    app.kubernetes.io/name: homepy
+    app.kubernetes.io/component: fastapi
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

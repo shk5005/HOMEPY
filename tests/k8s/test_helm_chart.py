@@ -191,7 +191,7 @@ def test_hpa_targets_fastapi():
     assert hpa["spec"]["scaleTargetRef"]["kind"] == "Deployment"
     assert hpa["spec"]["scaleTargetRef"]["name"].endswith("fastapi")
     v = yaml.safe_load((CHART / "values.yaml").read_text())["autoscaling"]
-    assert (v["minReplicas"], v["maxReplicas"], v["targetCPUUtilizationPercentage"]) == (1, 5, 50)
+    assert (v["minReplicas"], v["maxReplicas"], v["targetCPUUtilizationPercentage"]) == (2, 10, 70)
 
 
 def test_configmap_keys():
