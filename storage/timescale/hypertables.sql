@@ -105,3 +105,8 @@ SELECT create_hypertable('ts_verdict_history', 'ts', if_not_exists => TRUE);
 SELECT create_hypertable('ts_realtime_events', 'ts', if_not_exists => TRUE);
 ALTER TABLE ts_realtime_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'source');
 SELECT add_compression_policy('ts_realtime_events', INTERVAL '30 days', if_not_exists => TRUE);
+
+-- Plan G Task 3: ML feature store
+SELECT create_hypertable('ts_ml_features', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_ml_features SET (timescaledb.compress, timescaledb.compress_segmentby = 'complex_id');
+SELECT add_compression_policy('ts_ml_features', INTERVAL '90 days', if_not_exists => TRUE);

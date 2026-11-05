@@ -311,3 +311,13 @@ ALTER TABLE ts_verdict_history FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS verdict_isolation ON ts_verdict_history;
 CREATE POLICY verdict_isolation ON ts_verdict_history
     USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+-- ===== Plan G Task 3: ML feature store =====
+CREATE TABLE IF NOT EXISTS ts_ml_features (
+    ts TIMESTAMPTZ NOT NULL,
+    complex_id VARCHAR(20) NOT NULL,
+    feature_name VARCHAR(60) NOT NULL,
+    feature_value DOUBLE PRECISION,
+    PRIMARY KEY (ts, complex_id, feature_name)
+);
+CREATE INDEX IF NOT EXISTS idx_ts_ml_features_complex ON ts_ml_features (complex_id, ts DESC);
