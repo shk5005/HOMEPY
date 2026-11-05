@@ -50,7 +50,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     """Build the app. ``use_lifespan=False`` skips DB connections (tests)."""
     import time as _time
 
-    app = FastAPI(title="HOMEPY", version="0.1.0", lifespan=lifespan if use_lifespan else None)
+    app = FastAPI(title="도깨비", version="0.1.0", lifespan=lifespan if use_lifespan else None)
     app.state.startup_time = _time.monotonic()
     issuer = os.environ.get("KEYCLOAK_ISSUER", "http://localhost:8080/realms/homepy")
     app.state.jwt_handler = JWTHandler(
