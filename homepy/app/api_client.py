@@ -65,6 +65,15 @@ class ApiClient:
     async def post_loan(self, payload: dict) -> dict:
         return await self._request("POST", "/simulation/loan", payload)
 
+    async def post_policy(self, policy_type: str, parameters: dict) -> dict:
+        return await self._request("POST", "/simulation/policy",
+                                   {"policy_type": policy_type, "parameters": parameters})
+
+    async def post_policy_backtest(self, policy_name: str, policy_date: str,
+                                   changes: dict | None = None) -> dict:
+        return await self._request("POST", "/simulation/policy/backtest", {
+            "policy_name": policy_name, "policy_date": policy_date, "changes": changes or {}})
+
     # ontology
     async def get_graph(self, complex_id: str) -> dict:
         return await self._request("GET", f"/ontology/graph/{complex_id}")
