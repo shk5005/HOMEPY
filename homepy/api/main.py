@@ -29,6 +29,9 @@ PREFIXES = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import logging
+
+    log = logging.getLogger("homepy.startup")
     from homepy.storage.timescale_service import TimescaleService
     from homepy.storage.typedb_service import TypeDBService
 
@@ -36,14 +39,26 @@ async def lifespan(app: FastAPI):
     timescale = TimescaleService(
         os.environ.get("TIMESCALE_DSN", "postgresql://homepy:homepy@localhost:5432/homepy")
     )
-    await asyncio.to_thread(typedb.connect)
-    await timescale.connect()
+    try:
+        await asyncio.to_thread(typedb.connect)
+        log.info("TypeDB connected")
+    except Exception as exc:
+        log.warning("TypeDB unavailable (%s) — ontology endpoints will fail", exc)
+        typedb = None
+    try:
+        await timescale.connect()
+        log.info("TimescaleDB connected")
+    except Exception as exc:
+        log.warning("TimescaleDB unavailable (%s) — time-series endpoints will fail", exc)
+        timescale = None
     app.state.typedb, app.state.timescale = typedb, timescale
     try:
         yield
     finally:
-        await timescale.close()
-        await asyncio.to_thread(typedb.close)
+        if timescale is not None:
+            await timescale.close()
+        if typedb is not None:
+            await asyncio.to_thread(typedb.close)
 
 
 def create_app(use_lifespan: bool = True) -> FastAPI:
