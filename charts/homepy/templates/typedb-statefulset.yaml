@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-typedb
+  labels:
+    app: {{ .Release.Name }}-typedb
+spec:
+  serviceName: {{ .Release.Name }}-typedb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-typedb
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-typedb
+    spec:
+      containers:
+        - name: typedb
+          image: "{{ .Values.typedb.image.repository }}:{{ .Values.typedb.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.typedb.port }}
+              name: typedb
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.typedb.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.typedb.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.typedb.dataPath }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.typedb.persistence.storageClass }}
+        storageClassName: {{ .Values.typedb.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.typedb.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-typedb
+spec:
+  clusterIP: None
+  selector:
+    app: {{ .Release.Name }}-typedb
+  ports:
+    - port: {{ .Values.typedb.port }}
+      targetPort: {{ .Values.typedb.port }}

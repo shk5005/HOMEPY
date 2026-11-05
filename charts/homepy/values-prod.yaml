@@ -1,0 +1,14 @@
+global:
+  logLevel: WARNING
+typedb:
+  persistence:
+    size: 10Gi
+timescaledb:
+  persistence:
+    size: 50Gi
+fastapi:
+  replicas: 2
+ingress:
+  host: homepy.example.com
+config:
+  logLevel: WARNING

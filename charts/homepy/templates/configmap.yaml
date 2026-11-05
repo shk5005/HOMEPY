@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CACHE_TTL_SECONDS: {{ .Values.config.cacheTtlSeconds | quote }}
+  TYPEDB_HOST: {{ .Release.Name }}-typedb
+  TYPEDB_PORT: {{ .Values.typedb.port | quote }}
+  TYPEDB_DATABASE: {{ .Values.config.typedbDatabase | quote }}
+  TIMESCALE_HOST: {{ .Release.Name }}-timescaledb
+  TIMESCALE_PORT: {{ .Values.timescaledb.port | quote }}
+  REDIS_HOST: {{ .Release.Name }}-redis
+  REDIS_PORT: {{ .Values.redis.port | quote }}
+  ALERT_CHANNELS: {{ .Values.config.alertChannels | quote }}

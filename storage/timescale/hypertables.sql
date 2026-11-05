@@ -73,3 +73,40 @@ SELECT add_continuous_aggregate_policy('ts_real_trade_monthly',
     end_offset => INTERVAL '1 day',
     schedule_interval => INTERVAL '1 day',
     if_not_exists => TRUE);
+
+-- Plan D: verification & improvement hypertables
+SELECT create_hypertable('ts_backtest_results', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_backtest_results SET (timescaledb.compress, timescaledb.compress_segmentby = 'complex_id');
+SELECT add_compression_policy('ts_backtest_results', INTERVAL '180 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_calibration_log', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_calibration_log SET (timescaledb.compress, timescaledb.compress_segmentby = 'category');
+SELECT add_compression_policy('ts_calibration_log', INTERVAL '180 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_system_metrics', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_system_metrics SET (timescaledb.compress, timescaledb.compress_segmentby = 'component');
+SELECT add_compression_policy('ts_system_metrics', INTERVAL '180 days', if_not_exists => TRUE);
+
+-- Plan E: HA/DR monitoring hypertables
+SELECT create_hypertable('ts_anomaly_detections', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_anomaly_detections SET (timescaledb.compress, timescaledb.compress_segmentby = 'district_code');
+SELECT add_compression_policy('ts_anomaly_detections', INTERVAL '365 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_alert_events', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_alert_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'level');
+SELECT add_compression_policy('ts_alert_events', INTERVAL '365 days', if_not_exists => TRUE);
+
+-- Plan F Task 3: per-user hypertables (RLS policies defined in schema.sql)
+SELECT create_hypertable('ts_portfolio', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('ts_watchlist', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('ts_verdict_history', 'ts', if_not_exists => TRUE);
+
+-- Plan F Task 4: real-time events
+SELECT create_hypertable('ts_realtime_events', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_realtime_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'source');
+SELECT add_compression_policy('ts_realtime_events', INTERVAL '30 days', if_not_exists => TRUE);
+
+-- Plan G Task 3: ML feature store
+SELECT create_hypertable('ts_ml_features', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_ml_features SET (timescaledb.compress, timescaledb.compress_segmentby = 'complex_id');
+SELECT add_compression_policy('ts_ml_features', INTERVAL '90 days', if_not_exists => TRUE);
