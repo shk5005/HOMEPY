@@ -5,7 +5,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from homepy.api.dependencies import get_timescale
 from homepy.api.models.schemas import (
@@ -141,3 +141,55 @@ async def ha_status(request: Request):
             last_heartbeat=datetime.now(timezone.utc),
         ).__dict__)
     return components
+
+
+# ---- Market monitoring (Plan E Task 7) -------------------------------------
+
+@router.get("/monitoring/anomalies")
+async def monitoring_anomalies(
+    days: int = Query(default=7, ge=1, le=90), ts=Depends(get_timescale),
+) -> list[dict]:
+    if ts is None:
+        return []
+    try:
+        rows = await ts.execute(
+            "SELECT anomaly_id, ts AS detected_at, district_code, metric_name, algorithm, "
+            "current_value, baseline_value, z_score, severity "
+            "FROM ts_anomaly_detections "
+            "WHERE ts > NOW() - make_interval(days => $1) ORDER BY ts DESC",
+            days,
+        )
+    except Exception:  # DB unavailable / table missing -> degrade to empty
+        return []
+    return [dict(r) for r in rows]
+
+
+@router.get("/monitoring/alerts")
+async def monitoring_alerts(
+    days: int = Query(default=7, ge=1, le=90),
+    level: str | None = Query(default=None),
+    ts=Depends(get_timescale),
+) -> list[dict]:
+    if ts is None:
+        return []
+    sql = (
+        "SELECT alert_id, ts AS created_at, level, title, description, district_code, "
+        "anomaly_ids, channels_sent, channels_failed, deduplicated, batch_count "
+        "FROM ts_alert_events WHERE ts > NOW() - make_interval(days => $1)"
+    )
+    args: list = [days]
+    if level:
+        sql += " AND level = $2"
+        args.append(level)
+    sql += " ORDER BY ts DESC"
+    try:
+        rows = await ts.execute(sql, *args)
+    except Exception:
+        return []
+    return [dict(r) for r in rows]
+
+
+@router.get("/monitoring/early-warnings")
+async def monitoring_early_warnings(request: Request) -> list[dict]:
+    # Placeholder: querying active signals requires a live TypeDB.
+    return []

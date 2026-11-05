@@ -93,6 +93,22 @@ class ApiClient:
     async def get_verification_health(self) -> dict:
         return await self._request("GET", "/pipeline/verification/health")
 
+    # monitoring
+    async def get_monitoring_anomalies(self, days: int = 7) -> list[dict]:
+        return await self._request("GET", f"/pipeline/monitoring/anomalies?days={days}")
+
+    async def get_monitoring_alerts(self, days: int = 7, level: str | None = None) -> list[dict]:
+        path = f"/pipeline/monitoring/alerts?days={days}"
+        if level:
+            path += f"&level={level}"
+        return await self._request("GET", path)
+
+    async def get_early_warnings(self) -> list[dict]:
+        return await self._request("GET", "/pipeline/monitoring/early-warnings")
+
+    async def get_ha_status(self) -> list[dict]:
+        return await self._request("GET", "/pipeline/ha/status")
+
 
 def run(coro):
     """Run an ApiClient coroutine from synchronous Streamlit code."""
