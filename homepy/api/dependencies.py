@@ -9,6 +9,7 @@ from homepy.inference.bias_detector import BiasDetector
 from homepy.inference.scorer import InvestmentScorer
 from homepy.inference.simulator import ScenarioSimulator
 from homepy.inference.verdict import VerdictBuilder
+from homepy.simulation.policy_simulator import PolicySimulator
 
 
 def get_typedb(request: Request):
@@ -35,3 +36,8 @@ def get_verdict_builder(request: Request) -> VerdictBuilder:
 
 def get_tax_engine(request: Request) -> TaxEngine:
     return TaxEngine(request.app.state.typedb)
+
+
+def get_policy_simulator(request: Request) -> PolicySimulator:
+    return PolicySimulator(
+        request.app.state.typedb, get_scorer(request), request.app.state.timescale)

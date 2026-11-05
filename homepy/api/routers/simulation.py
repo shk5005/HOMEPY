@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from typing import Annotated
+from datetime import date
+from typing import Annotated, Any
+
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, Path
+from pydantic import BaseModel, Field
 
-from homepy.api.dependencies import get_simulator, get_tax_engine
+from homepy.api.dependencies import get_policy_simulator, get_simulator, get_tax_engine
 from homepy.api.models.schemas import (
     COMPLEX_ID_PATTERN,
     LoanSimulationRequest, LoanSimulationResponse, ScenarioResultResponse,
@@ -63,3 +67,38 @@ async def loan(body: LoanSimulationRequest):
         binding_constraint="LTV" if ltv_cap <= dsr_cap else "DSR",
         ltv_limit=ltv, dsr_limit=dsr, ltv_cap_amount=ltv_cap, dsr_cap_amount=dsr_cap,
         monthly_payment=int(maximum * monthly_factor))
+
+
+class PolicyRequest(BaseModel):
+    policy_type: str = Field(pattern="^(tax|regulation|interest_rate|supply_shock)$")
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class PolicyBacktestRequest(BaseModel):
+    policy_name: str
+    policy_date: date
+    changes: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/policy")
+async def policy(body: PolicyRequest, sim=Depends(get_policy_simulator)):
+    p = body.parameters
+    try:
+        if body.policy_type == "tax":
+            result = await sim.simulate_tax_change(p)
+        elif body.policy_type == "regulation":
+            result = await sim.simulate_regulation(
+                p["district_code"], p["regulation_type"], p["action"])
+        elif body.policy_type == "interest_rate":
+            result = await sim.simulate_interest_rate(p["rate_path"])
+        else:
+            result = await sim.simulate_supply_shock(p["district_code"], int(p["units"]))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"invalid parameters: {exc}") from exc
+    return asdict(result)
+
+
+@router.post("/policy/backtest")
+async def policy_backtest(body: PolicyBacktestRequest, sim=Depends(get_policy_simulator)):
+    result = await sim.backtest_policy(body.policy_name, body.policy_date, body.changes)
+    return asdict(result)
