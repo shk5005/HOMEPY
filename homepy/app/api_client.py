@@ -74,6 +74,28 @@ class ApiClient:
         return await self._request("POST", "/simulation/policy/backtest", {
             "policy_name": policy_name, "policy_date": policy_date, "changes": changes or {}})
 
+    # nlp / reports
+    async def post_nlp_query(self, query: str) -> dict:
+        return await self._request("POST", "/nlp/query", {"query": query})
+
+    async def post_report_generate(self, complex_id: str, fmt: str = "html",
+                                   include_debate: bool = False) -> bytes:
+        """Return raw report bytes (HTML or PDF)."""
+        url = f"{self.base_url}{API_PREFIX}/reports/generate"
+        payload = {"complex_id": complex_id, "format": fmt, "include_debate": include_debate}
+        try:
+            async with httpx.AsyncClient(timeout=max(self.timeout, 120.0)) as client:
+                resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise ApiError(f"{exc.response.status_code} from {url}: {exc.response.text[:200]}") from exc
+        except httpx.TransportError as exc:
+            raise ApiError(f"API unreachable at {self.base_url}: {exc!r}") from exc
+        return resp.content
+
+    async def post_debate(self, complex_id: str) -> dict:
+        return await self._request("POST", "/reports/debate", {"complex_id": complex_id})
+
     # ontology
     async def get_graph(self, complex_id: str) -> dict:
         return await self._request("GET", f"/ontology/graph/{complex_id}")

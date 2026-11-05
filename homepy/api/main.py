@@ -12,7 +12,8 @@ from homepy.auth import JWTHandler
 from homepy.auth.rbac import RBACMiddleware
 from homepy.auth.tenant import TenantMiddleware
 from homepy.realtime.ws_server import signal_stream
-from homepy.api.routers import analysis, market, ontology, pipeline, portfolio, simulation
+from homepy.api.routers import (analysis, market, nlp, ontology, pipeline, portfolio, reports,
+                                 simulation)
 
 PREFIXES = {
     "ontology": "/api/v1/ontology",
@@ -21,6 +22,8 @@ PREFIXES = {
     "market": "/api/v1/market",
     "portfolio": "/api/v1/portfolio",
     "pipeline": "/api/v1/pipeline",
+    "nlp": "/api/v1/nlp",
+    "reports": "/api/v1/reports",
 }
 
 
@@ -60,7 +63,8 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.add_middleware(RBACMiddleware)
     for module, name in [(ontology, "ontology"), (analysis, "analysis"),
                          (simulation, "simulation"), (market, "market"),
-                         (portfolio, "portfolio"), (pipeline, "pipeline")]:
+                         (portfolio, "portfolio"), (pipeline, "pipeline"),
+                         (nlp, "nlp"), (reports, "reports")]:
         app.include_router(module.router, prefix=PREFIXES[name], tags=[name])
     # WebSocket route is intentionally outside the /api/v1 router prefixes.
     app.add_api_websocket_route("/ws/signals/{district_code}", signal_stream)
