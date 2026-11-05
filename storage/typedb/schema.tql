@@ -526,3 +526,12 @@ define
     owns similarity-score;
   complex plays comparable:subject;
   complex plays comparable:comparison;
+
+  # Early warning signals (Plan E)
+  smart-money-signal sub relation,
+    relates detected-area;
+  district plays smart-money-signal:detected-area;
+
+  gap-narrowing-signal sub relation,
+    relates narrowing-area;
+  district plays gap-narrowing-signal:narrowing-area;
