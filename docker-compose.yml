@@ -14,24 +14,140 @@ services:
       retries: 12
       start_period: 10s
 
-  timescaledb:
-    image: timescale/timescaledb:latest-pg16
-    container_name: homepy-timescaledb
+  typedb-standby:
+    image: vaticle/typedb:2.28.0
+    container_name: homepy-typedb-standby
+    command: ["/opt/typedb-all-linux-x86_64/typedb", "server", "--server.address=0.0.0.0:11730"]
     ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: homepy
-      POSTGRES_USER: homepy
-      POSTGRES_PASSWORD: homepy
+      - "11730:11730"
     volumes:
-      - timescale_data:/var/lib/postgresql/data
+      - typedb-standby-data:/opt/typedb-all-linux-x86_64/server/data
+      - backup-data:/backups
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U homepy -d homepy"]
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/11730'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.14
+    container_name: homepy-etcd
+    command:
+      - etcd
+      - --name=etcd
+      - --data-dir=/etcd-data
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://etcd:2379
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 5s
+
+  timescale-primary:
+    image: timescale/timescaledb-ha:pg16
+    container_name: homepy-timescale-primary
+    hostname: timescale-primary
+    # Patroni ships in the timescaledb-ha image
+    command: ["patroni", "/etc/patroni/patroni.yml"]
+    ports:
+      - "5432:5432"
+      - "8008:8008"
+    depends_on:
+      etcd:
+        condition: service_healthy
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - wal-archive:/wal-archive
+      - ./deploy/patroni/patroni-primary.yml:/etc/patroni/patroni.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homepy -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  timescale-replica:
+    image: timescale/timescaledb-ha:pg16
+    container_name: homepy-timescale-replica
+    hostname: timescale-replica
+    command: ["patroni", "/etc/patroni/patroni.yml"]
+    ports:
+      - "5433:5432"
+      - "8009:8008"
+    depends_on:
+      timescale-primary:
+        condition: service_healthy
+    volumes:
+      - timescale_replica_data:/var/lib/postgresql/data
+      - wal-archive:/wal-archive
+      - ./deploy/patroni/patroni-replica.yml:/etc/patroni/patroni.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homepy -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  redis-master:
+    image: redis:7-alpine
+    container_name: homepy-redis-master
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-replica:
+    image: redis:7-alpine
+    container_name: homepy-redis-replica
+    command: ["redis-server", "--replicaof", "redis-master", "6379"]
+    depends_on:
+      - redis-master
+
+  redis-sentinel-1: &sentinel
+    image: redis:7-alpine
+    container_name: homepy-redis-sentinel-1
+    # Sentinel rewrites its config; copy the mounted template first
+    command: ["sh", "-c", "cp /etc/redis/sentinel.conf /tmp/sentinel.conf && redis-sentinel /tmp/sentinel.conf"]
+    volumes:
+      - ./deploy/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    depends_on:
+      - redis-master
+      - redis-replica
+
+  redis-sentinel-2:
+    <<: *sentinel
+    container_name: homepy-redis-sentinel-2
+
+  redis-sentinel-3:
+    <<: *sentinel
+    container_name: homepy-redis-sentinel-3
+
+  nginx:
+    image: nginx:1.25
+    container_name: homepy-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   typedb_data:
   timescale_data:
+  timescale_replica_data:
+  wal-archive:
+  typedb-standby-data:
+  redis-data:
+  backup-data:

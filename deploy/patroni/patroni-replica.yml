@@ -1,0 +1,41 @@
+scope: homepy-cluster
+name: timescale-replica
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: timescale-replica:8008
+
+etcd3:
+  host: etcd:2379
+
+bootstrap:
+  method: basebackup
+  basebackup:
+    max-rate: 100M
+    checkpoint: fast
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: timescale-replica:5432
+  data_dir: /var/lib/postgresql/data/pgdata
+  authentication:
+    superuser:
+      username: homepy
+      password: homepy
+    replication:
+      username: replicator
+      password: replicator
+  create_replica_methods:
+    - basebackup
+  basebackup:
+    max-rate: 100M
+    checkpoint: fast
+  parameters:
+    hot_standby: "on"
+    shared_preload_libraries: timescaledb
+
+tags:
+  nofailover: false
+  noloadbalance: false
+  clonefrom: true
+  nosync: false
