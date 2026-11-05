@@ -244,3 +244,59 @@ CREATE TABLE IF NOT EXISTS ts_alert_events (
 
 CREATE INDEX IF NOT EXISTS idx_ts_anomaly_district ON ts_anomaly_detections (district_code, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_ts_alert_level ON ts_alert_events (level, ts DESC);
+
+-- ============================================================
+-- Plan F Task 3: multi-tenancy (users + per-user tables + RLS)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ts_users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    display_name TEXT,
+    role TEXT NOT NULL DEFAULT 'viewer',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ts_portfolio (
+    ts TIMESTAMPTZ NOT NULL,
+    user_id UUID NOT NULL REFERENCES ts_users(user_id),
+    complex_id VARCHAR(30) NOT NULL,
+    action VARCHAR(20) NOT NULL,
+    notes TEXT,
+    PRIMARY KEY (ts, user_id, complex_id)
+);
+
+CREATE TABLE IF NOT EXISTS ts_watchlist (
+    ts TIMESTAMPTZ NOT NULL,
+    user_id UUID NOT NULL REFERENCES ts_users(user_id),
+    complex_id VARCHAR(30) NOT NULL,
+    PRIMARY KEY (ts, user_id, complex_id)
+);
+
+CREATE TABLE IF NOT EXISTS ts_verdict_history (
+    ts TIMESTAMPTZ NOT NULL,
+    user_id UUID NOT NULL REFERENCES ts_users(user_id),
+    complex_id VARCHAR(30) NOT NULL,
+    verdict VARCHAR(20) NOT NULL,
+    score DOUBLE PRECISION,
+    PRIMARY KEY (ts, user_id, complex_id)
+);
+
+-- RLS: unset app.current_user_id -> current_setting(..., true) is NULL -> no rows.
+-- FORCE applies the policy to the table owner too. USING also serves as WITH CHECK.
+ALTER TABLE ts_portfolio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ts_portfolio FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS portfolio_isolation ON ts_portfolio;
+CREATE POLICY portfolio_isolation ON ts_portfolio
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+ALTER TABLE ts_watchlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ts_watchlist FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS watchlist_isolation ON ts_watchlist;
+CREATE POLICY watchlist_isolation ON ts_watchlist
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);
+
+ALTER TABLE ts_verdict_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ts_verdict_history FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS verdict_isolation ON ts_verdict_history;
+CREATE POLICY verdict_isolation ON ts_verdict_history
+    USING (user_id = NULLIF(current_setting('app.current_user_id', true), '')::uuid);

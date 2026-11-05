@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from homepy.auth import JWTHandler
 from homepy.auth.rbac import RBACMiddleware
+from homepy.auth.tenant import TenantMiddleware
 from homepy.api.routers import analysis, market, ontology, pipeline, portfolio, simulation
 
 PREFIXES = {
@@ -53,6 +54,8 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
         audience=os.environ.get("JWT_AUDIENCE", "homepy-api"),
         issuer=issuer,
     )
+    # Starlette runs the last-added middleware first: RBAC (sets request.state.user) -> Tenant.
+    app.add_middleware(TenantMiddleware)
     app.add_middleware(RBACMiddleware)
     for module, name in [(ontology, "ontology"), (analysis, "analysis"),
                          (simulation, "simulation"), (market, "market"),

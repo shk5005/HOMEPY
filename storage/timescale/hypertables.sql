@@ -95,3 +95,8 @@ SELECT add_compression_policy('ts_anomaly_detections', INTERVAL '365 days', if_n
 SELECT create_hypertable('ts_alert_events', 'ts', if_not_exists => TRUE);
 ALTER TABLE ts_alert_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'level');
 SELECT add_compression_policy('ts_alert_events', INTERVAL '365 days', if_not_exists => TRUE);
+
+-- Plan F Task 3: per-user hypertables (RLS policies defined in schema.sql)
+SELECT create_hypertable('ts_portfolio', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('ts_watchlist', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('ts_verdict_history', 'ts', if_not_exists => TRUE);
