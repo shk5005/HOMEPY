@@ -1,0 +1,85 @@
+global:
+  logLevel: INFO
+
+typedb:
+  image:
+    repository: vaticle/typedb
+    tag: "2.28.0"
+  port: 1729
+  dataPath: /opt/typedb-all-linux-x86_64/server/data
+  persistence:
+    size: 10Gi
+    storageClass: ""
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 4Gi}
+
+timescaledb:
+  image:
+    repository: timescale/timescaledb
+    tag: "latest-pg16"
+  port: 5432
+  database: homepy
+  user: homepy
+  persistence:
+    size: 50Gi
+    storageClass: ""
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {cpu: "2", memory: 4Gi}
+
+redis:
+  image:
+    repository: redis
+    tag: "7-alpine"
+  replicas: 1
+  port: 6379
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+
+fastapi:
+  image:
+    repository: homepy/fastapi
+    tag: "0.1.0"
+  replicas: 2
+  port: 8000
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+streamlit:
+  image:
+    repository: homepy/streamlit
+    tag: "0.1.0"
+  replicas: 1
+  port: 8501
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 50
+
+ingress:
+  enabled: true
+  className: nginx
+  host: homepy.example.com
+  annotations: {}
+
+config:
+  logLevel: INFO
+  cacheTtlSeconds: "300"
+  typedbDatabase: homepy
+  alertChannels: "log"
+
+# Placeholders only. Override at install time (--set / -f) or use an external
+# secret manager. Never commit real credentials.
+secrets:
+  postgresPassword: CHANGE_ME
+  redisPassword: CHANGE_ME
+  jwtSecret: CHANGE_ME
+  apiKey: CHANGE_ME
