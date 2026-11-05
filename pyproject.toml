@@ -20,6 +20,8 @@ dependencies = [
     "plotly>=7.1.0",
     "folium>=0.20.0",
     "pyvis>=0.3.2",
+    "python-jose[cryptography]>=3.3.0",
+    "redis>=5.0",
 ]
 
 [project.optional-dependencies]
