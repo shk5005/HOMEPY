@@ -281,6 +281,17 @@ CREATE TABLE IF NOT EXISTS ts_verdict_history (
     PRIMARY KEY (ts, user_id, complex_id)
 );
 
+-- Plan F Task 4: raw real-time events from collectors
+CREATE TABLE IF NOT EXISTS ts_realtime_events (
+    ts TIMESTAMPTZ NOT NULL,
+    event_id VARCHAR(60) NOT NULL,
+    source VARCHAR(30) NOT NULL,
+    event_type VARCHAR(30) NOT NULL,
+    district_code VARCHAR(10),
+    data JSONB NOT NULL DEFAULT '{}'::jsonb,
+    PRIMARY KEY (ts, event_id)
+);
+
 -- RLS: unset app.current_user_id -> current_setting(..., true) is NULL -> no rows.
 -- FORCE applies the policy to the table owner too. USING also serves as WITH CHECK.
 ALTER TABLE ts_portfolio ENABLE ROW LEVEL SECURITY;

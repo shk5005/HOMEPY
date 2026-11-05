@@ -100,3 +100,8 @@ SELECT add_compression_policy('ts_alert_events', INTERVAL '365 days', if_not_exi
 SELECT create_hypertable('ts_portfolio', 'ts', if_not_exists => TRUE);
 SELECT create_hypertable('ts_watchlist', 'ts', if_not_exists => TRUE);
 SELECT create_hypertable('ts_verdict_history', 'ts', if_not_exists => TRUE);
+
+-- Plan F Task 4: real-time events
+SELECT create_hypertable('ts_realtime_events', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_realtime_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'source');
+SELECT add_compression_policy('ts_realtime_events', INTERVAL '30 days', if_not_exists => TRUE);
