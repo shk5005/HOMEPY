@@ -8,6 +8,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from homepy.auth import JWTHandler
+from homepy.auth.rbac import RBACMiddleware
 from homepy.api.routers import analysis, market, ontology, pipeline, portfolio, simulation
 
 PREFIXES = {
@@ -45,6 +47,13 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
 
     app = FastAPI(title="HOMEPY", version="0.1.0", lifespan=lifespan if use_lifespan else None)
     app.state.startup_time = _time.monotonic()
+    issuer = os.environ.get("KEYCLOAK_ISSUER", "http://localhost:8080/realms/homepy")
+    app.state.jwt_handler = JWTHandler(
+        jwks_url=os.environ.get("KEYCLOAK_JWKS_URL", f"{issuer}/protocol/openid-connect/certs"),
+        audience=os.environ.get("JWT_AUDIENCE", "homepy-api"),
+        issuer=issuer,
+    )
+    app.add_middleware(RBACMiddleware)
     for module, name in [(ontology, "ontology"), (analysis, "analysis"),
                          (simulation, "simulation"), (market, "market"),
                          (portfolio, "portfolio"), (pipeline, "pipeline")]:
