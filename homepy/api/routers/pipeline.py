@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -107,3 +109,35 @@ async def verification_health(request: Request, ts=Depends(get_timescale)):
         data_quality_alerts=len(alerts),
         recovery_events_24h=len(healer.get_recovery_history(24)),
     )
+
+
+# ---- HA health (Plan E) ----------------------------------------------------
+
+@router.get("/health")
+async def health(request: Request):
+    uptime = time.monotonic() - getattr(request.app.state, "startup_time", time.monotonic())
+    return {
+        "status": "ok",
+        "node_id": os.environ.get("NODE_ID", "node-1"),
+        "uptime_seconds": round(uptime, 2),
+    }
+
+
+@router.get("/ha/status")
+async def ha_status(request: Request):
+    from homepy.ha.models import HAStatus
+
+    components: list[dict] = []
+    ts = getattr(request.app.state, "timescale", None)
+    if ts is not None:
+        components.append(HAStatus(
+            component="timescaledb", role="primary", healthy=True,
+            last_heartbeat=datetime.now(timezone.utc),
+        ).__dict__)
+    typedb = getattr(request.app.state, "typedb", None)
+    if typedb is not None:
+        components.append(HAStatus(
+            component="typedb", role="primary", healthy=True,
+            last_heartbeat=datetime.now(timezone.utc),
+        ).__dict__)
+    return components

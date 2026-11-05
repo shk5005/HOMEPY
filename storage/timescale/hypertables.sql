@@ -86,3 +86,12 @@ SELECT add_compression_policy('ts_calibration_log', INTERVAL '180 days', if_not_
 SELECT create_hypertable('ts_system_metrics', 'ts', if_not_exists => TRUE);
 ALTER TABLE ts_system_metrics SET (timescaledb.compress, timescaledb.compress_segmentby = 'component');
 SELECT add_compression_policy('ts_system_metrics', INTERVAL '180 days', if_not_exists => TRUE);
+
+-- Plan E: HA/DR monitoring hypertables
+SELECT create_hypertable('ts_anomaly_detections', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_anomaly_detections SET (timescaledb.compress, timescaledb.compress_segmentby = 'district_code');
+SELECT add_compression_policy('ts_anomaly_detections', INTERVAL '365 days', if_not_exists => TRUE);
+
+SELECT create_hypertable('ts_alert_events', 'ts', if_not_exists => TRUE);
+ALTER TABLE ts_alert_events SET (timescaledb.compress, timescaledb.compress_segmentby = 'level');
+SELECT add_compression_policy('ts_alert_events', INTERVAL '365 days', if_not_exists => TRUE);

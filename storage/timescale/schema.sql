@@ -208,3 +208,39 @@ CREATE TABLE IF NOT EXISTS ts_system_metrics (
 
 CREATE INDEX IF NOT EXISTS idx_ts_backtest_complex ON ts_backtest_results (complex_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_ts_system_metrics_component ON ts_system_metrics (component, metric_name, ts DESC);
+
+-- ===== Plan E: HA/DR monitoring layer =====
+
+-- Anomaly detection results
+CREATE TABLE IF NOT EXISTS ts_anomaly_detections (
+    ts TIMESTAMPTZ NOT NULL,                -- detected_at
+    anomaly_id VARCHAR(60) NOT NULL,
+    district_code VARCHAR(10) NOT NULL,
+    metric_name VARCHAR(50) NOT NULL,
+    algorithm VARCHAR(30) NOT NULL,
+    current_value DOUBLE PRECISION,
+    baseline_value DOUBLE PRECISION,
+    z_score DOUBLE PRECISION,
+    severity VARCHAR(20) NOT NULL,
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    PRIMARY KEY (ts, anomaly_id)
+);
+
+-- Alert events
+CREATE TABLE IF NOT EXISTS ts_alert_events (
+    ts TIMESTAMPTZ NOT NULL,                -- created_at
+    alert_id VARCHAR(60) NOT NULL,
+    level VARCHAR(20) NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    district_code VARCHAR(10),
+    anomaly_ids TEXT[] NOT NULL DEFAULT '{}',
+    channels_sent TEXT[] NOT NULL DEFAULT '{}',
+    channels_failed TEXT[] NOT NULL DEFAULT '{}',
+    deduplicated BOOLEAN NOT NULL DEFAULT FALSE,
+    batch_count INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (ts, alert_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ts_anomaly_district ON ts_anomaly_detections (district_code, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_ts_alert_level ON ts_alert_events (level, ts DESC);
