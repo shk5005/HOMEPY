@@ -127,8 +127,8 @@ define
       $ir isa interest-rate, has mortgage-rate-avg $mr;
       $dist isa district;
       (constraint-rule: $lr, constrained-area: $dist) isa loan-constraint;
-      $effective-rate = $mr + $stress;
-      $effective-rate > 5.5;
+      $mr > 3.5;
+      $stress > 1.5;
     } then {
       (constrained-district: $dist, cause: $lr) isa purchasing-power-squeeze;
     };

@@ -47,7 +47,7 @@ class TypeDBService:
             options = TypeDBOptions(infer=True) if infer else None
             with session.transaction(TransactionType.READ, options) as tx:
                 return [
-                    {var: _concept_value(c) for var, c in cmap.map().items()}
+                    {var: _concept_value(c) for var, c in cmap.map.items()}
                     for cmap in tx.query.get(query)
                 ]
 

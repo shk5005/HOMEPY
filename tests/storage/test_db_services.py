@@ -39,6 +39,6 @@ def test_typedb_service_read_entities():
 
     with TypeDBService("localhost:1729") as svc:
         results = svc.execute_read(
-            "homepy_test", "match $x isa region; get $x; limit 5;"
+            "homepy", "match $x isa region; get $x; limit 5;"
         )
         assert isinstance(results, list)

@@ -1,5 +1,5 @@
 import pytest
-from typedb.driver import TypeDB, SessionType, TransactionType
+from typedb.driver import TypeDB, SessionType, TransactionType, TypeDBOptions
 
 DB_NAME = "homepy_test"
 
@@ -107,7 +107,7 @@ def test_undervalued_rule_fires(typedb_client):
                     has distance-meter 300, has travel-time-min 5;
             """)
             tx.commit()
-        with session.transaction(TransactionType.READ) as tx:
+        with session.transaction(TransactionType.READ, TypeDBOptions(infer=True)) as tx:
             result = tx.query.get("match (subject: $c) isa undervalued-signal; get $c;")
             answers = list(result)
             assert len(answers) >= 1
