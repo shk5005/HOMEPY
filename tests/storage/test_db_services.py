@@ -28,6 +28,13 @@ async def test_timescale_service_insert_and_query():
 
 def test_typedb_service_read_entities():
     pytest.importorskip("typedb.driver")
+    from typedb.driver import TypeDB
+    try:
+        driver = TypeDB.core_driver("localhost:1729")
+        driver.close()
+    except Exception:
+        pytest.skip("TypeDB server not reachable at localhost:1729")
+
     from homepy.storage.typedb_service import TypeDBService
 
     with TypeDBService("localhost:1729") as svc:

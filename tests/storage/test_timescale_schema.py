@@ -1,10 +1,30 @@
 import re
+import subprocess
 
 import asyncpg
 import pytest
 import pytest_asyncio
 
 DSN = "postgresql://homepy:homepy@localhost:5432/homepy"
+
+
+def _timescaledb_installed() -> bool:
+    try:
+        out = subprocess.run(
+            ["psql", "-U", "homepy", "-h", "localhost", "-d", "homepy", "-tAc",
+             "SELECT 1 FROM pg_available_extensions WHERE name='timescaledb'"],
+            capture_output=True, text=True, timeout=5,
+            env={**__import__("os").environ, "PGPASSWORD": "homepy"},
+        )
+        return out.stdout.strip() == "1"
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _timescaledb_installed(),
+    reason="TimescaleDB extension not installed on this PostgreSQL server",
+)
 
 EXPECTED_TABLES = [
     "ts_real_trade", "ts_price_index",

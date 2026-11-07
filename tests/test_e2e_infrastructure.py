@@ -28,6 +28,11 @@ def _load_bootstrap():
 async def test_full_infrastructure_roundtrip():
     pytest.importorskip("typedb.driver")
     from typedb.driver import TypeDB
+    try:
+        driver = TypeDB.core_driver(TYPEDB_ADDRESS)
+        driver.close()
+    except Exception:
+        pytest.skip("TypeDB server not reachable at localhost:1729")
 
     from homepy.storage.typedb_service import TypeDBService
 

@@ -3,6 +3,22 @@ from typedb.driver import TypeDB, SessionType, TransactionType
 
 DB_NAME = "homepy_test"
 
+
+def _typedb_reachable() -> bool:
+    try:
+        driver = TypeDB.core_driver("localhost:1729")
+        driver.close()
+        return True
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _typedb_reachable(),
+    reason="TypeDB server not reachable at localhost:1729",
+)
+
+
 @pytest.fixture(scope="module")
 def typedb_client():
     with TypeDB.core_driver("localhost:1729") as driver:
