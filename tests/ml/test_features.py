@@ -16,10 +16,10 @@ TS = {"price_ma_ratio": 1.05, "volume_change_rate": -0.1,
       "search_zscore": 1.2}
 
 
-async def test_relational_extractor_returns_five_features(mock_typedb):
-    mock_typedb.set_query_result("adjacent_count", [{"count": 12}])
-    mock_typedb.set_query_result("development_count", [{"count": 3}])
-    features = await RelationalFeatureExtractor(mock_typedb).extract("C001")
+async def test_relational_extractor_returns_five_features(mock_neo4j):
+    mock_neo4j.set_query_result("adjacent_count", [{"count": 12}])
+    mock_neo4j.set_query_result("development_count", [{"count": 3}])
+    features = await RelationalFeatureExtractor(mock_neo4j).extract("C001")
     assert set(features) == set(REL)
     assert len(features) == 5
     assert all(isinstance(v, float) for v in features.values())
@@ -27,24 +27,24 @@ async def test_relational_extractor_returns_five_features(mock_typedb):
     assert features["development_upside_count"] == 3.0
 
 
-async def test_relational_cycle_phase_and_tax(mock_typedb):
-    mock_typedb.set_query_result("cycle_phase", [{"p": {"value": "Peak"}}])
-    mock_typedb.set_query_result("effective_tax", [{"r": 2.0}, {"r": 4.0}])
-    mock_typedb.set_query_result("regulation_weight", [{"w": 0.5}, {"w": 1.0}])
-    f = await RelationalFeatureExtractor(mock_typedb).extract("C001")
+async def test_relational_cycle_phase_and_tax(mock_neo4j):
+    mock_neo4j.set_query_result("cycle_phase", [{"p": {"value": "Peak"}}])
+    mock_neo4j.set_query_result("effective_tax", [{"r": 2.0}, {"r": 4.0}])
+    mock_neo4j.set_query_result("regulation_weight", [{"w": 0.5}, {"w": 1.0}])
+    f = await RelationalFeatureExtractor(mock_neo4j).extract("C001")
     assert f["cycle_phase_encoded"] == 3.0
     assert f["effective_tax_rate"] == pytest.approx(0.03)
     assert f["regulation_intensity"] == pytest.approx(0.75)
 
 
-async def test_relational_defaults_when_no_data(mock_typedb):
-    f = await RelationalFeatureExtractor(mock_typedb).extract("C001")
+async def test_relational_defaults_when_no_data(mock_neo4j):
+    f = await RelationalFeatureExtractor(mock_neo4j).extract("C001")
     assert all(v == 0.0 for v in f.values())
 
 
-async def test_relational_rejects_injection(mock_typedb):
+async def test_relational_rejects_injection(mock_neo4j):
     with pytest.raises(ValueError):
-        await RelationalFeatureExtractor(mock_typedb).extract('C1"; delete')
+        await RelationalFeatureExtractor(mock_neo4j).extract('C1"; delete')
 
 
 async def test_timeseries_extractor_returns_five_features(mock_timescale):
@@ -101,6 +101,6 @@ def test_combiner_uses_rolling_percentiles():
     assert r.combined[0] == pytest.approx((50 - 4.95) / (94.05 - 4.95), rel=1e-3)
 
 
-@pytest.mark.skip(reason="requires live TypeDB and TimescaleDB")
+@pytest.mark.skip(reason="requires live Neo4j and TimescaleDB")
 async def test_live_pipeline():
     ...

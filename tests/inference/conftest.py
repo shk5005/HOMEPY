@@ -31,8 +31,8 @@ class _MockBase:
         return []
 
 
-class MockTypeDBService(_MockBase):
-    """Synchronous, like the real TypeDBService."""
+class MockNeo4jService(_MockBase):
+    """Synchronous, like the real Neo4jService."""
 
     def execute_read(self, db: str, query: str, infer: bool = False) -> list[dict]:
         return self._lookup(query)
@@ -45,7 +45,7 @@ class MockTimescaleService(_MockBase):
         return self._lookup(query, args)
 
 
-TYPEDB_DEFAULTS = {
+NEO4J_DEFAULTS = {
     "factor:valuation_gap": [{"price_per_sqm": 17_000_000, "district_avg_price": 20_000_000}],
     "factor:transport_access": [{"nearest_station_m": 450, "line_count": 2}],
     "factor:development_upside": [{"stage_weight": 0.5}, {"stage_weight": 0.8}],
@@ -69,8 +69,8 @@ TIMESCALE_DEFAULTS = {
 
 
 @pytest.fixture
-def mock_typedb():
-    return MockTypeDBService(TYPEDB_DEFAULTS)
+def mock_neo4j():
+    return MockNeo4jService(NEO4J_DEFAULTS)
 
 
 @pytest.fixture

@@ -15,7 +15,7 @@ class MockService:
 class MockDeps:
     def __init__(self) -> None:
         self.timescale = MockService()
-        self.typedb = MockService()
+        self.neo4j = MockService()
         self._permanent: set[str] = set()
         self.retry_calls: list[str] = []
 
@@ -38,7 +38,7 @@ def mock_deps() -> MockDeps:
 
 def _healer(deps: MockDeps, path) -> SelfHealer:
     return SelfHealer(
-        deps.timescale, deps.typedb, path, retry_fn=deps.retry, sleep_fn=_no_sleep
+        deps.timescale, deps.neo4j, path, retry_fn=deps.retry, sleep_fn=_no_sleep
     )
 
 

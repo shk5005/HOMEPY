@@ -12,7 +12,7 @@ async def test_full_stack_verdict_roundtrip():
     """
     1. Bootstrap DBs (Plan A bootstrap script)
     2. Insert seed data: region->district->dong->complex, interest_rate, supply_data
-    3. Run sync (timescale->typedb aggregates)
+    3. Run sync (timescale->neo4j aggregates)
     4. Call POST /api/v1/analysis/verdict/C001
     5. Assert verdict has all 12 Red Team Protocol fields
     6. Assert evidence_chain traces back to seed data

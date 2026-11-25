@@ -39,7 +39,7 @@ def env(tmp_path):
     ts = FakeTS()
     app = create_app(use_lifespan=False)
     app.state.timescale = ts
-    app.state.typedb = None
+    app.state.neo4j = None
     cal = AutoCalibrator(FakeBacktester(), ts, config_path=tmp_path / "calibration.json")
     app.state.calibrator = cal
     with TestClient(app) as client:

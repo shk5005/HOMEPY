@@ -50,7 +50,7 @@ if signals:
         with st.expander(str(sig.get("signal_type", sig.get("name", "신호")))):
             st.json(sig)
 else:
-    st.info("활성 조기경보 신호가 없습니다 (TypeDB 연결 필요).")
+    st.info("활성 조기경보 신호가 없습니다 (Neo4j 연결 필요).")
 
 # 4. HA system status
 st.header("4. HA 시스템 상태")

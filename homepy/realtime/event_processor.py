@@ -15,15 +15,15 @@ _INSERT_SQL = (
     "INSERT INTO ts_realtime_events (ts, event_id, source, event_type, district_code, data) "
     "VALUES ($1, $2, $3, $4, $5, $6::jsonb)"
 )
-# Event types whose TypeDB snapshot update is critical enough to await.
+# Event types whose Neo4j snapshot update is critical enough to await.
 _CRITICAL_TYPES = {"rate_change"}
 
 
 class EventProcessor:
-    def __init__(self, redis: Any, timescale_svc: Any, typedb_svc: Any):
+    def __init__(self, redis: Any, timescale_svc: Any, neo4j_svc: Any):
         self.redis = redis
         self.timescale = timescale_svc
-        self.typedb = typedb_svc
+        self.neo4j = neo4j_svc
         self._pubsub: Any = None
         self._task: asyncio.Task | None = None
         self._bg: set[asyncio.Task] = set()
@@ -63,21 +63,21 @@ class EventProcessor:
         if event.district_code:
             await self.redis.publish(f"signals:{event.district_code}", event.to_json())
         if event.event_type in _CRITICAL_TYPES:
-            await self._update_typedb(event)
+            await self._update_neo4j(event)
         else:
-            task = asyncio.create_task(self._update_typedb(event))
+            task = asyncio.create_task(self._update_neo4j(event))
             self._bg.add(task)
             task.add_done_callback(self._bg.discard)
 
-    async def _update_typedb(self, event: RealTimeEvent) -> None:
-        """Snapshot update; best-effort. TypeDBService is sync -> thread."""
-        fn = getattr(self.typedb, "update_snapshot", None)
+    async def _update_neo4j(self, event: RealTimeEvent) -> None:
+        """Snapshot update; best-effort. Neo4jService is sync -> thread."""
+        fn = getattr(self.neo4j, "update_snapshot", None)
         if fn is None:
             return
         try:
             await asyncio.to_thread(fn, event.district_code, event.event_type, event.data)
         except Exception:
-            logger.warning("typedb snapshot update failed", exc_info=True)
+            logger.warning("neo4j snapshot update failed", exc_info=True)
 
     async def stop(self) -> None:
         self._running = False

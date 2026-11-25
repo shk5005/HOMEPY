@@ -6,7 +6,7 @@ import pytest
 
 from homepy.pipelines.flows import (
     FlowResult, daily_pipeline, event_pipeline, monthly_pipeline, weekly_pipeline)
-from homepy.sync.timescale_to_typedb import SyncReport
+from homepy.sync.timescale_to_neo4j import SyncReport
 
 D = date(2026, 1, 15)
 TS = [datetime(2026, 1, 14, tzinfo=timezone.utc), datetime(2026, 1, 15, tzinfo=timezone.utc)]
@@ -35,7 +35,7 @@ def services(monkeypatch):
     ts, tdb = AsyncMock(), MagicMock()
     ts.insert_batch = AsyncMock(side_effect=lambda t, recs: len(recs))
     report = SyncReport()
-    monkeypatch.setattr("homepy.pipelines.flows._common.sync_aggregates_to_typedb", AsyncMock(return_value=report))
+    monkeypatch.setattr("homepy.pipelines.flows._common.sync_aggregates_to_neo4j", AsyncMock(return_value=report))
     monkeypatch.setattr("homepy.pipelines.flows._common.sync_signals_to_timescale", AsyncMock(return_value=3))
     return ts, tdb, report
 
@@ -52,7 +52,7 @@ def collectors(raws, **overrides):
 
 async def test_daily_flow_runs_end_to_end(raws, services, tmp_path):
     ts, tdb, report = services
-    result = await daily_pipeline(date=D, collectors=collectors(raws), timescale_svc=ts, typedb_svc=tdb,
+    result = await daily_pipeline(date=D, collectors=collectors(raws), timescale_svc=ts, neo4j_svc=tdb,
                                   data_dir=tmp_path)
     assert isinstance(result, FlowResult)
     assert result.collected_sources == ["real_trade", "interest_rate", "exchange_rate"]
@@ -66,7 +66,7 @@ async def test_daily_flow_runs_end_to_end(raws, services, tmp_path):
 async def test_daily_flow_continues_when_collector_fails(raws, services, tmp_path):
     ts, tdb, _ = services
     c = collectors(raws, real_trade=AsyncMock(side_effect=RuntimeError("API down")))
-    result = await daily_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await daily_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert result.failed_sources == ["real_trade"]
     assert result.collected_sources == ["interest_rate", "exchange_rate"]
     assert result.loaded_rows > 0  # macro still loaded
@@ -79,7 +79,7 @@ async def test_quality_gate_failure_stops_load(raws, services, tmp_path):
     bad = raw_file(tmp_path / "bad", "molit_trade", pd.DataFrame({
         "ts": TS, "district_code": [None, None], "trade_id": [None, None], "price_krw": [None, None]}))
     c = collectors(raws, real_trade=AsyncMock(return_value=bad))
-    result = await daily_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await daily_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert any(e.startswith("quality_gate:molit_trade") for e in result.errors)
     tables = {call.args[0] for call in ts.insert_batch.await_args_list}
     assert "ts_real_trade" not in tables
@@ -89,16 +89,16 @@ async def test_quality_gate_failure_stops_load(raws, services, tmp_path):
 async def test_all_collectors_fail_does_not_crash(services, tmp_path):
     ts, tdb, _ = services
     boom = {n: AsyncMock(side_effect=RuntimeError("x")) for n in ("real_trade", "interest_rate", "exchange_rate")}
-    result = await daily_pipeline(date=D, collectors=boom, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await daily_pipeline(date=D, collectors=boom, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert result.collected_sources == [] and result.loaded_rows == 0
     assert len(result.failed_sources) == 3
 
 
 async def test_sync_failure_is_recorded(raws, services, tmp_path, monkeypatch):
     ts, tdb, _ = services
-    monkeypatch.setattr("homepy.pipelines.flows._common.sync_aggregates_to_typedb",
-                        AsyncMock(side_effect=RuntimeError("typedb down")))
-    result = await daily_pipeline(date=D, collectors=collectors(raws), timescale_svc=ts, typedb_svc=tdb,
+    monkeypatch.setattr("homepy.pipelines.flows._common.sync_aggregates_to_neo4j",
+                        AsyncMock(side_effect=RuntimeError("neo4j down")))
+    result = await daily_pipeline(date=D, collectors=collectors(raws), timescale_svc=ts, neo4j_svc=tdb,
                                   data_dir=tmp_path)
     assert result.sync_report is None
     assert any(e.startswith("sync_aggregates") for e in result.errors)
@@ -111,7 +111,7 @@ async def test_weekly_flow(tmp_path, services):
         "seller_sentiment": [50.0, 51.0]}))
     c = {n: AsyncMock(side_effect=RuntimeError("n/a")) for n in ("price_index", "loan_rate", "complex_info")}
     c["sentiment"] = AsyncMock(return_value=sent)
-    result = await weekly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await weekly_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert result.collected_sources == ["sentiment"]
     assert sorted(result.failed_sources) == ["complex_info", "loan_rate", "price_index"]
 
@@ -120,7 +120,7 @@ async def test_monthly_flow_all_fail_is_graceful(services, tmp_path):
     ts, tdb, _ = services
     names = ["liquidity", "population", "migration", "supply", "unsold", "macro_index"]
     c = {n: AsyncMock(side_effect=RuntimeError("x")) for n in names}
-    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert result.failed_sources == names
 
 
@@ -140,7 +140,7 @@ async def test_event_flow_loads_when_approved(tmp_path, services):
         "ts": TS, "zone_type": ["adjust", "adjust"], "district_code": ["11680", "11650"], "action": ["add", "add"]}))
     loader = AsyncMock(return_value=2)
     result = await event_pipeline("regulation", date=D, collectors={"regulation": AsyncMock(return_value=reg)},
-                                  approve=lambda t, p: True, loader=loader, timescale_svc=ts, typedb_svc=tdb)
+                                  approve=lambda t, p: True, loader=loader, timescale_svc=ts, neo4j_svc=tdb)
     assert result.loaded_rows == 2 and result.sync_report is report
     loader.assert_awaited_once()
 
@@ -186,7 +186,7 @@ async def test_monthly_cleans_both_population_and_migration(services, tmp_path, 
     c = {n: AsyncMock(side_effect=RuntimeError("x")) for n in ("liquidity", "macro_index")}
     c.update(supply=AsyncMock(return_value=supply), unsold=AsyncMock(return_value=supply),
              population=AsyncMock(return_value=pop), migration=AsyncMock(return_value=mig))
-    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert result.cleaned_count == 3  # supply (shared by unsold) + population + migration
     got = spy_transform["supply_demand"]
     assert got["population"].name == "pop.parquet"
@@ -204,7 +204,7 @@ async def test_gate_failed_input_does_not_load_stale_data(services, tmp_path, sp
     c = {n: AsyncMock(side_effect=RuntimeError("x"))
          for n in ("population", "migration", "supply", "unsold", "macro_index")}
     c["liquidity"] = AsyncMock(return_value=bad_bok)
-    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, typedb_svc=tdb, data_dir=tmp_path)
+    result = await monthly_pipeline(date=D, collectors=c, timescale_svc=ts, neo4j_svc=tdb, data_dir=tmp_path)
     assert any(e.startswith("quality_gate:bok_ecos") for e in result.errors)
     assert "cycle" not in spy_transform and "macro" not in spy_transform
     assert any(e.startswith("transform:cycle") and "quality gate" in e for e in result.errors)

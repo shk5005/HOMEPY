@@ -9,7 +9,7 @@ from homepy.api.main import create_app
 def _get(path: str):
     app = create_app(use_lifespan=False)
     app.state.timescale = None
-    app.state.typedb = None
+    app.state.neo4j = None
     with TestClient(app) as client:
         return client.get(path)
 
@@ -49,6 +49,6 @@ def test_components_empty_and_populated():
     assert len(alert_timeline([{"created_at": "2026-11-01", "level": "WARNING"}]).data) == 1
 
 
-@pytest.mark.skip(reason="requires live TimescaleDB + TypeDB")
+@pytest.mark.skip(reason="requires live TimescaleDB + Neo4j")
 async def test_e2e_anomaly_to_alert_pipeline():
     """Full pipeline: inject data → detect → classify → alert → API returns"""

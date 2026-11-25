@@ -1,4 +1,4 @@
-"""Backup manager for TimescaleDB, TypeDB and raw data archives."""
+"""Backup manager for TimescaleDB, Neo4j and raw data archives."""
 from __future__ import annotations
 
 import asyncio
@@ -8,18 +8,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from homepy.ha.typedb_standby import TypeDBStandbyManager
+from homepy.ha.neo4j_standby import Neo4jStandbyManager
 
 
 @dataclass
 class BackupConfig:
     timescale_retain_days: int = 30
-    typedb_retain_days: int = 7
+    neo4j_retain_days: int = 7
     raw_retain_days: int = 365
     backup_dir: str = "/backups"
     timescale_dsn: str = "postgresql://homepy:homepy@localhost:5432/homepy"
-    typedb_primary_addr: str = "localhost:1729"
-    typedb_standby_addr: str = "localhost:11730"
+    neo4j_primary_addr: str = "bolt://localhost:7687"
+    neo4j_standby_addr: str = "bolt://localhost:7688"
 
 
 @dataclass
@@ -35,10 +35,10 @@ class BackupManager:
     def __init__(self, config: BackupConfig) -> None:
         self.config = config
         self.backup_dir = Path(config.backup_dir)
-        self._typedb = TypeDBStandbyManager(
-            config.typedb_primary_addr,
-            config.typedb_standby_addr,
-            str(self.backup_dir / "typedb"),
+        self._neo4j = Neo4jStandbyManager(
+            config.neo4j_primary_addr,
+            config.neo4j_standby_addr,
+            str(self.backup_dir / "neo4j"),
         )
 
     async def _run(self, *args: str) -> str:
@@ -63,9 +63,9 @@ class BackupManager:
         self._rotate(d, self.config.timescale_retain_days)
         return path
 
-    async def export_typedb(self) -> Path:
-        path = await self._typedb.export_snapshot()
-        self._rotate(self.backup_dir / "typedb", self.config.typedb_retain_days)
+    async def export_neo4j(self) -> Path:
+        path = await self._neo4j.export_snapshot()
+        self._rotate(self.backup_dir / "neo4j", self.config.neo4j_retain_days)
         return path
 
     async def archive_raw_data(self, source_dir: str, dest_dir: str) -> int:
@@ -92,13 +92,12 @@ class BackupManager:
 
     async def list_backups(self) -> list[BackupInfo]:
         result: list[BackupInfo] = []
-        for component in ("timescale", "typedb"):
+        for component in ("timescale", "neo4j"):
             d = self.backup_dir / component
             if not d.exists():
                 continue
             for f in sorted(d.iterdir()):
-                if not f.is_file() or f.name == "last_export.json" \
-                        or f.name.endswith(".schema.tql"):
+                if not f.is_file() or f.name == "last_export.json":
                     continue
                 st = f.stat()
                 result.append(BackupInfo(

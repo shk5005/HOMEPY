@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-neo4j
+  labels:
+    app: {{ .Release.Name }}-neo4j
+spec:
+  serviceName: {{ .Release.Name }}-neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-neo4j
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-neo4j
+    spec:
+      containers:
+        - name: neo4j
+          image: "{{ .Values.neo4j.image.repository }}:{{ .Values.neo4j.image.tag }}"
+          env:
+            - name: NEO4J_AUTH
+              value: "{{ .Values.neo4j.auth.user }}/{{ .Values.neo4j.auth.password }}"
+          ports:
+            - containerPort: {{ .Values.neo4j.boltPort }}
+              name: bolt
+            - containerPort: {{ .Values.neo4j.httpPort }}
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.neo4j.httpPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.neo4j.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.neo4j.persistence.storageClass }}
+        storageClassName: {{ .Values.neo4j.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.neo4j.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-neo4j
+spec:
+  clusterIP: None
+  selector:
+    app: {{ .Release.Name }}-neo4j
+  ports:
+    - port: {{ .Values.neo4j.boltPort }}
+      targetPort: {{ .Values.neo4j.boltPort }}
+      name: bolt
+    - port: {{ .Values.neo4j.httpPort }}
+      targetPort: {{ .Values.neo4j.httpPort }}
+      name: http

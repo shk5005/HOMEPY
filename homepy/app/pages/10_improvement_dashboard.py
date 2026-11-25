@@ -17,7 +17,7 @@ client = ApiClient(st.session_state["api_base_url"])
 
 BADGE = {"ok": "🟢 정상", "degraded": "🟡 저하", "error": "🔴 오류"}
 TRACKED_PACKAGES = ["fastapi", "streamlit", "plotly", "pandas", "numpy", "httpx", "pydantic",
-                    "asyncpg", "typedb-driver"]
+                    "asyncpg", "neo4j"]
 
 st.title("개선 대시보드")
 
@@ -38,7 +38,7 @@ health = _fetch(client.get_verification_health(), "시스템 상태")
 st.header("1. 시스템 상태 요약")
 components = {c["name"]: c for c in (health or {}).get("components", [])}
 cols = st.columns(4)
-for col, name in zip(cols, ["inference", "pipeline", "typedb", "timescaledb"]):
+for col, name in zip(cols, ["inference", "pipeline", "neo4j", "timescaledb"]):
     comp = components.get(name)
     col.metric(name, BADGE.get(comp["status"], comp["status"]) if comp else "⚪ 데이터 없음")
 if health:

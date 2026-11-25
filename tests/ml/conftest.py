@@ -1,7 +1,7 @@
 import pytest
 
 
-class MockTypeDB:
+class MockNeo4j:
     def __init__(self):
         self.results: dict[str, list[dict]] = {}
         self.queries: list[str] = []
@@ -39,8 +39,8 @@ class MockTimescale:
 
 
 @pytest.fixture
-def mock_typedb():
-    return MockTypeDB()
+def mock_neo4j():
+    return MockNeo4j()
 
 
 @pytest.fixture

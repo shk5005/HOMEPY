@@ -7,7 +7,7 @@ st.session_state.setdefault("api_base_url", "http://localhost:8000")
 client = ApiClient(st.session_state["api_base_url"], timeout=60.0)
 
 st.title("자연어 질의")
-st.caption("자연어를 읽기 전용 TypeQL로 변환해 온톨로지를 조회합니다.")
+st.caption("자연어를 읽기 전용 Cypher로 변환해 온톨로지를 조회합니다.")
 
 query = st.text_input("질의", placeholder="강남구에서 저평가된 단지", max_chars=500)
 
@@ -20,8 +20,8 @@ if st.button("조회", type="primary", disabled=not query.strip()):
 
 res = st.session_state.get("nlp_result")
 if res:
-    with st.expander("생성된 TypeQL"):
-        st.code(res["generated_typeql"], language="sql")
+    with st.expander("생성된 Cypher"):
+        st.code(res.get("generated_cypher", ""), language="cypher")
     rows = res.get("results", [])
     c1, c2 = st.columns(2)
     c1.metric("결과 수", len(rows))

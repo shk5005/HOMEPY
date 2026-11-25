@@ -4,14 +4,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
-      typedb:
-        image: vaticle/typedb:2.28.0
-        ports: ["1729:1729"]
+      neo4j:
+        image: neo4j:5-community
+        ports: ["7687:7687", "7474:7474"]
+        env:
+          NEO4J_AUTH: neo4j/homepy
         options: >-
-          --health-cmd "echo ok"
+          --health-cmd "wget -qO- http://localhost:7474 || exit 1"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
+          --health-start-period 20s
       timescaledb:
         image: timescale/timescaledb:latest-pg16
         ports: ["5432:5432"]

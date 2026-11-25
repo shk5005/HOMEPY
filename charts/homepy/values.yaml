@@ -1,12 +1,15 @@
 global:
   logLevel: INFO
 
-typedb:
+neo4j:
   image:
-    repository: vaticle/typedb
-    tag: "2.28.0"
-  port: 1729
-  dataPath: /opt/typedb-all-linux-x86_64/server/data
+    repository: neo4j
+    tag: "5-community"
+  boltPort: 7687
+  httpPort: 7474
+  auth:
+    user: neo4j
+    password: homepy
   persistence:
     size: 10Gi
     storageClass: ""
@@ -73,7 +76,7 @@ ingress:
 config:
   logLevel: INFO
   cacheTtlSeconds: "300"
-  typedbDatabase: homepy
+  neo4jDatabase: homepy
   alertChannels: "log"
 
 # Placeholders only. Override at install time (--set / -f) or use an external

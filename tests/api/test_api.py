@@ -93,7 +93,7 @@ def test_loan_endpoint_binding_constraint(app_client):
 
 
 @pytest.mark.asyncio
-async def test_tax_engine_degrades_when_typedb_fails():
+async def test_tax_engine_degrades_when_neo4j_fails():
     svc = MagicMock()
     svc.execute_read.side_effect = RuntimeError("down")
     eng = TaxEngine(svc)

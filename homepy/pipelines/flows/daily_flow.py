@@ -12,6 +12,6 @@ SCHEDULE_CRON = "0 6 * * *"  # timezone Asia/Seoul
 
 @flow("homepy-daily")
 async def daily_pipeline(date: date | None = None, collectors=None, timescale_svc=None,
-                         typedb_svc=None, data_dir="data") -> FlowResult:
+                         neo4j_svc=None, data_dir="data") -> FlowResult:
     start, end = window(date, 1)
-    return await run_scheduled(SOURCE_NAMES, DOMAINS, start, end, collectors, timescale_svc, typedb_svc, data_dir)
+    return await run_scheduled(SOURCE_NAMES, DOMAINS, start, end, collectors, timescale_svc, neo4j_svc, data_dir)

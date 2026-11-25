@@ -1,6 +1,6 @@
-"""Storage service layers for HOMEPY (TypeDB + TimescaleDB)."""
+"""Storage service layers for HOMEPY (Neo4j + TimescaleDB)."""
 
+from homepy.storage.neo4j_service import Neo4jService
 from homepy.storage.timescale_service import TimescaleService
-from homepy.storage.typedb_service import TypeDBService
 
-__all__ = ["TypeDBService", "TimescaleService"]
+__all__ = ["Neo4jService", "TimescaleService"]

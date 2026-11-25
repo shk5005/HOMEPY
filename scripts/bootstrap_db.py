@@ -2,7 +2,7 @@
 
 Usage (from project root):  python scripts/bootstrap_db.py
 
-- TypeDB: creates database if missing, loads storage/typedb/schema.tql and rules.tql
+- Neo4j: loads storage/neo4j/schema.cypher and rules.cypher
 - TimescaleDB: runs storage/timescale/schema.sql and hypertables.sql statement by
   statement (continuous aggregates cannot run inside a transaction block).
 """
@@ -18,11 +18,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-TYPEDB_ADDRESS = "localhost:1729"
-TYPEDB_DB = "homepy"
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "homepy"
+NEO4J_DB = "homepy"
 TIMESCALE_DSN = "postgresql://homepy:homepy@localhost:5432/homepy"
 
-TYPEDB_DIR = ROOT / "storage" / "typedb"
+NEO4J_DIR = ROOT / "storage" / "neo4j"
 TIMESCALE_DIR = ROOT / "storage" / "timescale"
 
 
@@ -32,47 +34,34 @@ def split_statements(sql: str) -> list[str]:
     return [s.strip() for s in re.split(r";[ \t]*\n", sql + "\n") if s.strip()]
 
 
-def bootstrap_typedb(address: str = TYPEDB_ADDRESS, db: str = TYPEDB_DB) -> dict:
-    from typedb.driver import SessionType, TransactionType, TypeDB
-
-    from homepy.storage.typedb_service import TypeDBService
+def bootstrap_neo4j(uri: str = NEO4J_URI, user: str = NEO4J_USER,
+                    password: str = NEO4J_PASSWORD, db: str = NEO4J_DB) -> dict:
+    from homepy.storage.neo4j_service import Neo4jService
 
     try:
-        driver = TypeDB.core_driver(address)
-    except Exception as exc:  # noqa: BLE001
+        svc = Neo4jService(uri, user, password)
+        svc.connect()
+    except Exception as exc:
         raise RuntimeError(
-            f"Cannot connect to TypeDB at {address}. Is it running? "
+            f"Cannot connect to Neo4j at {uri}. Is it running? "
             f"Try: docker compose up -d  ({exc})"
         ) from exc
-    try:
-        created = not driver.databases.contains(db)
-        if created:
-            driver.databases.create(db)
-    finally:
-        driver.close()
 
-    with TypeDBService(address) as svc:
-        svc.load_schema(db, str(TYPEDB_DIR / "schema.tql"))
-        svc.load_schema(db, str(TYPEDB_DIR / "rules.tql"))
-
-    driver = TypeDB.core_driver(address)
     try:
-        with driver.session(db, SessionType.SCHEMA) as session:
-            with session.transaction(TransactionType.READ) as tx:
-                entities = [
-                    c.get("x").get_label().name
-                    for c in tx.query.get("match $x sub entity; get $x;")
-                ]
-                relations = [
-                    c.get("x").get_label().name
-                    for c in tx.query.get("match $x sub relation; get $x;")
-                ]
+        svc.load_schema(db, str(NEO4J_DIR / "schema.cypher"))
+        svc.load_schema(db, str(NEO4J_DIR / "rules.cypher"))
+
+        results = svc.execute_read(db, "CALL db.labels() YIELD label RETURN count(label) AS cnt")
+        label_count = results[0]["cnt"] if results else 0
+
+        results = svc.execute_read(db, "CALL db.relationshipTypes() YIELD relationshipType RETURN count(relationshipType) AS cnt")
+        rel_count = results[0]["cnt"] if results else 0
     finally:
-        driver.close()
+        svc.close()
+
     return {
-        "created": created,
-        "entity_types": len([e for e in entities if e != "entity"]),
-        "relation_types": len([r for r in relations if r != "relation"]),
+        "node_labels": label_count,
+        "relationship_types": rel_count,
     }
 
 
@@ -81,7 +70,7 @@ async def bootstrap_timescale(dsn: str = TIMESCALE_DSN) -> dict:
 
     try:
         conn = await asyncpg.connect(dsn)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise RuntimeError(
             f"Cannot connect to TimescaleDB ({dsn}). Is it running? "
             f"Try: docker compose up -d  ({exc})"
@@ -104,10 +93,10 @@ async def bootstrap_timescale(dsn: str = TIMESCALE_DSN) -> dict:
 
 def main() -> int:
     try:
-        tdb = bootstrap_typedb()
+        neo = bootstrap_neo4j()
         print(
-            f"TypeDB '{TYPEDB_DB}': {'created' if tdb['created'] else 'already existed'}; "
-            f"{tdb['entity_types']} entity types, {tdb['relation_types']} relation types"
+            f"Neo4j '{NEO4J_DB}': "
+            f"{neo['node_labels']} node labels, {neo['relationship_types']} relationship types"
         )
         ts = asyncio.run(bootstrap_timescale())
         print(f"TimescaleDB: {ts['tables']} ts_* tables, {ts['hypertables']} hypertables")

@@ -1,6 +1,6 @@
 global:
   logLevel: DEBUG
-typedb:
+neo4j:
   persistence:
     size: 5Gi
 timescaledb:

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Migrate TimescaleDB + TypeDB data from Docker Compose containers to K8s PVCs.
+# Migrate TimescaleDB + Neo4j data from Docker Compose containers to K8s PVCs.
 # Idempotent: dumps are reused if present, PVCs are applied declaratively,
 # restore steps are skipped when a marker file exists on the PVC.
 set -euo pipefail
@@ -8,14 +8,14 @@ NAMESPACE="${NAMESPACE:-homepy}"
 RELEASE="${RELEASE:-homepy}"
 BACKUP_DIR="${BACKUP_DIR:-./migration-backup}"
 TS_CONTAINER="${TS_CONTAINER:-homepy-timescale-primary}"
-TYPEDB_CONTAINER="${TYPEDB_CONTAINER:-homepy-typedb}"
+NEO4J_CONTAINER="${NEO4J_CONTAINER:-homepy-neo4j}"
 PG_USER="${PG_USER:-homepy}"
 PG_DB="${PG_DB:-homepy}"
-TYPEDB_DB="${TYPEDB_DB:-homepy}"
+NEO4J_DB="${NEO4J_DB:-homepy}"
 TS_PVC="${TS_PVC:-data-${RELEASE}-timescaledb-0}"
-TYPEDB_PVC="${TYPEDB_PVC:-data-${RELEASE}-typedb-0}"
+NEO4J_PVC="${NEO4J_PVC:-data-${RELEASE}-neo4j-0}"
 TS_SIZE="${TS_SIZE:-50Gi}"
-TYPEDB_SIZE="${TYPEDB_SIZE:-10Gi}"
+NEO4J_SIZE="${NEO4J_SIZE:-10Gi}"
 HELPER_POD="${HELPER_POD:-homepy-migrate-helper}"
 
 log() { echo "[migrate_volumes] $*"; }
@@ -40,15 +40,13 @@ export_timescale() {
   mv "$out.tmp" "$out"
 }
 
-export_typedb() {
-  local schema="$BACKUP_DIR/typedb.schema.tql" data="$BACKUP_DIR/typedb.typedb"
-  if [ -s "$schema" ] && [ -s "$data" ]; then log "TypeDB export exists, skipping"; return 0; fi
-  log "exporting TypeDB via typedb server export"
-  docker exec "$TYPEDB_CONTAINER" typedb server export \
-    --database="$TYPEDB_DB" --schema=/tmp/typedb.schema.tql --data=/tmp/typedb.typedb \
-    || die "typedb export failed"
-  docker cp "$TYPEDB_CONTAINER:/tmp/typedb.schema.tql" "$schema"
-  docker cp "$TYPEDB_CONTAINER:/tmp/typedb.typedb" "$data"
+export_neo4j() {
+  local dump="$BACKUP_DIR/neo4j.dump"
+  if [ -s "$dump" ]; then log "Neo4j export exists, skipping"; return 0; fi
+  log "exporting Neo4j via neo4j-admin dump"
+  docker exec "$NEO4J_CONTAINER" neo4j-admin database dump "$NEO4J_DB" --to-path=/tmp \
+    || die "neo4j-admin dump failed"
+  docker cp "$NEO4J_CONTAINER:/tmp/${NEO4J_DB}.dump" "$dump"
 }
 
 ensure_pvc() {
@@ -83,12 +81,12 @@ spec:
       command: ["sleep", "3600"]
       volumeMounts:
         - {name: ts, mountPath: /mnt/timescaledb}
-        - {name: typedb, mountPath: /mnt/typedb}
+        - {name: neo4j, mountPath: /mnt/neo4j}
   volumes:
     - name: ts
       persistentVolumeClaim: {claimName: $TS_PVC}
-    - name: typedb
-      persistentVolumeClaim: {claimName: $TYPEDB_PVC}
+    - name: neo4j
+      persistentVolumeClaim: {claimName: $NEO4J_PVC}
 EOF
   kubectl -n "$NAMESPACE" wait --for=condition=Ready "pod/$HELPER_POD" --timeout=300s \
     || die "helper pod not ready"
@@ -96,14 +94,9 @@ EOF
 
 copy_dumps() {
   log "copying dumps into PVCs"
-  kubectl -n "$NAMESPACE" exec "$HELPER_POD" -- mkdir -p /mnt/timescaledb/migration /mnt/typedb/migration
+  kubectl -n "$NAMESPACE" exec "$HELPER_POD" -- mkdir -p /mnt/timescaledb/migration /mnt/neo4j/migration
   kubectl -n "$NAMESPACE" cp "$BACKUP_DIR/timescaledb.dump" "$HELPER_POD:/mnt/timescaledb/migration/timescaledb.dump"
-  kubectl -n "$NAMESPACE" cp "$BACKUP_DIR/typedb.schema.tql" "$HELPER_POD:/mnt/typedb/migration/typedb.schema.tql"
-  kubectl -n "$NAMESPACE" cp "$BACKUP_DIR/typedb.typedb" "$HELPER_POD:/mnt/typedb/migration/typedb.typedb"
-}
-
-marker_exists() {
-  kubectl -n "$NAMESPACE" exec "$HELPER_POD" -- test -f "$1" >/dev/null 2>&1
+  kubectl -n "$NAMESPACE" cp "$BACKUP_DIR/neo4j.dump" "$HELPER_POD:/mnt/neo4j/migration/neo4j.dump"
 }
 
 restore_timescale() {
@@ -120,25 +113,25 @@ restore_timescale() {
   fi
 }
 
-restore_typedb() {
-  if kubectl -n "$NAMESPACE" get pod "${RELEASE}-typedb-0" >/dev/null 2>&1; then
-    log "restoring TypeDB via typedb server import"
-    kubectl -n "$NAMESPACE" exec "${RELEASE}-typedb-0" -- sh -c \
-      "typedb server import --database='$TYPEDB_DB' --schema=/opt/typedb-all-linux-x86_64/server/data/migration/typedb.schema.tql --data=/opt/typedb-all-linux-x86_64/server/data/migration/typedb.typedb" \
-      || log "TypeDB import skipped/failed (database may already exist)"
+restore_neo4j() {
+  if kubectl -n "$NAMESPACE" get pod "${RELEASE}-neo4j-0" >/dev/null 2>&1; then
+    log "restoring Neo4j via neo4j-admin load"
+    kubectl -n "$NAMESPACE" exec "${RELEASE}-neo4j-0" -- sh -c \
+      "neo4j-admin database load '$NEO4J_DB' --from-path=/data/migration --overwrite-destination=true" \
+      || log "Neo4j import skipped/failed (database may already exist)"
   else
-    log "TypeDB pod not running yet; export staged on PVC, import after helm install"
+    log "Neo4j pod not running yet; dump staged on PVC, import after helm install"
   fi
 }
 
 export_timescale
-export_typedb
+export_neo4j
 kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$NAMESPACE"
 ensure_pvc "$TS_PVC" "$TS_SIZE"
-ensure_pvc "$TYPEDB_PVC" "$TYPEDB_SIZE"
+ensure_pvc "$NEO4J_PVC" "$NEO4J_SIZE"
 start_helper
 copy_dumps
 cleanup
 restore_timescale
-restore_typedb
+restore_neo4j
 log "done"

@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS ts_sentiment (
     PRIMARY KEY (ts, district_code)
 );
 
--- Signals inferred by TypeDB rules, tracked over time
+-- Signals inferred by Neo4j rules, tracked over time
 CREATE TABLE IF NOT EXISTS ts_signals (
     ts TIMESTAMPTZ NOT NULL,
     signal_type VARCHAR(50) NOT NULL,

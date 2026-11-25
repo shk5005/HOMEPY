@@ -1,45 +1,44 @@
-"""Safety + schema validation for LLM-generated TypeQL (read-only match/get only)."""
+"""Safety + schema validation for LLM-generated Cypher (read-only MATCH/RETURN only)."""
 
 from __future__ import annotations
 
 import re
 
-_FORBIDDEN = re.compile(r"\b(insert|delete|define|undefine|redefine|rule|put|update)\b", re.I)
-_STRING = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
-_COMMENT = re.compile(r"#[^\n]*")
-_SUB = re.compile(r"(?<![\w$-])([a-z][\w-]*)\s+sub\s+([a-z][\w-]*)")
-_RELATES = re.compile(r"\brelates\s+([a-z][\w-]*)")
-_TYPE_REF = re.compile(r"\b(?:isa!?|has)\s+([a-z][\w-]*)")
-_ROLE_REF = re.compile(r"[(,]\s*([a-z][\w-]*)\s*:\s*\$")
-_VAR = re.compile(r"\$([\w-]*)")
-_BUILTIN_TYPES = {"entity", "relation", "attribute", "thing"}
+_FORBIDDEN = re.compile(
+    r"\b(CREATE|DELETE|DETACH|SET|REMOVE|MERGE|DROP|CALL\s+dbms|CALL\s+db\.)"
+    r"\b", re.I)
+_STRING = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"")
+_COMMENT = re.compile(r"//[^\n]*")
+_LABEL_DEF = re.compile(r":\s*([A-Z][A-Za-z0-9_]*)")
+_REL_TYPE = re.compile(r"\[[\w]*:([A-Z_]+)")
+_PROP_REF = re.compile(r"\.([a-zA-Z]\w*)")
 
 
-def strip_literals(typeql: str) -> str:
+def strip_literals(cypher: str) -> str:
     """Remove comments and string literals so keyword checks ignore data values."""
-    return _STRING.sub('""', _COMMENT.sub("", typeql))
+    return _STRING.sub("''", _COMMENT.sub("", cypher))
 
 
-class TypeQLValidator:
+class CypherValidator:
     def __init__(self, schema: str):
         text = _COMMENT.sub("", schema)
-        self.types: set[str] = {m.group(1) for m in _SUB.finditer(text)} | _BUILTIN_TYPES
-        self.roles: set[str] = {m.group(1) for m in _RELATES.finditer(text)}
+        self.labels: set[str] = set(_LABEL_DEF.findall(text))
+        self.rel_types: set[str] = set(_REL_TYPE.findall(text))
 
-    def is_safe(self, typeql: str) -> bool:
-        if not isinstance(typeql, str) or not typeql.strip():
+    def is_safe(self, cypher: str) -> bool:
+        if not isinstance(cypher, str) or not cypher.strip():
             return False
-        body = strip_literals(typeql).strip()
-        if not re.match(r"match\b", body, re.I):
+        body = strip_literals(cypher).strip()
+        if not re.match(r"(MATCH|OPTIONAL\s+MATCH|WITH|UNWIND|CALL)\b", body, re.I):
             return False
         return not _FORBIDDEN.search(body)
 
-    def validate(self, typeql: str) -> tuple[bool, str]:
-        if not self.is_safe(typeql):
-            return False, "unsafe query: only read-only match/get queries are allowed"
-        body = strip_literals(typeql).strip()
-        if not re.search(r"\bget\b", body, re.I):
-            return False, "query must contain a 'get' clause"
+    def validate(self, cypher: str) -> tuple[bool, str]:
+        if not self.is_safe(cypher):
+            return False, "unsafe query: only read-only MATCH/RETURN queries are allowed"
+        body = strip_literals(cypher).strip()
+        if not re.search(r"\bRETURN\b", body, re.I):
+            return False, "query must contain a 'RETURN' clause"
         for o, c in ("{}", "()", "[]"):
             depth = 0
             for ch in body:
@@ -51,14 +50,4 @@ class TypeQLValidator:
                         break
             if depth != 0:
                 return False, f"unbalanced '{o}{c}'"
-        if not body.endswith(";"):
-            return False, "query must end with ';'"
-        if any(name == "" for name in _VAR.findall(body)):
-            return False, "invalid variable syntax"
-        for t in _TYPE_REF.findall(body):
-            if t not in self.types:
-                return False, f"unknown type '{t}'"
-        for r in _ROLE_REF.findall(body):
-            if r not in self.roles:
-                return False, f"unknown role '{r}'"
         return True, ""

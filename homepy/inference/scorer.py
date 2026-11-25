@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
-TYPEDB_DB = "homepy"
+NEO4J_DB = "homepy"
 
 FACTOR_WEIGHTS: dict[str, float] = {
     "valuation_gap": 0.10,
@@ -86,7 +86,7 @@ _ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 def _validate_id(complex_id: str) -> str:
-    """Reject IDs that could alter a TypeQL query when interpolated."""
+    """Reject IDs that could alter a Cypher query when interpolated."""
     if not isinstance(complex_id, str) or not _ID_RE.fullmatch(complex_id):
         raise ValueError(f"invalid complex_id: {complex_id!r}")
     return complex_id
@@ -140,14 +140,13 @@ def _no_data(name: str, what: str) -> FactorScore:
 
 
 class InvestmentScorer:
-    def __init__(self, typedb_svc: Any, timescale_svc: Any) -> None:
-        self.typedb = typedb_svc
+    def __init__(self, neo4j_svc: Any, timescale_svc: Any) -> None:
+        self.neo4j = neo4j_svc
         self.ts = timescale_svc
 
     # ---- data access helpers -------------------------------------------
-    async def _tql(self, query: str) -> list[dict]:
-        # TypeDBService is synchronous; keep the event loop free.
-        return await asyncio.to_thread(self.typedb.execute_read, TYPEDB_DB, query)
+    async def _cypher(self, query: str, **params: Any) -> list[dict]:
+        return await asyncio.to_thread(self.neo4j.execute_read, NEO4J_DB, query, **params)
 
     async def _sql(self, query: str, *args: Any) -> list[Any]:
         return await self.ts.execute(query, *args)
@@ -169,11 +168,12 @@ class InvestmentScorer:
             computed_at=datetime.now(timezone.utc),
         )
 
-    # ---- TypeDB-backed factors -------------------------------------------
+    # ---- Neo4j-backed factors -------------------------------------------
     async def _calc_valuation_gap(self, cid: str) -> FactorScore:
-        rows = await self._tql(
-            f'# factor:valuation_gap\nmatch $c isa complex, has complex_id "{cid}"; '
-            "get $price_per_sqm, $district_avg_price;"
+        rows = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid}) "
+            "RETURN c.pricePerSqm AS price_per_sqm, c.districtAvgPrice AS district_avg_price",
+            cid=cid,
         )
         price = _num(rows[0], "price_per_sqm") if rows else None
         avg = _num(rows[0], "district_avg_price") if rows else None
@@ -189,9 +189,11 @@ class InvestmentScorer:
         )
 
     async def _calc_transport_access(self, cid: str) -> FactorScore:
-        rows = await self._tql(
-            f'# factor:transport_access\nmatch $c isa complex, has complex_id "{cid}"; '
-            "get $nearest_station_m;"
+        rows = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid})<-[a:ACCESSIBILITY]-(i:Infrastructure {infraType: 'subway'}) "
+            "RETURN a.distanceMeter AS nearest_station_m, count(DISTINCT i) AS line_count "
+            "ORDER BY a.distanceMeter LIMIT 1",
+            cid=cid,
         )
         d = _num(rows[0], "nearest_station_m") if rows else None
         if d is None:
@@ -203,9 +205,10 @@ class InvestmentScorer:
         return _make("transport_access", d, minmax(d, 300, 1500, invert=True), ev)
 
     async def _calc_development_upside(self, cid: str) -> FactorScore:
-        rows = await self._tql(
-            f'# factor:development_upside\nmatch $c isa complex, has complex_id "{cid}"; '
-            "(complex: $c, project: $p) isa near_development; get $stage_weight;"
+        rows = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid})-[r:DEVELOPMENT_INFLUENCE]->(p:DevelopmentProject) "
+            "RETURN r.stageWeight AS stage_weight",
+            cid=cid,
         )
         if not rows:
             return _no_data("development_upside", "development projects")
@@ -219,9 +222,10 @@ class InvestmentScorer:
         )
 
     async def _calc_regulation_impact(self, cid: str) -> FactorScore:
-        rows = await self._tql(
-            f'# factor:regulation_impact\nmatch $c isa complex, has complex_id "{cid}"; '
-            "(complex: $c, regulation: $r) isa regulated_by; get $severity;"
+        rows = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid})<-[rb:REGULATION_APPLIES]-(r) "
+            "RETURN rb.severity AS severity",
+            cid=cid,
         )
         if not rows:
             return _no_data("regulation_impact", "regulations")
@@ -235,9 +239,10 @@ class InvestmentScorer:
         )
 
     async def _calc_tax_burden(self, cid: str) -> FactorScore:
-        rows = await self._tql(
-            f'# factor:tax_burden\nmatch $c isa complex, has complex_id "{cid}"; '
-            "get $effective_tax_rate;"
+        rows = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid}) "
+            "RETURN c.effectiveTaxRate AS effective_tax_rate",
+            cid=cid,
         )
         rate = _num(rows[0], "effective_tax_rate") if rows else None
         if rate is None:

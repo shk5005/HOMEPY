@@ -22,7 +22,7 @@ class MockTimescale:
             })
             return []
         if "percentile_cont" in query:
-            return [{"component": "typedb", "p50_ms": 20.0, "p95_ms": 120.0,
+            return [{"component": "neo4j", "p50_ms": 20.0, "p95_ms": 120.0,
                      "p99_ms": 300.0, "count": 42}]
         if "metric_value >" in query:
             threshold = args[0]
@@ -37,16 +37,16 @@ def mock_timescale() -> MockTimescale:
 
 async def test_record_and_retrieve_metrics(mock_timescale):
     sm = SystemMonitor(mock_timescale)
-    await sm.record_query_time("typedb", "match $x isa region;", 1500.0)
+    await sm.record_query_time("neo4j", "MATCH (x:Region) RETURN x", 1500.0)
     slow = await sm.detect_slow_queries(threshold_ms=1000)
     assert len(slow) == 1
     assert slow[0].duration_ms == 1500.0
-    assert slow[0].component == "typedb"
+    assert slow[0].component == "neo4j"
 
 
 async def test_performance_summary(mock_timescale):
     sm = SystemMonitor(mock_timescale)
     summary = await sm.get_performance_summary()
-    assert "typedb" in summary.components
-    assert summary.components["typedb"].p95_ms >= 0
-    assert summary.components["typedb"].period_hours == 24
+    assert "neo4j" in summary.components
+    assert summary.components["neo4j"].p95_ms >= 0
+    assert summary.components["neo4j"].period_hours == 24

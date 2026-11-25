@@ -1,4 +1,4 @@
-"""Korean real-estate tax calculations (simplified; rates looked up in TypeDB)."""
+"""Korean real-estate tax calculations (simplified; rates looked up in Neo4j)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-TYPEDB_DB = "homepy"
+NEO4J_DB = "homepy"
 
-# Fallback statutory defaults used when TypeDB has no matching rule.
+# Fallback statutory defaults used when Neo4j has no matching rule.
 DEFAULT_ACQ_RATE = {1: 0.01, 2: 0.08, 3: 0.12}  # 1 house / 2nd (regulated) / 3rd+
 SURTAX_RATE = 0.002  # education tax (0.1%) + special rural tax (0.1%), simplified
 LONG_TERM_DEDUCTION_PER_YEAR = 0.02
@@ -47,15 +47,15 @@ def _bracket(amount: float, table: list[tuple]) -> tuple[float, float]:
 
 
 class TaxEngine:
-    def __init__(self, typedb_svc: Any) -> None:
-        self.typedb = typedb_svc
+    def __init__(self, neo4j_svc: Any) -> None:
+        self.neo4j = neo4j_svc
 
-    async def _rate_lookup(self, query: str) -> float | None:
-        """Run a placeholder TypeQL rate query; None if nothing usable returned."""
+    async def _rate_lookup(self, query: str, **params: Any) -> float | None:
+        """Run a Cypher rate query; None if nothing usable returned."""
         try:
-            rows = await asyncio.to_thread(self.typedb.execute_read, TYPEDB_DB, query)
+            rows = await asyncio.to_thread(self.neo4j.execute_read, NEO4J_DB, query, **params)
         except Exception:  # noqa: BLE001 - tax calc must degrade to statutory defaults
-            log.warning("TypeDB tax-rate lookup failed; using defaults", exc_info=True)
+            log.warning("Neo4j tax-rate lookup failed; using defaults", exc_info=True)
             return None
         for row in rows or []:
             try:
@@ -81,11 +81,11 @@ class TaxEngine:
         else:
             key = 3 if regulated or owner_count >= 4 else 2
         query = (
-            "match $r isa acquisition-tax-rate, has buyer-type "
-            f'"{buyer_type}", has owner-count {key}, has rate $rate; get $rate;'
+            "MATCH (r:AcquisitionTaxRate {buyerType: $buyerType, ownerCount: $ownerCount}) "
+            "RETURN r.rate AS rate"
         )
-        rate = await self._rate_lookup(query)
-        source = "typedb"
+        rate = await self._rate_lookup(query, buyerType=buyer_type, ownerCount=key)
+        source = "neo4j"
         if rate is None:
             rate = DEFAULT_ACQ_RATE[key]
             source = "default"
@@ -116,10 +116,10 @@ class TaxEngine:
             rate, prog = _bracket(taxable, CGT_BRACKETS)
             label = "progressive"
         query = (
-            "match $r isa cgt-rate-rule, has holding-period "
-            f"{int(holding_years)}, has rate $rate; get $rate;"
+            "MATCH (r:CgtRateRule {holdingPeriod: $holdingPeriod}) "
+            "RETURN r.rate AS rate"
         )
-        db_rate = await self._rate_lookup(query)
+        db_rate = await self._rate_lookup(query, holdingPeriod=int(holding_years))
         if db_rate is not None and label != "progressive":
             rate = db_rate
         eff = rate + surcharge

@@ -100,9 +100,9 @@ def test_values_defaults():
     v = yaml.safe_load((CHART / "values.yaml").read_text())
     assert v["fastapi"]["replicas"] == 2
     assert v["streamlit"]["replicas"] == 1
-    assert v["typedb"]["persistence"]["size"] == "10Gi"
+    assert v["neo4j"]["persistence"]["size"] == "10Gi"
     assert v["timescaledb"]["persistence"]["size"] == "50Gi"
-    for comp in ("typedb", "timescaledb", "redis", "fastapi", "streamlit"):
+    for comp in ("neo4j", "timescaledb", "redis", "fastapi", "streamlit"):
         assert v[comp]["image"]["repository"] and v[comp]["image"]["tag"]
         assert "resources" in v[comp]
 
@@ -111,7 +111,7 @@ def test_dev_and_prod_overrides():
     dev = yaml.safe_load((CHART / "values-dev.yaml").read_text())
     prod = yaml.safe_load((CHART / "values-prod.yaml").read_text())
     assert dev["fastapi"]["replicas"] == 1
-    assert dev["typedb"]["persistence"]["size"] == "5Gi"
+    assert dev["neo4j"]["persistence"]["size"] == "5Gi"
     assert dev["timescaledb"]["persistence"]["size"] == "25Gi"
     assert dev["config"]["logLevel"] == "DEBUG"
     assert dev["ingress"]["host"] == "homepy-dev.local"
@@ -125,7 +125,7 @@ def test_templates_render_all_resource_kinds():
 
 
 def test_expected_template_files_exist():
-    for f in ("typedb-statefulset", "timescaledb-statefulset", "redis-deployment",
+    for f in ("neo4j-statefulset", "timescaledb-statefulset", "redis-deployment",
               "fastapi-deployment", "streamlit-deployment", "ingress",
               "configmap", "secrets", "hpa"):
         assert (TEMPLATES / f"{f}.yaml").exists(), f
@@ -145,7 +145,7 @@ def test_statefulset_mount_paths_and_probes():
     ts = by["timescaledb"]["spec"]["template"]["spec"]["containers"][0]
     assert ts["volumeMounts"][0]["mountPath"] == "/var/lib/postgresql/data"
     assert ts["readinessProbe"]["exec"]["command"][0] == "pg_isready"
-    tdb = by["typedb"]["spec"]["template"]["spec"]["containers"][0]
+    tdb = by["neo4j"]["spec"]["template"]["spec"]["containers"][0]
     assert "readinessProbe" in tdb
 
 
@@ -196,5 +196,5 @@ def test_hpa_targets_fastapi():
 
 def test_configmap_keys():
     cm = next(d for d in all_docs() if d["kind"] == "ConfigMap")
-    for k in ("LOG_LEVEL", "TYPEDB_HOST", "TYPEDB_PORT", "ALERT_CHANNELS", "CACHE_TTL_SECONDS"):
+    for k in ("LOG_LEVEL", "NEO4J_HOST", "NEO4J_BOLT_PORT", "ALERT_CHANNELS", "CACHE_TTL_SECONDS"):
         assert k in cm["data"]

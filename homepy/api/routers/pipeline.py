@@ -103,7 +103,7 @@ async def verification_health(request: Request, ts=Depends(get_timescale)):
         for name, st in summary.components.items()
     ]
     alerts = await DataMonitor(ts).check_freshness()
-    healer = SelfHealer(ts, getattr(request.app.state, "typedb", None), RECOVERY_LOG_PATH)
+    healer = SelfHealer(ts, getattr(request.app.state, "neo4j", None), RECOVERY_LOG_PATH)
     return SystemHealthResponse(
         components=components,
         data_quality_alerts=len(alerts),
@@ -134,10 +134,10 @@ async def ha_status(request: Request):
             component="timescaledb", role="primary", healthy=True,
             last_heartbeat=datetime.now(timezone.utc),
         ).__dict__)
-    typedb = getattr(request.app.state, "typedb", None)
-    if typedb is not None:
+    neo4j = getattr(request.app.state, "neo4j", None)
+    if neo4j is not None:
         components.append(HAStatus(
-            component="typedb", role="primary", healthy=True,
+            component="neo4j", role="primary", healthy=True,
             last_heartbeat=datetime.now(timezone.utc),
         ).__dict__)
     return components
@@ -191,5 +191,5 @@ async def monitoring_alerts(
 
 @router.get("/monitoring/early-warnings")
 async def monitoring_early_warnings(request: Request) -> list[dict]:
-    # Placeholder: querying active signals requires a live TypeDB.
+    # Placeholder: querying active signals requires a live Neo4j.
     return []

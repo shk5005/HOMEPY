@@ -16,7 +16,7 @@ from homepy.verification.models import RecoveryEvent
 
 if TYPE_CHECKING:
     from homepy.storage.timescale_service import TimescaleService
-    from homepy.storage.typedb_service import TypeDBService
+    from homepy.storage.neo4j_service import Neo4jService
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +54,14 @@ class SelfHealer:
     def __init__(
         self,
         timescale_svc: TimescaleService,
-        typedb_svc: TypeDBService,
+        neo4j_svc: Neo4jService,
         recovery_log_path: Path,
         policies: dict[str, RecoveryPolicy] | None = None,
         retry_fn: RetryFn | None = None,
         sleep_fn: SleepFn = asyncio.sleep,
     ) -> None:
         self._timescale = timescale_svc
-        self._typedb = typedb_svc
+        self._neo4j = neo4j_svc
         self._log_path = Path(recovery_log_path)
         self._policies = policies or DEFAULT_POLICIES
         self._retry_fn = retry_fn or self._default_retry
@@ -117,8 +117,8 @@ class SelfHealer:
             except (ConnectionError, OSError):
                 return False
             return True
-        if db_type == "typedb":
-            return self._typedb is not None
+        if db_type == "neo4j":
+            return self._neo4j is not None
         return False
 
     async def archive_old_data(self, days_threshold: int = 90) -> int:
@@ -147,7 +147,7 @@ class SelfHealer:
         return events
 
     async def _default_retry(self, component: str) -> bool:
-        if component in ("timescale", "typedb"):
+        if component in ("timescale", "neo4j"):
             return await self.reconnect_db(component)
         return True  # placeholder: component-specific retry wired in later
 

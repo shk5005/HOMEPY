@@ -1,6 +1,6 @@
 global:
   logLevel: WARNING
-typedb:
+neo4j:
   persistence:
     size: 10Gi
 timescaledb:

@@ -9,8 +9,9 @@ import pytest
 from homepy.storage.timescale_service import TimescaleService
 
 ROOT = Path(__file__).resolve().parent.parent
-TYPEDB_ADDRESS = "localhost:1729"
-TYPEDB_TEST_DB = "homepy_e2e"
+NEO4J_URI = "bolt://localhost:7687"
+NEO4J_AUTH = ("neo4j", "homepy")
+NEO4J_TEST_DB = "homepy_e2e"
 DSN = "postgresql://homepy:homepy@localhost:5432/homepy"
 TS = datetime(2026, 1, 15, tzinfo=timezone.utc)
 TRADE_ID = "e2e-test-trade"
@@ -26,48 +27,45 @@ def _load_bootstrap():
 
 
 async def test_full_infrastructure_roundtrip():
-    pytest.importorskip("typedb.driver")
-    from typedb.driver import TypeDB
     try:
-        driver = TypeDB.core_driver(TYPEDB_ADDRESS)
+        from neo4j import GraphDatabase
+        driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
+        driver.verify_connectivity()
         driver.close()
     except Exception:
-        pytest.skip("TypeDB server not reachable at localhost:1729")
+        pytest.skip("Neo4j server not reachable at bolt://localhost:7687")
 
-    from homepy.storage.typedb_service import TypeDBService
+    from homepy.storage.neo4j_service import Neo4jService
 
     bootstrap = _load_bootstrap()
 
-    # 1. Bootstrap (separate TypeDB db so real data is untouched); run twice => idempotent
+    # 1. Bootstrap (separate Neo4j db so real data is untouched); run twice => idempotent
     try:
-        info = bootstrap.bootstrap_typedb(TYPEDB_ADDRESS, TYPEDB_TEST_DB)
+        info = bootstrap.bootstrap_neo4j(NEO4J_URI, NEO4J_AUTH, NEO4J_TEST_DB)
     except RuntimeError as exc:
         pytest.fail(str(exc))
-    bootstrap.bootstrap_typedb(TYPEDB_ADDRESS, TYPEDB_TEST_DB)
-    assert info["entity_types"] >= 37
+    bootstrap.bootstrap_neo4j(NEO4J_URI, NEO4J_AUTH, NEO4J_TEST_DB)
+    assert info["node_labels"] >= 37
     ts_info = await bootstrap.bootstrap_timescale(DSN)
     await bootstrap.bootstrap_timescale(DSN)
     assert ts_info["tables"] >= 13
 
     try:
-        # 2. TypeDB: region + district + dong with hierarchy
-        with TypeDBService(TYPEDB_ADDRESS) as svc:
+        # 2. Neo4j: region + district + dong with hierarchy
+        with Neo4jService(NEO4J_URI, NEO4J_AUTH) as svc:
             svc.execute_write(
-                TYPEDB_TEST_DB,
-                'insert $r isa region, has region-code "E2E-R", has region-name "테스트시"; '
-                '$d isa district, has district-code "E2E-D", has district-name "테스트구"; '
-                '$n isa dong, has dong-code "E2E-N", has dong-name "테스트동"; '
-                '(parent: $r, child: $d) isa spatial-hierarchy; '
-                '(parent: $d, child: $n) isa spatial-hierarchy;',
+                NEO4J_TEST_DB,
+                'CREATE (r:Region {regionCode: "E2E-R", regionName: "테스트시"}) '
+                'CREATE (d:District {districtCode: "E2E-D", districtName: "테스트구"}) '
+                'CREATE (n:Dong {dongCode: "E2E-N", dongName: "테스트동"}) '
+                'CREATE (r)-[:SPATIAL_HIERARCHY]->(d) '
+                'CREATE (d)-[:SPATIAL_HIERARCHY]->(n)',
             )
             rows = svc.execute_read(
-                TYPEDB_TEST_DB,
-                '''match $r isa region, has region-code "E2E-R", has region-name $rn;
-                   $d isa district, has district-name $dn;
-                   $n isa dong, has dong-name $nn;
-                   (parent: $r, child: $d) isa spatial-hierarchy;
-                   (parent: $d, child: $n) isa spatial-hierarchy;
-                   get $rn, $dn, $nn;''',
+                NEO4J_TEST_DB,
+                'MATCH (r:Region {regionCode: "E2E-R"})-[:SPATIAL_HIERARCHY]->(d:District) '
+                '-[:SPATIAL_HIERARCHY]->(n:Dong) '
+                'RETURN r.regionName AS rn, d.districtName AS dn, n.dongName AS nn',
             )
             assert len(rows) == 1
             assert rows[0]["rn"] == "테스트시"
@@ -102,10 +100,11 @@ async def test_full_infrastructure_roundtrip():
                 "SELECT 1 FROM ts_real_trade WHERE trade_id = $1", TRADE_ID
             ) == []
     finally:
-        # 4. Cleanup: drop the throwaway TypeDB database
-        driver = TypeDB.core_driver(TYPEDB_ADDRESS)
+        # 4. Cleanup: drop the throwaway Neo4j database
+        from neo4j import GraphDatabase
+        driver = GraphDatabase.driver(NEO4J_URI, auth=NEO4J_AUTH)
         try:
-            if driver.databases.contains(TYPEDB_TEST_DB):
-                driver.databases.get(TYPEDB_TEST_DB).delete()
+            with driver.session(database="system") as session:
+                session.run(f"DROP DATABASE {NEO4J_TEST_DB} IF EXISTS")
         finally:
             driver.close()

@@ -32,6 +32,6 @@ def test_migrate_to_k8s_steps():
 
 def test_migrate_volumes_steps():
     t = (SCRIPTS / "migrate_volumes.sh").read_text()
-    for needle in ("pg_dump", "typedb server export", "typedb server import",
+    for needle in ("pg_dump", "neo4j-admin database dump", "neo4j-admin database load",
                    "PersistentVolumeClaim", "pg_restore", "kubectl"):
         assert needle in t

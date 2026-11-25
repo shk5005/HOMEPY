@@ -105,7 +105,7 @@
 <ul>{% for w in verdict.watchlist_data %}<li>{{ w }}</li>{% endfor %}</ul>
 <h3>데이터 출처 및 시점</h3>
 <ul>
-<li>출처: TypeDB 온톨로지, TimescaleDB 시계열 (금리, 환율, 유동성, 거시지표)</li>
+<li>출처: Neo4j 온톨로지, TimescaleDB 시계열 (금리, 환율, 유동성, 거시지표)</li>
 {% if computed_at %}<li>점수 산출 시각: {{ computed_at }}</li>{% endif %}
 <li>리포트 생성 시각: {{ generated_at }}</li>
 </ul>

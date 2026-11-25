@@ -16,7 +16,7 @@ Loader = Callable[[str, "object"], Awaitable[int]]
 @flow("homepy-event")
 async def event_pipeline(event_type: str, date: date | None = None, collectors=None,
                          approve: Optional[Approver] = None, loader: Optional[Loader] = None,
-                         timescale_svc=None, typedb_svc=None) -> FlowResult:
+                         timescale_svc=None, neo4j_svc=None) -> FlowResult:
     """Collect and validate; load only if the manual review gate ``approve(event_type, cleaned_path)``
     returns True. With no approver the data is held (cleaned, not loaded) pending review.
     ``loader(event_type, cleaned_path) -> rows`` performs the load for approved data
@@ -44,6 +44,6 @@ async def event_pipeline(event_type: str, date: date | None = None, collectors=N
         except Exception as exc:  # noqa: BLE001
             result.errors.append(f"load:{event_type}: {type(exc).__name__}: {exc}")
             return result
-    async with _Services(timescale_svc, typedb_svc) as svc:
-        await run_syncs(svc.timescale_svc, svc.typedb_svc, result)
+    async with _Services(timescale_svc, neo4j_svc) as svc:
+        await run_syncs(svc.timescale_svc, svc.neo4j_svc, result)
     return result

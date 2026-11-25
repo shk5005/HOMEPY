@@ -2,22 +2,23 @@ from pathlib import Path
 
 import pytest
 
-from homepy.nlp.validator import TypeQLValidator
+from homepy.nlp.validator import CypherValidator
 
-HOMEPY_SCHEMA = (Path(__file__).resolve().parents[2] / "storage/typedb/schema.tql").read_text(encoding="utf-8")
+HOMEPY_SCHEMA = (Path(__file__).resolve().parents[2] / "storage/neo4j/schema.cypher").read_text(encoding="utf-8")
 
 
 @pytest.fixture
 def v():
-    return TypeQLValidator(HOMEPY_SCHEMA)
+    return CypherValidator(HOMEPY_SCHEMA)
 
 
 @pytest.mark.parametrize("q", [
-    "match $x isa complex; delete $x;",
-    "insert $x isa complex, has complex-name 'hacked';",
-    "define malicious-type sub entity;",
-    "undefine complex sub entity;",
-    "MATCH $x isa complex; DELETE $x;",
+    "MATCH (x:Complex) DELETE x",
+    "MATCH (x:Complex) SET x.name = 'hacked'",
+    "CREATE (x:Complex {name: 'evil'})",
+    "MATCH (x:Complex) REMOVE x.name",
+    "MATCH (x:Complex) MERGE (y:Complex)",
+    "DROP CONSTRAINT ON (c:Complex)",
     "",
 ])
 def test_rejects_unsafe(v, q):
@@ -25,34 +26,27 @@ def test_rejects_unsafe(v, q):
 
 
 def test_string_literal_with_keyword_is_safe(v):
-    assert v.is_safe('match $c isa complex, has complex-name "delete me"; get $c;')
+    assert v.is_safe('MATCH (c:Complex {complexName: "delete me"}) RETURN c')
 
 
-def test_accepts_match_get(v):
-    assert v.validate("match $c isa complex, has complex-name $n; get $c, $n;") == (True, "")
+def test_accepts_match_return(v):
+    assert v.validate("MATCH (c:Complex) RETURN c.complexName AS name") == (True, "")
 
 
 def test_accepts_relation(v):
-    ok, err = v.validate('match $d isa district; $c isa complex; (parent: $d, child: $c) isa spatial-hierarchy; get $c;')
+    ok, err = v.validate('MATCH (d:District)-[:SPATIAL_HIERARCHY]->(c:Complex) RETURN c')
     assert ok, err
 
 
 def test_unknown_type(v):
-    ok, err = v.validate("match $c isa spaceship; get $c;")
-    assert not ok and "spaceship" in err
+    ok, err = v.validate("MATCH (c:Spaceship) RETURN c")
+    assert not ok and "Spaceship" in err
 
 
 def test_unknown_attribute(v):
-    ok, err = v.validate("match $c isa complex, has bogus-attr $n; get $c;")
-    assert not ok and "bogus-attr" in err
+    ok, err = v.validate("MATCH (c:Complex {bogusAttr: 'x'}) RETURN c")
+    assert not ok and "bogusAttr" in err
 
 
-def test_unknown_role(v):
-    ok, err = v.validate("match $c isa complex; (bogus: $c) isa spatial-hierarchy; get $c;")
-    assert not ok and "bogus" in err
-
-
-def test_unbalanced_and_missing_get(v):
-    assert not v.validate("match $c isa complex; (parent: $c isa spatial-hierarchy; get $c;")[0]
-    assert not v.validate("match $c isa complex;")[0]
-    assert not v.validate("match $c isa complex; get $c")[0]
+def test_missing_return(v):
+    assert not v.validate("MATCH (c:Complex)")[0]

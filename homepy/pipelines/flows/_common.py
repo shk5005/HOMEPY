@@ -18,8 +18,8 @@ from zoneinfo import ZoneInfo
 from homepy.pipelines.stages.clean import clean_source
 from homepy.pipelines.stages.load import load_to_timescale
 from homepy.pipelines.stages.transform import transform_domain
-from homepy.sync.timescale_to_typedb import SyncReport, sync_aggregates_to_typedb
-from homepy.sync.typedb_to_timescale import sync_signals_to_timescale
+from homepy.sync.timescale_to_neo4j import SyncReport, sync_aggregates_to_neo4j
+from homepy.sync.neo4j_to_timescale import sync_signals_to_timescale
 
 logger = logging.getLogger(__name__)
 
@@ -182,13 +182,13 @@ async def load_task(domain: str, path: Path, timescale_svc) -> int:
 
 
 @task("sync_aggregates")
-async def sync_aggregates_task(timescale_svc, typedb_svc) -> SyncReport:
-    return await sync_aggregates_to_typedb(timescale_svc, typedb_svc)
+async def sync_aggregates_task(timescale_svc, neo4j_svc) -> SyncReport:
+    return await sync_aggregates_to_neo4j(timescale_svc, neo4j_svc)
 
 
 @task("sync_signals")
-async def sync_signals_task(typedb_svc, timescale_svc) -> int:
-    return await sync_signals_to_timescale(typedb_svc, timescale_svc)
+async def sync_signals_task(neo4j_svc, timescale_svc) -> int:
+    return await sync_signals_to_timescale(neo4j_svc, timescale_svc)
 
 
 # ---------------------------------------------------------------- helpers
@@ -319,15 +319,15 @@ async def transform_and_load(domains: dict[str, list[str]], cleaned: dict[str, P
     return loaded
 
 
-async def run_syncs(timescale_svc, typedb_svc, result: FlowResult) -> None:
+async def run_syncs(timescale_svc, neo4j_svc, result: FlowResult) -> None:
     """sync_aggregates then sync_signals (inference trigger); failures are recorded, not raised."""
     try:
-        result.sync_report = await sync_aggregates_task(timescale_svc, typedb_svc)
+        result.sync_report = await sync_aggregates_task(timescale_svc, neo4j_svc)
     except Exception as exc:  # noqa: BLE001
         result.errors.append(f"sync_aggregates: {type(exc).__name__}: {exc}")
         return
     try:
-        await sync_signals_task(typedb_svc, timescale_svc)
+        await sync_signals_task(neo4j_svc, timescale_svc)
     except Exception as exc:  # noqa: BLE001
         result.errors.append(f"sync_signals: {type(exc).__name__}: {exc}")
 
@@ -335,8 +335,8 @@ async def run_syncs(timescale_svc, typedb_svc, result: FlowResult) -> None:
 class _Services:
     """Use injected services, or build real ones from env and close them afterwards."""
 
-    def __init__(self, timescale_svc, typedb_svc):
-        self.timescale_svc, self.typedb_svc = timescale_svc, typedb_svc
+    def __init__(self, timescale_svc, neo4j_svc):
+        self.timescale_svc, self.neo4j_svc = timescale_svc, neo4j_svc
         self._own: list[Any] = []
 
     async def __aenter__(self):
@@ -345,11 +345,14 @@ class _Services:
             self.timescale_svc = TimescaleService(os.environ["HOMEPY_TIMESCALE_DSN"])
             await self.timescale_svc.connect()
             self._own.append(self.timescale_svc)
-        if self.typedb_svc is None:
-            from homepy.storage.typedb_service import TypeDBService
-            self.typedb_svc = TypeDBService(os.environ.get("HOMEPY_TYPEDB_ADDRESS", "localhost:1729"))
-            self.typedb_svc.connect()
-            self._own.append(self.typedb_svc)
+        if self.neo4j_svc is None:
+            from homepy.storage.neo4j_service import Neo4jService
+            self.neo4j_svc = Neo4jService(
+                os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+                os.environ.get("NEO4J_USER", "neo4j"),
+                os.environ.get("NEO4J_PASSWORD", "homepy"))
+            self.neo4j_svc.connect()
+            self._own.append(self.neo4j_svc)
         return self
 
     async def __aexit__(self, *exc):
@@ -363,17 +366,17 @@ class _Services:
 
 
 async def run_scheduled(source_names: list[str], domains: dict[str, list[str]], start: date, end: date,
-                        collectors: Optional[dict[str, Collector]], timescale_svc, typedb_svc,
+                        collectors: Optional[dict[str, Collector]], timescale_svc, neo4j_svc,
                         data_dir: Path | str = "data") -> FlowResult:
     result = FlowResult()
     collectors = collectors or {}
     raw = await collect_sources(source_names, start, end, collectors, result)
     clean_keys = {n: SOURCES[n].clean_key for n in raw}
     cleaned, gate_failed = await clean_sources(raw, clean_keys, result)
-    async with _Services(timescale_svc, typedb_svc) as svc:
+    async with _Services(timescale_svc, neo4j_svc) as svc:
         await transform_and_load(domains, cleaned, svc.timescale_svc, result, data_dir,
                                  gate_failed=gate_failed, clean_keys=clean_keys)
-        await run_syncs(svc.timescale_svc, svc.typedb_svc, result)
+        await run_syncs(svc.timescale_svc, svc.neo4j_svc, result)
     return result
 
 

@@ -53,7 +53,7 @@ class MockTimescale:
         return sum(1 for q, _ in self.calls if q.lstrip().upper().startswith("INSERT INTO " + table.upper()))
 
 
-class MockTypeDB:
+class MockNeo4j:
     def __init__(self):
         self.updates = []
 
@@ -72,5 +72,5 @@ def mock_timescale():
 
 
 @pytest.fixture
-def mock_typedb():
-    return MockTypeDB()
+def mock_neo4j():
+    return MockNeo4j()

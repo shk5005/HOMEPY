@@ -43,7 +43,7 @@ def test_improvement_record():
 
 def test_recovery_event():
     assert len(_names(RecoveryEvent)) == 8
-    e = RecoveryEvent("e1", NOW, "timeout", "typedb", "retry", True)
+    e = RecoveryEvent("e1", NOW, "timeout", "neo4j", "retry", True)
     assert e.human_escalated is False
 
 

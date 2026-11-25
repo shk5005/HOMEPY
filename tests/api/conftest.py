@@ -46,12 +46,12 @@ class FakeTimescale:
 def app_client():
     app = create_app(use_lifespan=False)
 
-    typedb = MagicMock()
-    typedb.execute_read.return_value = [
+    neo4j = MagicMock()
+    neo4j.execute_read.return_value = [
         {"o_id": "D001", "rel": "located-in", "ot": "district"},
         {"o_id": "S001", "rel": "near", "ot": "infrastructure"},
     ]
-    app.state.typedb = typedb
+    app.state.neo4j = neo4j
     app.state.timescale = FakeTimescale()
 
     scorer = MagicMock()

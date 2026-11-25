@@ -12,8 +12,8 @@ from homepy.inference.verdict import VerdictBuilder
 from homepy.simulation.policy_simulator import PolicySimulator
 
 
-def get_typedb(request: Request):
-    return request.app.state.typedb
+def get_neo4j(request: Request):
+    return request.app.state.neo4j
 
 
 def get_timescale(request: Request):
@@ -21,7 +21,7 @@ def get_timescale(request: Request):
 
 
 def get_scorer(request: Request) -> InvestmentScorer:
-    return InvestmentScorer(request.app.state.typedb, request.app.state.timescale)
+    return InvestmentScorer(request.app.state.neo4j, request.app.state.timescale)
 
 
 def get_simulator(request: Request) -> ScenarioSimulator:
@@ -35,9 +35,9 @@ def get_verdict_builder(request: Request) -> VerdictBuilder:
 
 
 def get_tax_engine(request: Request) -> TaxEngine:
-    return TaxEngine(request.app.state.typedb)
+    return TaxEngine(request.app.state.neo4j)
 
 
 def get_policy_simulator(request: Request) -> PolicySimulator:
     return PolicySimulator(
-        request.app.state.typedb, get_scorer(request), request.app.state.timescale)
+        request.app.state.neo4j, get_scorer(request), request.app.state.timescale)

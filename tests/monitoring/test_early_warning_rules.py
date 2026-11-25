@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-SKIP = "requires live TypeDB"
+SKIP = "requires live Neo4j"
 
 
 @pytest.mark.skip(reason=SKIP)

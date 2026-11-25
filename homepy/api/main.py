@@ -33,32 +33,34 @@ async def lifespan(app: FastAPI):
 
     log = logging.getLogger("homepy.startup")
     from homepy.storage.timescale_service import TimescaleService
-    from homepy.storage.typedb_service import TypeDBService
+    from homepy.storage.neo4j_service import Neo4jService
 
-    typedb = TypeDBService(os.environ.get("TYPEDB_ADDRESS", "localhost:1729"))
+    neo4j = Neo4jService(os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+                         os.environ.get("NEO4J_USER", "neo4j"),
+                         os.environ.get("NEO4J_PASSWORD", "homepy"))
     timescale = TimescaleService(
         os.environ.get("TIMESCALE_DSN", "postgresql://homepy:homepy@localhost:5432/homepy")
     )
     try:
-        await asyncio.to_thread(typedb.connect)
-        log.info("TypeDB connected")
+        neo4j.connect()
+        log.info("Neo4j connected")
     except Exception as exc:
-        log.warning("TypeDB unavailable (%s) — ontology endpoints will fail", exc)
-        typedb = None
+        log.warning("Neo4j unavailable (%s) — ontology endpoints will fail", exc)
+        neo4j = None
     try:
         await timescale.connect()
         log.info("TimescaleDB connected")
     except Exception as exc:
         log.warning("TimescaleDB unavailable (%s) — time-series endpoints will fail", exc)
         timescale = None
-    app.state.typedb, app.state.timescale = typedb, timescale
+    app.state.neo4j, app.state.timescale = neo4j, timescale
     try:
         yield
     finally:
         if timescale is not None:
             await timescale.close()
-        if typedb is not None:
-            await asyncio.to_thread(typedb.close)
+        if neo4j is not None:
+            neo4j.close()
 
 
 def create_app(use_lifespan: bool = True) -> FastAPI:

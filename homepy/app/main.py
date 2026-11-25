@@ -43,7 +43,7 @@ ARCHITECTURE = [
         {"name": "리포트 생성기", "desc": "PDF/HTML 투자 보고서", "port": None},
     ]},
     {"layer": "AI", "components": [
-        {"name": "NLP 인터페이스", "desc": "자연어 → TypeQL 변환", "port": None},
+        {"name": "NLP 인터페이스", "desc": "자연어 → Cypher 변환", "port": None},
         {"name": "멀티에이전트", "desc": "Bull/Bear/행동/정책 토론", "port": None},
     ]},
     {"layer": "ML", "components": [
@@ -55,7 +55,7 @@ ARCHITECTURE = [
         {"name": "WebSocket", "desc": "실시간 시그널 스트림", "port": 8000},
     ]},
     {"layer": "Storage", "components": [
-        {"name": "TypeDB", "desc": "온톨로지 지식 그래프", "port": 1729},
+        {"name": "Neo4j", "desc": "온톨로지 지식 그래프", "port": 7687},
         {"name": "TimescaleDB", "desc": "시계열 데이터 저장", "port": 5432},
         {"name": "Redis", "desc": "캐시 + Pub/Sub", "port": 6379},
     ]},
@@ -70,7 +70,7 @@ MODULES = [
     {"name": "편향 탐지", "plan": "C", "tests": 25, "desc": "9가지 인지 편향 검출"},
     {"name": "시나리오 시뮬레이션", "plan": "D", "tests": 18, "desc": "Bull/Base/Bear 분석"},
     {"name": "ML 예측", "plan": "G", "tests": 20, "desc": "LightGBM + SHAP 가격 예측"},
-    {"name": "NLP 쿼리", "plan": "G", "tests": 22, "desc": "자연어 → TypeQL 변환"},
+    {"name": "NLP 쿼리", "plan": "G", "tests": 22, "desc": "자연어 → Cypher 변환"},
     {"name": "멀티에이전트 토론", "plan": "G", "tests": 12, "desc": "4-Agent 투자 토론"},
     {"name": "데이터 파이프라인", "plan": "B", "tests": 42, "desc": "9개 공공데이터 ETL"},
     {"name": "이상 탐지/모니터링", "plan": "E", "tests": 28, "desc": "Z-score 이상 탐지"},
@@ -252,7 +252,7 @@ def main() -> None:
         '🔱 <span>도깨비</span></h1>',
         unsafe_allow_html=True,
     )
-    st.caption("TypeDB 온톨로지 + TimescaleDB 시계열 기반 부동산 투자 의사결정 시스템")
+    st.caption("Neo4j 온톨로지 + TimescaleDB 시계열 기반 부동산 투자 의사결정 시스템")
 
     client = ApiClient(st.session_state["api_base_url"])
     health = check_api_health(client)

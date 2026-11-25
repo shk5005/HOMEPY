@@ -1,4 +1,4 @@
-"""TypeDB warm-standby manager (snapshot export/import)."""
+"""Neo4j warm-standby manager (neo4j-admin dump/load)."""
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 DATABASE = "homepy"
 
 
-class TypeDBStandbyManager:
+class Neo4jStandbyManager:
     def __init__(self, primary_addr: str, standby_addr: str, export_dir: str) -> None:
         self.primary_addr = primary_addr
         self.standby_addr = standby_addr
@@ -39,22 +39,27 @@ class TypeDBStandbyManager:
         self.export_dir.mkdir(parents=True, exist_ok=True)
         started = datetime.now()
         stamp = started.strftime("%Y%m%dT%H%M%S")
-        schema = self.export_dir / f"{DATABASE}_{stamp}.schema.tql"
-        snapshot = self.export_dir / f"{DATABASE}_{stamp}.typedb"
+        snapshot = self.export_dir / f"{DATABASE}_{stamp}.dump"
         await self._run(
-            "typedb", "console", f"--address={self.primary_addr}",
-            "--command", f"database export {DATABASE} {schema} {snapshot}",
+            "neo4j-admin", "database", "dump",
+            f"--to-path={self.export_dir}",
+            DATABASE,
         )
+        if not snapshot.exists():
+            dumps = list(self.export_dir.glob(f"{DATABASE}*.dump"))
+            if dumps:
+                snapshot = max(dumps, key=lambda p: p.stat().st_mtime)
         self._meta_path.write_text(
             json.dumps({"timestamp": started.isoformat(), "snapshot": str(snapshot)})
         )
         return snapshot
 
     async def import_to_standby(self, snapshot: Path) -> None:
-        schema = snapshot.with_name(snapshot.name.replace(".typedb", ".schema.tql"))
         await self._run(
-            "typedb", "console", f"--address={self.standby_addr}",
-            "--command", f"database import {DATABASE} {schema} {snapshot}",
+            "neo4j-admin", "database", "load",
+            f"--from-path={snapshot.parent}",
+            "--overwrite-destination=true",
+            DATABASE,
         )
 
     async def promote_standby(self) -> None:

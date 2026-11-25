@@ -35,7 +35,7 @@ def test_health_endpoint():
 
     app = create_app(use_lifespan=False)
     app.state.timescale = None
-    app.state.typedb = None
+    app.state.neo4j = None
     with TestClient(app) as client:
         resp = client.get("/api/v1/pipeline/health")
         assert resp.status_code == 200
@@ -52,7 +52,7 @@ def test_ha_status_endpoint():
 
     app = create_app(use_lifespan=False)
     app.state.timescale = None
-    app.state.typedb = None
+    app.state.neo4j = None
     with TestClient(app) as client:
         resp = client.get("/api/v1/pipeline/ha/status")
         assert resp.status_code == 200

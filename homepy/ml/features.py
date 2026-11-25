@@ -1,4 +1,4 @@
-"""ML feature engineering: 5 relational (TypeDB) + 5 time-series (TimescaleDB).
+"""ML feature engineering: 5 relational (Neo4j) + 5 time-series (TimescaleDB).
 
 All time-series queries are point-in-time: every one filters ``ts <= $as_of``.
 """
@@ -15,7 +15,7 @@ import numpy as np
 
 from homepy.ml.models import MLFeatureSet
 
-TYPEDB_DB = "homepy"
+NEO4J_DB = "homepy"
 _ID_RE = re.compile(r"[A-Za-z0-9_\-]{1,40}")
 
 RELATIONAL_FEATURES = (
@@ -54,7 +54,7 @@ def _to_float(value: Any, default: float = 0.0) -> float:
 
 
 def _val(row: Any, key: str) -> Any:
-    """Read a key from a dict / asyncpg.Record / TypeDB-style {'v': {'value': x}} row."""
+    """Read a key from a dict / asyncpg.Record row."""
     try:
         v = row[key]
     except (KeyError, IndexError, TypeError):
@@ -71,39 +71,39 @@ def _check_id(complex_id: str) -> str:
 
 
 class RelationalFeatureExtractor:
-    def __init__(self, typedb_svc: Any) -> None:
-        self.typedb = typedb_svc
+    def __init__(self, neo4j_svc: Any) -> None:
+        self.neo4j = neo4j_svc
 
-    async def _tql(self, query: str) -> list[dict]:
-        # TypeDBService is synchronous.
-        return await asyncio.to_thread(self.typedb.execute_read, TYPEDB_DB, query)
+    async def _cypher(self, query: str, **params: Any) -> list[dict]:
+        return await asyncio.to_thread(self.neo4j.execute_read, NEO4J_DB, query, **params)
 
     async def extract(self, complex_id: str) -> dict[str, float]:
         cid = _check_id(complex_id)
-        head = f'match $c isa complex, has complex_id "{cid}"; '
 
-        adj = await self._tql(
-            f"# feature:adjacent_count\n{head}"
-            "(location: $c, facility: $o) isa accessibility, has distance-meter $d; "
-            "$d <= 500.0; get $o; count;"
+        adj = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid})<-[a:ACCESSIBILITY]-(f) "
+            "WHERE a.distanceMeter <= 500.0 RETURN count(f) AS count",
+            cid=cid,
         )
-        dev = await self._tql(
-            f"# feature:development_count\n{head}"
-            "(beneficiary: $c, project: $p) isa development-influence; get $p; count;"
+        dev = await self._cypher(
+            "MATCH (c:Complex {complexId: $cid})-[:DEVELOPMENT_INFLUENCE]->(p:DevelopmentProject) "
+            "RETURN count(p) AS count",
+            cid=cid,
         )
-        reg = await self._tql(
-            f"# feature:regulation_weight\n{head}"
-            "(designation: $z, target-district: $c) isa zone-applied-to; "
-            "$z has regulation-weight $w; get $w;"
+        reg = await self._cypher(
+            "MATCH (z:ZoneDesignation)-[:ZONE_APPLIED_TO]->(c:Complex {complexId: $cid}) "
+            "RETURN z.regulationWeight AS w",
+            cid=cid,
         )
-        tax = await self._tql(
-            f"# feature:effective_tax\n{head}"
-            "(tax-rule: $t, taxed-area: $c) isa tax-applies-to, has effective-rate-pct $r; get $r;"
+        tax = await self._cypher(
+            "MATCH (t)-[ta:TAX_APPLIES_TO]->(c:Complex {complexId: $cid}) "
+            "RETURN ta.effectiveRatePct AS r",
+            cid=cid,
         )
-        cyc = await self._tql(
-            f"# feature:cycle_phase\n{head}"
-            "(observation: $o, observed-district: $c) isa cycle-observed-at; "
-            "$o has local-cycle-phase $p; get $p;"
+        cyc = await self._cypher(
+            "MATCH (o:CycleObservation)-[:CYCLE_OBSERVED_AT]->(c:Complex {complexId: $cid}) "
+            "RETURN o.localCyclePhase AS p",
+            cid=cid,
         )
 
         weights = [_to_float(_val(r, "w")) for r in reg if _val(r, "w") is not None]
@@ -113,7 +113,6 @@ class RelationalFeatureExtractor:
             "adjacent_complex_count": _to_float(_val(adj[0], "count")) if adj else 0.0,
             "development_upside_count": _to_float(_val(dev[0], "count")) if dev else 0.0,
             "regulation_intensity": float(np.mean(weights)) if weights else 0.0,
-            # effective-rate-pct is stored in percent; feature is a fraction.
             "effective_tax_rate": float(np.mean(rates)) / 100.0 if rates else 0.0,
             "cycle_phase_encoded": CYCLE_PHASE_ENCODING.get(phase, 0.0),
         }

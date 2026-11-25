@@ -1,7 +1,7 @@
 """Policy simulation engine.
 
 Read-only: hypothetical policy changes are applied as in-memory score deltas on
-top of a baseline from InvestmentScorer. Nothing is ever written to TypeDB or
+top of a baseline from InvestmentScorer. Nothing is ever written to Neo4j or
 TimescaleDB.
 """
 
@@ -29,8 +29,8 @@ def _clamp(x: float) -> float:
 
 
 class PolicySimulator:
-    def __init__(self, typedb_svc: Any, scorer: Any, timescale_svc: Any) -> None:
-        self.typedb = typedb_svc
+    def __init__(self, neo4j_svc: Any, scorer: Any, timescale_svc: Any) -> None:
+        self.neo4j = neo4j_svc
         self.scorer = scorer
         self.ts = timescale_svc
 
