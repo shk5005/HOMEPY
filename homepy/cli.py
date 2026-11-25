@@ -9,8 +9,10 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
+import httpx
+
 from homepy.baseline import compute_baselines
-from homepy.collect import IncompleteCollection, ensure_months, requests_getter
+from homepy.collect import IncompleteCollection, ensure_months, http_getter
 from homepy.config import load_settings
 from homepy.dates import month_end, month_range, months_before
 from homepy.flags import assign_flags
@@ -52,11 +54,11 @@ def _run(args: argparse.Namespace) -> int:
     first = months_before(month_end(args.start), settings.window_months)
     fetch_months = month_range(f"{first.year:04d}-{first.month:02d}", args.end)
     try:
-        snaps = ensure_months(Path(args.raw), args.lawd, fetch_months, key, requests_getter,
+        snaps = ensure_months(Path(args.raw), args.lawd, fetch_months, key, http_getter,
                               settings, date.today())
         items = [item for s in snaps for body in s.pages
                  for item in parse_page(body, settings.success_codes).items]
-    except (ApiError, IncompleteCollection, RuntimeError, OSError) as e:
+    except (ApiError, IncompleteCollection, RuntimeError, OSError, httpx.HTTPError) as e:
         print(f"수집 실패: {e}", file=sys.stderr)
         return 1
     try:

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from typing import TypeVar
 
 from homepy.config import Settings
+
+T = TypeVar("T")
 
 UNKNOWN = "미상"
 
@@ -49,7 +52,7 @@ def _trade_id(item: dict[str, str]) -> str:
     return hashlib.sha1(canonical.encode("utf-8")).hexdigest()[:12]
 
 
-def _field(convert, name: str):
+def _field(convert: Callable[[], T], name: str) -> T:
     try:
         return convert()
     except ValueError as e:
@@ -57,7 +60,9 @@ def _field(convert, name: str):
 
 
 def _to_trade(item: dict[str, str], settings: Settings) -> Trade:
-    get = lambda k: item.get(k, "").strip()  # noqa: E731
+    def get(key: str) -> str:
+        return item.get(key, "").strip()
+
     try:
         area = Decimal(get("excluUseAr"))
     except ArithmeticError as e:

@@ -142,9 +142,9 @@ def ensure_months(root: Path, lawd_cd: str, months: list[str], service_key: str 
     return out
 
 
-def requests_getter(url: str, params: dict[str, str]) -> bytes:
-    import requests
+def http_getter(url: str, params: dict[str, str]) -> bytes:
+    import httpx
 
-    resp = requests.get(url, params=params, timeout=30)
+    resp = httpx.get(url, params=params, timeout=30)
     resp.raise_for_status()
     return resp.content

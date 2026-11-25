@@ -2,6 +2,8 @@ import csv
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from homepy.cli import main
 from homepy.collect import Snapshot, save_snapshot
 from homepy.dates import month_range
@@ -87,15 +89,15 @@ def test_cli_offline_missing_snapshot_exit_1(tmp_path, capsys):
 
 
 def test_cli_network_error_exit_1(monkeypatch, tmp_path, capsys):
-    import requests
+    import httpx
 
     import homepy.cli
 
     def boom(url, params):
-        raise requests.ConnectionError("no route")
+        raise httpx.ConnectError("no route")
 
     monkeypatch.setenv("DATA_GO_KR_SERVICE_KEY", "K")
-    monkeypatch.setattr(homepy.cli, "requests_getter", boom)
+    monkeypatch.setattr(homepy.cli, "http_getter", boom)
     code = main(["run", "--lawd", "11680", "--from", "2026-08", "--to", "2026-09",
                  "--config", CONFIG, "--raw", str(tmp_path / "raw"), "--out", str(tmp_path / "o")])
     assert code == 1 and "no route" in capsys.readouterr().err
@@ -107,8 +109,6 @@ def test_cli_malformed_row_exit_1(tmp_path, capsys):
     assert run(tmp_path, "a") == 1
     assert "dealAmount" in capsys.readouterr().err
 
-
-import pytest  # noqa: E402
 
 
 @pytest.mark.parametrize("start,end", [("2026-09", "2026-01"), ("202601", "2026-09"), ("2026-13", "2026-12")])

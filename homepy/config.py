@@ -5,6 +5,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,7 @@ class Settings:
     success_codes: tuple[str, ...] = ("00", "000")
     page_size: int = 1000
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, Any]:
         return {k: list(v) if isinstance(v, tuple) else v for k, v in asdict(self).items()}
 
 
@@ -56,7 +57,7 @@ def load_settings(path: Path) -> Settings:
     if "version" not in data:
         raise ValueError("설정에 version이 없다")
 
-    fields: dict[str, object] = {"version": str(data["version"])}
+    fields: dict[str, Any] = {"version": str(data["version"])}
     for section, mapping in _SECTIONS.items():
         values = data.get(section, {})
         unknown = set(values) - set(mapping)
