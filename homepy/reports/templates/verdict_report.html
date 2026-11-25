@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>HOMEPY 투자 분석 리포트 - {{ complex_id }}</title>
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: "Noto Sans CJK KR", "Noto Sans KR", "Malgun Gothic", sans-serif; font-size: 10pt; color: #0f172a; line-height: 1.5; }
+  h1 { font-size: 20pt; margin-bottom: 2pt; }
+  h2 { font-size: 14pt; border-bottom: 2px solid #2563eb; padding-bottom: 3pt; margin-top: 22pt; page-break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 4pt 6pt; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; }
+  .meta { color: #64748b; font-size: 9pt; }
+  .badge { display: inline-block; padding: 2pt 8pt; border-radius: 4pt; background: #2563eb; color: #fff; font-weight: bold; }
+  .warn-high { color: #b91c1c; font-weight: bold; }
+  .warn-medium { color: #b45309; }
+  .warn-low { color: #475569; }
+  .kill { border-left: 4px solid #b91c1c; background: #fef2f2; padding: 6pt 10pt; }
+</style>
+</head>
+<body>
+<h1>HOMEPY 투자 분석 리포트</h1>
+<div class="meta">단지: {{ complex_id }} | 생성: {{ generated_at }}</div>
+
+<section id="summary">
+<h2>1. 투자 요약</h2>
+<p>판정: <span class="badge">{{ verdict.verdict }}</span> &nbsp; 신뢰도: <strong>{{ verdict.confidence }}</strong></p>
+{% if score %}
+<p>종합 점수: <strong>{{ "%.1f"|format(score.total_score) }}</strong> / 100 &nbsp; 등급: <strong>{{ score.grade }}</strong></p>
+{% endif %}
+<h3>핵심 사실</h3>
+<ul>{% for f in verdict.core_facts %}<li>{{ f }}</li>{% endfor %}</ul>
+<table>
+<tr><th>강세 논거</th><td>{{ verdict.strongest_bull_case }}</td></tr>
+<tr><th>약세 논거</th><td>{{ verdict.strongest_bear_case }}</td></tr>
+<tr><th>숨은 변수</th><td>{{ verdict.hidden_variable }}</td></tr>
+</table>
+</section>
+
+<section id="factors">
+<h2>2. 14팩터 상세 분석</h2>
+{% if factors %}
+<div style="text-align:center">{{ radar }}</div>
+<table>
+<tr><th>팩터</th><th>원시값</th><th>정규화(0-100)</th><th>가중치</th><th>가중 점수</th><th>근거</th></tr>
+{% for f in factors %}
+<tr><td>{{ f.name }}</td><td>{{ "%.2f"|format(f.raw_value) }}</td><td>{{ "%.1f"|format(f.normalized) }}</td>
+<td>{{ "%.2f"|format(f.weight) }}</td><td>{{ "%.2f"|format(f.weighted_score) }}</td><td>{{ f.evidence|join("; ") }}</td></tr>
+{% endfor %}
+</table>
+{% else %}
+<p class="meta">팩터 상세 데이터가 제공되지 않았습니다.</p>
+{% endif %}
+</section>
+
+<section id="scenarios">
+<h2>3. 시나리오 분석</h2>
+{% if scenarios %}
+<table>
+<tr><th>시나리오</th><th>확률</th><th>조건</th><th>예상 결과</th><th>선행 지표</th><th>무효화 조건</th></tr>
+{% for s in scenarios %}
+<tr><td>{{ s.name }}</td><td>{{ "%.0f"|format(s.probability * 100) }}%</td>
+<td>{{ s.conditions|join("; ") }}</td><td>{{ s.expected_outcome }}</td>
+<td>{{ s.leading_indicators|join("; ") }}</td><td>{{ s.invalidation_conditions|join("; ") }}</td></tr>
+{% endfor %}
+</table>
+{% elif verdict.scenario_summary %}
+<p>{{ verdict.scenario_summary }}</p>
+{% else %}
+<p class="meta">시나리오 데이터가 없습니다.</p>
+{% endif %}
+{% if sensitivity %}
+<h3>민감도</h3>
+<table><tr><th>변수</th><th>기준값</th><th>최대 점수 영향</th></tr>
+{% for s in sensitivity %}<tr><td>{{ s.variable }}</td><td>{{ s.base_value }}</td>
+<td>{{ "%.1f"|format(s.score_impacts|map("abs")|max if s.score_impacts else 0) }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+</section>
+
+<section id="risks">
+<h2>4. 편향 경고 및 리스크</h2>
+<h3>편향 경고</h3>
+{% if verdict.bias_warnings %}
+<table><tr><th>유형</th><th>심각도</th><th>설명</th><th>대응</th></tr>
+{% for b in verdict.bias_warnings %}
+<tr><td>{{ b.bias_type }}</td><td class="warn-{{ b.severity }}">{{ b.severity }}</td><td>{{ b.description }}</td><td>{{ b.mitigation }}</td></tr>
+{% endfor %}</table>
+{% else %}<p>감지된 편향 없음.</p>{% endif %}
+<h3>킬 스위치</h3>
+<div class="kill">{{ verdict.kill_switch }}</div>
+<h3>주요 리스크 (상위 5)</h3>
+<ol>
+<li>{{ verdict.primary_risk }}</li>
+{% for w in verdict.watchlist_data[:4] %}<li>모니터링: {{ w }}</li>{% endfor %}
+</ol>
+</section>
+
+<section id="appendix">
+<h2>5. 근거 데이터 부록</h2>
+<h3>근거 체인</h3>
+<ol>{% for e in verdict.evidence_chain %}<li>{{ e }}</li>{% endfor %}</ol>
+<h3>관찰 대상 데이터</h3>
+<ul>{% for w in verdict.watchlist_data %}<li>{{ w }}</li>{% endfor %}</ul>
+<h3>데이터 출처 및 시점</h3>
+<ul>
+<li>출처: TypeDB 온톨로지, TimescaleDB 시계열 (금리, 환율, 유동성, 거시지표)</li>
+{% if computed_at %}<li>점수 산출 시각: {{ computed_at }}</li>{% endif %}
+<li>리포트 생성 시각: {{ generated_at }}</li>
+</ul>
+</section>
+
+{% if debate %}
+<section id="debate">
+<h2>6. 멀티에이전트 토론 결과</h2>
+<p>합의 여부: <strong>{{ "합의 도달" if debate.consensus_reached else "합의 미달" }}</strong>
+{% if debate.final_verdict %} | 최종 판정: <strong>{{ debate.final_verdict }}</strong>{% endif %}</p>
+{% for r in debate.rounds %}
+<h3>라운드 {{ r.round_number }}</h3>
+<table>{% for name, out in r.agent_outputs.items() %}<tr><th style="width:22%">{{ name }}</th><td>{{ out }}</td></tr>{% endfor %}</table>
+{% endfor %}
+{% if debate.dissenting_views %}
+<h3>소수 의견</h3>
+<ul>{% for d in debate.dissenting_views %}
+<li><strong>{{ d.agent_name }}</strong> ({{ d.verdict }}, 신뢰도 {{ "%.0f"|format(d.confidence * 100) }}%): {{ d.key_arguments|join("; ") }}</li>
+{% endfor %}</ul>
+{% endif %}
+</section>
+{% endif %}
+</body>
+</html>

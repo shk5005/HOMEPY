@@ -1,0 +1,22 @@
+define
+
+rule smart-money-detection:
+  when {
+    $dist isa district;
+    $co isa cycle-observation, has price-change-mom $pm, has sale-to-list-ratio $slr;
+    $pm < 0.0;
+    $slr > 1.05;
+    (observation: $co, observed-district: $dist) isa cycle-observed-at;
+  } then {
+    (detected-area: $dist) isa smart-money-signal;
+  };
+
+rule jeonse-gap-narrowing:
+  when {
+    $dist isa district;
+    (observed-area: $dist, sentiment-data: $ms) isa sentiment-observation;
+    $ms isa market-sentiment, has jeonse-ratio $jr;
+    $jr < 0.55;
+  } then {
+    (narrowing-area: $dist) isa gap-narrowing-signal;
+  };

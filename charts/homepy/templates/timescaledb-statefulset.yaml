@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-timescaledb
+  labels:
+    app: {{ .Release.Name }}-timescaledb
+spec:
+  serviceName: {{ .Release.Name }}-timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-timescaledb
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-timescaledb
+    spec:
+      containers:
+        - name: timescaledb
+          image: "{{ .Values.timescaledb.image.repository }}:{{ .Values.timescaledb.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.timescaledb.port }}
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.timescaledb.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.timescaledb.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.timescaledb.user | quote }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.timescaledb.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.timescaledb.persistence.storageClass }}
+        storageClassName: {{ .Values.timescaledb.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.timescaledb.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-timescaledb
+spec:
+  clusterIP: None
+  selector:
+    app: {{ .Release.Name }}-timescaledb
+  ports:
+    - port: {{ .Values.timescaledb.port }}
+      targetPort: {{ .Values.timescaledb.port }}

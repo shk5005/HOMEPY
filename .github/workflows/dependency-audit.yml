@@ -1,0 +1,42 @@
+name: Dependency Audit
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -e ".[dev]" pip-audit safety
+      - name: pip-audit
+        id: pip_audit
+        run: pip-audit --format json --output pip-audit.json
+        continue-on-error: true
+      - name: safety check
+        id: safety
+        run: safety check --json --output safety.json
+        continue-on-error: true
+      - name: Open issue if vulnerabilities found
+        if: steps.pip_audit.outcome == 'failure' || steps.safety.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Weekly dependency audit found vulnerabilities (pip-audit: ${{ steps.pip_audit.outcome }}, safety: ${{ steps.safety.outcome }})."
+            echo
+            echo "See the workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo '```json'
+            head -c 20000 pip-audit.json 2>/dev/null || true
+            echo '```'
+          } > audit_report.md
+          gh issue create \
+            --title "Dependency vulnerabilities $(date +%F)" \
+            --label security \
+            --body-file audit_report.md

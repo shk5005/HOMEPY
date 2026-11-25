@@ -1,0 +1,16 @@
+global:
+  logLevel: DEBUG
+typedb:
+  persistence:
+    size: 5Gi
+timescaledb:
+  persistence:
+    size: 25Gi
+fastapi:
+  replicas: 1
+autoscaling:
+  enabled: false
+ingress:
+  host: homepy-dev.local
+config:
+  logLevel: DEBUG

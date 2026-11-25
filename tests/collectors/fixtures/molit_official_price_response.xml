@@ -1,0 +1,5 @@
+<response><header><resultCode>000</resultCode><resultMsg>OK</resultMsg></header>
+<body><items>
+<item><sggCd>11680</sggCd><umdCd>10300</umdCd><aptNm>래미안A</aptNm><prvuseAr>84.97</prvuseAr><stdrYear>2025</stdrYear><pblntfPc>1,250,000,000</pblntfPc></item>
+<item><sggCd>11680</sggCd><umdCd>10300</umdCd><aptNm>은마</aptNm><prvuseAr>76.79</prvuseAr><stdrYear>2025</stdrYear><pblntfPc>1,100,000,000</pblntfPc></item>
+</items><totalCount>2</totalCount></body></response>

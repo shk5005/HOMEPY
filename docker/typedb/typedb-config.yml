@@ -1,0 +1,2 @@
+# Optional TypeDB tuning (not mounted by default; see docker-compose.yml).
+# Placeholder for server config overrides, e.g. storage/cache settings.
